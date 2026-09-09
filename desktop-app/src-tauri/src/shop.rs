@@ -1,0 +1,274 @@
+use serde::{Deserialize, Serialize};
+use tauri::AppHandle;
+
+// Zakładka "Sklep" - to jest to, czego używa sam KLIENT: zakłada konto, loguje się,
+// przegląda katalog i kupuje. Bez panelu admina w appce (świadomie usunięty - to
+// narzędzie operatora, patrz Mainplugins/license-server/README.md, wystawianie
+// kluczy przez curl).
+//
+// Adres serwera licencyjnego jest ZASZYTY NA STAŁE (SHOP_API_URL) - klient appki
+// nigdy go nie konfiguruje, to Ty jako operator decydujesz, gdzie appka się łączy.
+// PRZED ZBUDOWANIEM WERSJI DLA KLIENTÓW: podmień na prawdziwy adres produkcyjny
+// (patrz license-server/README.md, sekcja "Deploy za darmo").
+//
+// Token sesji trzymany w keychain OS jak reszta sekretów appki (SFTP/RCON) - jedno
+// konto na instalację appki, prosty model bez multi-account switchingu na razie.
+
+const SHOP_API_URL: &str = "http://localhost:3000";
+
+const KEYRING_SERVICE: &str = "pluginmanager-shop";
+const KEYRING_ACCOUNT: &str = "session-token";
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LicenseRecord {
+    pub key: String,
+    pub plugin: String,
+    #[serde(default)]
+    pub note: String,
+    #[serde(rename = "serverId")]
+    pub server_id: Option<String>,
+    pub status: String,
+    #[serde(rename = "billingType")]
+    pub billing_type: String,
+    #[serde(rename = "createdAt")]
+    pub created_at: String,
+    #[serde(rename = "boundAt")]
+    pub bound_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomerInfo {
+    pub id: String,
+    pub email: String,
+    #[serde(rename = "createdAt")]
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct AuthResponse {
+    token: String,
+    customer: CustomerInfo,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CatalogCategory {
+    pub id: String,
+    pub label: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CatalogPlugin {
+    pub id: String,
+    pub label: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub category: Option<String>,
+    #[serde(default)]
+    pub price: Option<f64>,
+    #[serde(rename = "variantId")]
+    pub variant_id: Option<String>,
+}
+
+/// `plugins` w JSON-ie jest albo "*" (wszystko) albo listą id - patrz catalog.js.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum PackagePlugins {
+    All(String),
+    List(Vec<String>),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CatalogPackage {
+    pub id: String,
+    pub label: String,
+    pub description: String,
+    pub plugins: PackagePlugins,
+    #[serde(default)]
+    pub price: Option<f64>,
+    #[serde(rename = "subscriptionPrice", default)]
+    pub subscription_price: Option<f64>,
+    #[serde(rename = "variantId")]
+    pub variant_id: Option<String>,
+    #[serde(rename = "subscriptionVariantId")]
+    pub subscription_variant_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Catalog {
+    #[serde(rename = "storeUrl")]
+    pub store_url: Option<String>,
+    #[serde(default)]
+    pub categories: Vec<CatalogCategory>,
+    #[serde(rename = "individualPlugins")]
+    pub individual_plugins: Vec<CatalogPlugin>,
+    pub packages: Vec<CatalogPackage>,
+}
+
+fn get_token() -> Option<String> {
+    keyring::Entry::new(KEYRING_SERVICE, KEYRING_ACCOUNT).ok()?.get_password().ok()
+}
+
+fn set_token(token: &str) -> Result<(), String> {
+    keyring::Entry::new(KEYRING_SERVICE, KEYRING_ACCOUNT)
+        .map_err(|e| e.to_string())?
+        .set_password(token)
+        .map_err(|e| e.to_string())
+}
+
+fn base_url(_app: &AppHandle) -> Result<String, String> {
+    Ok(SHOP_API_URL.trim_end_matches('/').to_string())
+}
+
+#[tauri::command]
+pub async fn shop_register(app: AppHandle, email: String, password: String) -> Result<CustomerInfo, String> {
+    let url = format!("{}/api/auth/register", base_url(&app)?);
+    let resp = reqwest::Client::new()
+        .post(url)
+        .json(&serde_json::json!({ "email": email, "password": password }))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !resp.status().is_success() {
+        return Err(extract_error(resp).await);
+    }
+    let auth: AuthResponse = resp.json().await.map_err(|e| e.to_string())?;
+    set_token(&auth.token)?;
+    Ok(auth.customer)
+}
+
+#[tauri::command]
+pub async fn shop_login(app: AppHandle, email: String, password: String) -> Result<CustomerInfo, String> {
+    let url = format!("{}/api/auth/login", base_url(&app)?);
+    let resp = reqwest::Client::new()
+        .post(url)
+        .json(&serde_json::json!({ "email": email, "password": password }))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !resp.status().is_success() {
+        return Err(extract_error(resp).await);
+    }
+    let auth: AuthResponse = resp.json().await.map_err(|e| e.to_string())?;
+    set_token(&auth.token)?;
+    Ok(auth.customer)
+}
+
+#[tauri::command]
+pub fn shop_logout() -> Result<(), String> {
+    if let Ok(entry) = keyring::Entry::new(KEYRING_SERVICE, KEYRING_ACCOUNT) {
+        let _ = entry.delete_credential();
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn shop_is_logged_in() -> bool {
+    get_token().is_some()
+}
+
+/// Zwraca None (nie błąd) gdy niezalogowany albo token wygasł - upraszcza UI (nie trzeba
+/// odróżniać "błąd sieci" od "po prostu nie jesteś zalogowany" przy starcie strony).
+#[tauri::command]
+pub async fn shop_me(app: AppHandle) -> Result<Option<CustomerInfo>, String> {
+    let Some(token) = get_token() else { return Ok(None) };
+    let url = format!("{}/api/me", base_url(&app)?);
+    let resp = reqwest::Client::new()
+        .get(url)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if resp.status() == reqwest::StatusCode::UNAUTHORIZED {
+        shop_logout()?;
+        return Ok(None);
+    }
+    if !resp.status().is_success() {
+        return Err(extract_error(resp).await);
+    }
+    Ok(Some(resp.json().await.map_err(|e| e.to_string())?))
+}
+
+#[tauri::command]
+pub async fn shop_change_password(app: AppHandle, current_password: String, new_password: String) -> Result<(), String> {
+    let token = get_token().ok_or("Nie jesteś zalogowany.")?;
+    let url = format!("{}/api/me/password", base_url(&app)?);
+    let resp = reqwest::Client::new()
+        .patch(url)
+        .bearer_auth(&token)
+        .json(&serde_json::json!({ "currentPassword": current_password, "newPassword": new_password }))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !resp.status().is_success() {
+        return Err(extract_error(resp).await);
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn shop_my_licenses(app: AppHandle) -> Result<Vec<LicenseRecord>, String> {
+    let token = get_token().ok_or("Nie jesteś zalogowany.")?;
+    let url = format!("{}/api/me/licenses", base_url(&app)?);
+    let resp = reqwest::Client::new()
+        .get(url)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !resp.status().is_success() {
+        return Err(extract_error(resp).await);
+    }
+    resp.json().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn shop_catalog(app: AppHandle) -> Result<Catalog, String> {
+    let url = format!("{}/api/catalog", base_url(&app)?);
+    let resp = reqwest::Client::new().get(url).send().await.map_err(|e| e.to_string())?;
+    if !resp.status().is_success() {
+        return Err(extract_error(resp).await);
+    }
+    resp.json().await.map_err(|e| e.to_string())
+}
+
+/// Do budowania linku "Kup" w przeglądarce - appka sama nic nie wysyła do LemonSqueezy,
+/// tylko otwiera ten URL (patrz ShopPage.tsx, @tauri-apps/plugin-opener). customer_id w
+/// custom_data pozwala webhookowi automatycznie dowiązać zakup do konta (patrz
+/// license-server/src/lemonsqueezy.js#resolveCustomerId).
+#[tauri::command]
+pub async fn shop_checkout_url(app: AppHandle, variant_id: String) -> Result<String, String> {
+    let catalog = shop_catalog(app.clone()).await?;
+    let store_url = catalog
+        .store_url
+        .ok_or("Sklep LemonSqueezy nie jest jeszcze skonfigurowany (LEMONSQUEEZY_STORE_URL).")?;
+    let me = shop_me(app).await?.ok_or("Zaloguj się przed zakupem.")?;
+    let url = format!(
+        "{}/checkout/buy/{}?checkout[email]={}&checkout[custom][customer_id]={}",
+        store_url.trim_end_matches('/'),
+        variant_id,
+        urlencoding_encode(&me.email),
+        urlencoding_encode(&me.id),
+    );
+    Ok(url)
+}
+
+/// Mini url-encode bez dodatkowej zależności - wystarczy dla e-maila i UUID (jedyne
+/// pola, które tu wstawiamy; '@' i '+' to jedyne znaki spoza unreserved, na jakie trzeba
+/// tu realnie trafić).
+fn urlencoding_encode(s: &str) -> String {
+    s.chars()
+        .map(|c| match c {
+            'A'..='Z' | 'a'..='z' | '0'..='9' | '-' | '_' | '.' | '~' => c.to_string(),
+            _ => format!("%{:02X}", c as u32),
+        })
+        .collect()
+}
+
+async fn extract_error(resp: reqwest::Response) -> String {
+    let status = resp.status();
+    match resp.json::<serde_json::Value>().await {
+        Ok(body) => body.get("error").and_then(|v| v.as_str()).unwrap_or("nieznany błąd").to_string(),
+        Err(_) => format!("HTTP {}", status),
+    }
+}

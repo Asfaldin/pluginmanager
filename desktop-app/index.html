@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Ustawia data-theme na <html> ZANIM React w ogóle zamontuje się/pomaluje stronę,
+         inaczej byłby widoczny błysk domyślnego (ciemnego) motywu przed przełączeniem
+         na zapisany wybór - patrz ThemeContext.tsx (ten sam klucz/wartości). -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("pluginmanager.theme");
+          if (t === "light" || t === "dark") {
+            document.documentElement.dataset.theme = t;
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&display=swap" rel="stylesheet" />
+    <title>RSMC Manager</title>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

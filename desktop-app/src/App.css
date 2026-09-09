@@ -1,0 +1,1785 @@
+/* Elektryczny fiolet na niemal czarnym tle - jeden wyrazisty akcent zamiast
+   dekoracyjnego motywu wszędzie. Kolory specyficzne dla wizualizacji "slotów
+   ekwipunku" (imitacja GUI Minecrafta - sklep/questy/wyspy) celowo zostają jako
+   osobne wartości niżej w pliku, nie są tokenizowane tutaj - to świadomy, odrębny
+   język wizualny jednego konkretnego komponentu. */
+:root {
+  --bg: #0d0b12;
+  --surface: #17141f;
+  --surface-hover: #211c2e;
+  --border: #2c2638;
+  --border-strong: #3e3550;
+  --text: #f0eaff;
+  --text-muted: #a89ec2;
+  --accent: #a855f7;
+  --accent-strong: #c084fc;
+  --accent-ink: #1a0a29;
+  --success: #3fb950;
+  --danger: #f85149;
+  --radius: 6px;
+  --radius-lg: 10px;
+}
+
+/* Jasny motyw - tylko tła/ramki/tekst się zmieniają, akcent (fiolet) zostaje ten sam
+   token co w ciemnym, bo przyciski/karty z jego użyciem mają własne, stałe tło i nie
+   zależą od tła strony. Dwie kopie tego samego bloku to świadomy wybór (patrz
+   ThemeContext.tsx): media query obsługuje "systemowy" wybór motywu (i jest wyłączona,
+   gdy ktoś jawnie wymusił ciemny przez [data-theme="dark"]), a selektor atrybutu
+   obsługuje jawny wybór "jasny" niezależnie od tego, co ustawił system operacyjny. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f6f4fb;
+    --surface: #ffffff;
+    --surface-hover: #f0eaf9;
+    --border: #e1dbee;
+    --border-strong: #cabfe0;
+    --text: #221a33;
+    --text-muted: #6d637f;
+  }
+}
+
+:root[data-theme="light"] {
+  --bg: #f6f4fb;
+  --surface: #ffffff;
+  --surface-hover: #f0eaf9;
+  --border: #e1dbee;
+  --border-strong: #cabfe0;
+  --text: #221a33;
+  --text-muted: #6d637f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Wysokość na sztywno (nie min-height) + overflow:hidden - dzięki temu strona sama w
+   sobie nigdy nie rośnie ponad wysokość okna. Przewija się WYŁĄCZNIE .content, panel
+   boczny zostaje na miejscu niezależnie od tego, jak długa jest aktualna podstrona
+   (np. Sklep z wieloma siatkami kart) - to naprawia "rozjeżdżanie się" panelu. */
+.app-shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sidebar {
+  position: relative;
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: visible;
+  transition: width 0.15s ease;
+}
+
+.sidebar.collapsed {
+  width: 56px;
+}
+
+.sidebar.collapsed .sidebar-title-text,
+.sidebar.collapsed .nav-link span:not(.nav-icon) {
+  display: none;
+}
+
+.sidebar.collapsed .nav-link {
+  justify-content: center;
+  padding: 0.6rem 0;
+}
+
+.sidebar-header {
+  padding: 0 1.25rem 1rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.5rem;
+}
+
+.sidebar-title-text {
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Wybór aktywnego serwera GLOBALNIE dla całej appki - każda podstrona z edytorem
+   configu czyta ten wybór zamiast pytać osobno (patrz ProfilesContext.activeProfileId).
+   Ukryty przy zwiniętym pasku - select potrzebuje szerokości, której tam nie ma. */
+.sidebar-server-picker {
+  padding: 0 1.25rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sidebar-server-picker select {
+  width: 100%;
+}
+
+.sidebar.collapsed .sidebar-server-picker {
+  display: none;
+}
+
+/* "Uchwyt" osadzony na krawędzi panelu, na środku wysokości, lekko wystający na
+   treść - ten sam wzorzec co w VS Code/wielu dashboardach, żeby zawsze było widać
+   że da się zwinąć/rozwinąć, niezależnie od tego która sekcja panelu jest aktualnie
+   pod kursorem. */
+.sidebar-toggle {
+  position: absolute;
+  top: 50%;
+  right: -10px;
+  transform: translateY(-50%);
+  z-index: 5;
+  width: 16px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-hover);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  line-height: 1;
+  padding: 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.sidebar-toggle:hover {
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+/* Bez align-items: flex-start (i bez własnego poziomego paddingu) - inaczej link
+   "Ustawienia" kurczy się do szerokości treści i jego podświetlenie hover/active
+   wygląda jak osobny, doklejony prostokąt zamiast pełnej belki na całą szerokość
+   paska, tak jak reszta pozycji menu (te dostają swój odstęp z .nav-link, nie stąd). */
+.sidebar-account {
+  margin-top: auto;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1.25rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.nav-icon {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.nav-link:hover {
+  background: var(--surface-hover);
+  color: #fff;
+}
+
+.nav-link.active {
+  background: var(--surface-hover);
+  color: var(--accent);
+  border-left: 3px solid var(--accent);
+}
+
+.content {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+.page h1 {
+  font-family: "Cinzel", "Segoe UI", serif;
+  font-weight: 700;
+  font-size: 1.6rem;
+  letter-spacing: 0.02em;
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+}
+
+.page h2,
+.card h2 {
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: 0;
+  color: var(--text);
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.small {
+  font-size: 0.82rem;
+}
+
+.error {
+  color: var(--danger);
+}
+
+.status {
+  color: var(--accent);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+  flex-wrap: wrap;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* For sections built around a slot grid - gives the grid card more room so
+   its cells (and the icons inside them) can render larger. */
+.two-col-grid-wide {
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+/* Nagłówek Sklepu - tytuł/tagline + wyszukiwarka w jednym bloku, wyraźnie oddzielone od
+   reszty strony, żeby na pierwszy rzut oka było widać "to jest sklep", nie zwykła lista. */
+.shop-hero {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+
+.shop-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.1rem 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--text-muted);
+  max-width: 420px;
+}
+
+.shop-search input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 0.5rem 0;
+}
+
+.shop-search input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Pakiety - wyśrodkowany rząd (nie siatka auto-fill jak reszta) na samej górze Sklepu,
+   bo to trzy pozycje, które mają przyciągać uwagę jako pierwsze, nie zlewać się z
+   dziesiątkami pojedynczych pluginów niżej. Zawija się na wąskim oknie zamiast ściskać. */
+.shop-packages-row {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+.plugin-card-large {
+  width: 280px;
+  padding: 1.5rem;
+}
+
+.plugin-card-large .card-title {
+  font-size: 1.15rem;
+}
+
+/* Baner powitalny na Starcie - lekko wyróżniony od zwykłej karty (gradient zamiast
+   płaskiego tła), żeby ekran startowy nie wyglądał identycznie jak każda inna strona. */
+.hero-banner {
+  background: linear-gradient(135deg, var(--surface) 0%, var(--surface-hover) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.hero-banner h1 {
+  margin: 0 0 0.25rem;
+}
+
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-tile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.1rem;
+}
+
+.stat-tile-icon {
+  display: flex;
+  color: var(--accent);
+}
+
+.stat-tile-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 0.4rem;
+}
+
+.status-dot.ok {
+  background: var(--success);
+}
+
+.status-dot.error {
+  background: var(--danger);
+}
+
+.status-dot.idle {
+  background: var(--text-muted);
+}
+
+/* Wykres zależności pluginów na Dashboardzie (patrz PluginGraph.tsx) - Core na
+   środku okręgu, reszta dookoła połączona liniami; linie w SVG i "bąbelki" jako
+   zwykłe divy pozycjonowane w tym samym układzie procentowym (0-100), więc
+   zostają wyrównane ze sobą przy każdej szerokości karty. */
+.plugin-graph {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Zoomowalne, przesuwalne "okno" na graf - stały rozmiar, przycięte na krawędziach
+   (overflow hidden), żeby przybliżenie/przesunięcie nie rozwalało układu strony pod
+   spodem. Kółko myszy zoomuje, przeciąganie łapką przesuwa (patrz PluginGraph.tsx),
+   user-select: none, żeby przy szybkim przeciąganiu nie zaznaczało etykiet. */
+.plugin-graph-viewport {
+  position: relative;
+  width: 100%;
+  height: 620px;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.plugin-graph-viewport.is-dragging {
+  cursor: grabbing;
+}
+
+.plugin-graph-zoom-controls {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.25rem 0.4rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.plugin-graph-zoom-controls button {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plugin-graph-zoom-reset {
+  width: auto !important;
+  border-radius: 999px !important;
+  padding: 0 0.55rem !important;
+  font-size: 0.68rem !important;
+}
+
+.plugin-graph-zoom-value {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  min-width: 34px;
+  text-align: center;
+}
+
+/* Sam graf - stały rozmiar w pikselach (nie %), bo skalowanie transformem jest
+   dużo płynniejsze i przewidywalniejsze niż przeliczanie viewBox/procentów przy
+   każdej zmianie zoomu. Węzły dalej są pozycjonowane w układzie 0-100% wewnątrz
+   tego stałego kwadratu, więc matematyka orbity (patrz ORBIT_RADIUS) się nie zmienia. */
+.plugin-graph-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 560px;
+  height: 560px;
+  transform-origin: center center;
+  transition: transform 0.08s linear;
+}
+
+/* Podczas przeciągania transform się zmienia na każdy pixel ruchu myszy - z
+   przejściem CSS-owym to by "gumowato" doganiało kursor zamiast jechać 1:1 z nim. */
+.plugin-graph-viewport.is-dragging .plugin-graph-ring {
+  transition: none;
+}
+
+.plugin-graph-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.plugin-graph-lines line {
+  stroke: var(--border-strong);
+  stroke-width: 0.4;
+}
+
+.plugin-graph-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  width: 84px;
+}
+
+.plugin-graph-dot {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--surface-hover);
+  border: 1.5px solid var(--border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.15s, color 0.2s;
+}
+
+.plugin-graph-node:hover .plugin-graph-dot {
+  border-color: var(--accent-strong);
+  transform: scale(1.15);
+}
+
+.plugin-graph-node:hover .plugin-graph-label {
+  color: var(--text);
+}
+
+.plugin-graph-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.15;
+  transition: color 0.15s;
+}
+
+.plugin-graph-core {
+  z-index: 1;
+}
+
+.plugin-graph-core .plugin-graph-dot {
+  width: 56px;
+  height: 56px;
+}
+
+.plugin-graph-core .plugin-graph-label {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+/* Pluginy, do których user ma dziś realny dostęp (za darmo albo z aktywnej licencji,
+   patrz computeOwnedIds w PluginGraph.tsx) - świecą kolorem sukcesu zamiast szarej
+   "wyłączonej" kulki, więc od razu widać, czego naprawdę używasz, bez czytania opisów. */
+@keyframes plugin-glow {
+  0%, 100% { box-shadow: 0 0 5px 1px rgba(63, 185, 80, 0.5); }
+  50% { box-shadow: 0 0 10px 3px rgba(63, 185, 80, 0.8); }
+}
+
+.plugin-graph-node.is-owned .plugin-graph-dot {
+  background: var(--success);
+  border-color: #6fd47f;
+  color: #0c2410;
+  animation: plugin-glow 2.6s ease-in-out infinite;
+}
+
+.plugin-graph-node.is-owned .plugin-graph-label {
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plugin-graph-node.is-owned .plugin-graph-dot {
+    animation: none;
+    box-shadow: 0 0 6px 2px rgba(63, 185, 80, 0.6);
+  }
+}
+
+.plugin-graph-standalone-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.plugin-graph-standalone-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.plugin-graph-standalone-chip.is-owned {
+  background: rgba(63, 185, 80, 0.14);
+  border-color: var(--success);
+  color: var(--text);
+}
+
+/* Karta pluginu w Sklepie - neutralna, bez kolorowania per kategoria; płaska, bez
+   cienia-uniesienia - hover to tylko zmiana koloru ramki na fioletowy akcent, zgodnie
+   z płaskim stylem reszty apki. .has-art dokłada ilustrację (patrz PLUGIN_ART w
+   pluginArt.ts) do samych krawędzi karty, z treścią we własnym paddingu pod spodem. */
+.plugin-card {
+  transition: border-color 0.15s;
+}
+
+.plugin-card:hover {
+  border-color: var(--accent);
+}
+
+.plugin-card.has-art {
+  padding: 0;
+  overflow: hidden;
+}
+
+.plugin-card-art {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: var(--bg);
+}
+
+.plugin-card-body {
+  padding: 0.9rem 1.1rem 1.1rem;
+}
+
+/* Tytuł karty jako link do dedykowanej strony pluginu/pakietu (patrz PluginDetailPage.tsx) -
+   bez podkreślenia/niebieskiego koloru linku, tylko lekkie podświetlenie na hover, żeby dalej
+   wyglądał jak zwykły tytuł karty, ale dawało się poznać, że jest klikalny. */
+.plugin-card-title-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.plugin-card-title-link:hover .card-title {
+  color: var(--accent);
+}
+
+/* Nagłówek strony pluginu w stylu strony projektu na Modrinth - kwadratowa ikona po
+   lewej, tytuł + tagi po prawej, jeden rząd na samej górze przed opisem/kolumnami. */
+.plugin-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.25rem;
+}
+
+.plugin-detail-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--accent);
+}
+
+/* Dwie kolumny pod nagłówkiem - szeroka z opisem/cechami po lewej (tak jak długi opis
+   projektu na Modrinth), wąski, samodzielny panel z ceną/"Kup" po prawej (jak przycisk
+   Download w ich sidebarze) zamiast trzymania przycisku zakopanego w treści. Zwija się
+   do jednej kolumny na wąskim oknie zamiast ściskać sidebar do nieczytelności. */
+.plugin-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .plugin-detail-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.plugin-detail-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: sticky;
+  top: 0;
+}
+
+.plugin-detail-sidebar-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.1rem 1.25rem;
+}
+
+/* Większy baner na dedykowanej stronie pluginu - to samo zdjęcie co na karcie
+   (PLUGIN_ART), tylko w pełnej szerokości strony zamiast wąskiej karty. */
+.plugin-detail-art {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  margin-bottom: 1rem;
+}
+
+/* Logo/wordmark pluginu (patrz PLUGIN_BANNERS w pluginBanners.ts) - na całą szerokość
+   strony, bez tła/ramki panelu, na przezroczystym tle obrazka samego w sobie. */
+.plugin-detail-banner-wrap {
+  display: block;
+  margin-bottom: 1.25rem;
+}
+
+.plugin-detail-banner-wrap img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+/* "Co robi" - rozbicie opisu na kilka cech (patrz PLUGIN_FEATURES w pluginFeatures.ts).
+   Pasek fioletowego akcentu u góry każdej ramki niezależnie od tego, czy zdjęcie już
+   istnieje - bez niego karta po prostu pokazuje sam tytuł/opis, żadnego złamanego <img>. */
+.plugin-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+.plugin-feature-card {
+  padding: 1.1rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  border-radius: var(--radius-lg);
+}
+
+.plugin-feature-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--radius);
+  margin-bottom: 0.75rem;
+  background: var(--bg);
+}
+
+.card-title {
+  font-weight: 600;
+}
+
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0.5rem 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.form label.checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+fieldset {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 0.75rem 0;
+}
+
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+  font-size: 0.9rem;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  padding: 0.45rem 0.7rem;
+  transition: border-color 0.12s, background-color 0.12s, box-shadow 0.12s;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.22);
+}
+
+button {
+  cursor: pointer;
+  background: var(--surface-hover);
+  font-weight: 500;
+}
+
+/* Ikony lucide wstawione inline z tekstem (np. <Save/> Zapisz w przycisku, <TriangleAlert/>
+   w akapicie ostrzeżenia) domyślnie siadają na baseline, czyli wizualnie niżej niż litery -
+   lekka korekta w górę, żeby wyglądały jak wyśrodkowane obok podpisu zamiast "opadać".
+   Bez efektu tam, gdzie ikona i tak siedzi we flex-kontenerze z align-items: center
+   (vertical-align jest wtedy ignorowany), więc nie koliduje z tamtymi miejscami. */
+svg.lucide {
+  vertical-align: -3px;
+}
+
+button:hover {
+  background: var(--border-strong);
+  border-color: var(--border-strong);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button:disabled:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+/* Akcja główna formularza (pierwszy submit button w .row) - odróżnia "Zapisz"/"Kup"
+   od pomocniczych przycisków obok, żeby oko od razu wiedziało co jest głównym CTA. */
+.row button[type="submit"]:first-child:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+.row button[type="submit"]:first-child:not(:disabled):hover {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+/* Collapses the rarely-touched controls (icon pack status, presets, RCON)
+   behind one toggle, so the primary row (profile + publish/revert) stays
+   short and the grid shows up right underneath instead of below a wall of
+   boxes repeated identically on every page. */
+.toolbar-more {
+  margin: 0.5rem 0;
+}
+
+.toolbar-more-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: transparent;
+  border: 1px dashed var(--border-strong);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.toolbar-more-toggle:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.toolbar-more-panel {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.toolbar-more-panel > .row:first-child {
+  margin-top: 0;
+}
+
+.toolbar-more-panel > .row:last-child {
+  margin-bottom: 0;
+}
+
+.file-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+.file-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0.35rem 0.25rem;
+}
+
+.file-entry svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.file-entry:hover {
+  background: var(--surface-hover);
+}
+
+.flags {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+}
+
+/* Mały kwadrat-wyzwalacz przed polem tekstowym (patrz .mc-swatch-trigger) zamiast
+   stałego panelu obok/nad polem - narzędzia kolorów/stylu żyją w popoverze, który
+   pojawia się dopiero po kliknięciu, więc na co dzień widać tylko pole i podgląd.
+   position: relative na wrapperze, żeby popover mógł się do niego zakotwiczyć. */
+.mc-text-input {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.5rem;
+}
+
+.mc-text-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.mc-text-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.mc-swatch-trigger {
+  width: 1.8rem;
+  height: 1.8rem;
+  min-width: 1.8rem;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  /* Mała "tęcza" zamiast jednego koloru - sygnalizuje "tu wybierasz kolor", zamiast
+     sugerować, że tekst ma akurat jeden konkretny (bo może mieć kilka na raz). */
+  background: conic-gradient(from 180deg, #ff5555, #ffaa00, #55ff55, #55ffff, #5555ff, #ff55ff, #ff5555);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.mc-swatch-trigger:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 2px var(--accent-strong);
+}
+
+/* Popover z kolorami/stylem - pojawia się nad resztą treści, zakotwiczony do lewej
+   krawędzi pola (patrz position: relative na .mc-text-input wyżej). */
+.mc-color-popover {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.7rem;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.mc-toolbar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+/* Cienka linia między Kolor / Własny RGB / Styl zamiast samego odstępu - łatwiej
+   rozdzielić wzrokiem, gdzie kończy się jedna grupa narzędzi a zaczyna kolejna. */
+.mc-toolbar-group + .mc-toolbar-group {
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
+
+.mc-toolbar-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.mc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+/* Przyciski stylu (B/I/U/S/zaszyfrowany/reset) w tym samym języku wizualnym co kafle
+   kolorów obok - ten sam rozmiar/zaokrąglenie/hover, żeby popover wyglądał spójnie
+   zamiast dwóch różnych stylistyk przycisków w jednym miejscu. -wide dla dwóch, które
+   nie mieszczą się w kwadracie (podgląd "Abc" i słowo "Reset"). */
+.mc-style-btn {
+  width: 1.9rem;
+  height: 1.9rem;
+  min-width: 1.9rem;
+  padding: 0;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.mc-style-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 0 2px var(--accent-strong);
+  z-index: 1;
+}
+
+.mc-style-btn-wide {
+  width: auto;
+  min-width: 2.8rem;
+  padding: 0 0.5rem;
+  font-family: "Consolas", monospace;
+  font-size: 0.75rem;
+}
+
+/* 16 oficjalnych kolorów czatu Minecrafta w siatce 8x2 (patrz MC_COLORS w
+   minecraftColors.ts) - górny rząd ciemne warianty, dolny jasne odpowiedniki tego
+   samego odcienia (np. &1 dark_blue nad &9 blue), dokładnie jak w oficjalnej tabeli
+   kolorów - popover ma dość miejsca, żeby nie musieć ściskać jej w kwadrat. */
+.mc-color-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 0.3rem;
+  width: 280px;
+}
+
+.mc-swatch {
+  width: 1.9rem;
+  height: 1.9rem;
+  min-width: 1.9rem;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.mc-swatch:hover {
+  transform: scale(1.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 0 0 2px var(--accent-strong);
+  z-index: 1;
+}
+
+/* Sam tekst już miga losowymi znakami (patrz ObfuscatedText.tsx) - to wystarcza jako
+   sygnał "&k", dodatkowe podkreślenie tylko by zaśmiecało widok. Stały monospace, żeby
+   migające znaki nie zmieniały szerokości i nie "trzęsły" resztą tekstu obok. */
+.mc-obfuscated {
+  font-family: "Consolas", monospace;
+}
+
+.rp-texture-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.rp-texture-row:last-child {
+  border-bottom: none;
+}
+
+.rp-texture-preview {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rp-texture-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.rp-texture-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.rp-texture-row .checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.badge {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--border);
+  color: var(--text-muted);
+}
+
+.badge-on {
+  background: #1d3a24;
+  color: var(--success);
+}
+
+.pixel-editor-fullpage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pixel-editor-back {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.pixel-editor-body {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.pixel-editor-sidebar {
+  width: 320px;
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.pixel-editor-section {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem;
+}
+
+.pixel-editor-section-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  margin: 0.5rem 0 0.35rem;
+}
+
+.pixel-editor-section-title:first-child {
+  margin-top: 0;
+}
+
+.pixel-editor-tool-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.pixel-editor-hex {
+  width: 90px;
+  font-family: monospace;
+}
+
+.pixel-editor-palette {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.texture-browser-categories {
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.texture-browser-search {
+  width: 100%;
+  margin-bottom: 0.75rem;
+}
+
+.texture-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+  max-height: 640px;
+  overflow-y: auto;
+  padding: 0.25rem;
+}
+
+.texture-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.texture-tile:hover {
+  border-color: var(--accent-strong);
+  transform: translateY(-2px);
+}
+
+.texture-tile-preview {
+  width: 100%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.texture-tile-preview img {
+  width: 92%;
+  height: 92%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.texture-tile-name {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.pixel-editor-canvas-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  max-height: calc(100vh - 180px);
+  overflow: auto;
+}
+
+.pixel-editor-canvas-wrap canvas {
+  image-rendering: pixelated;
+  cursor: crosshair;
+  border: 1px solid var(--border-strong);
+}
+
+.row button.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+  border-color: var(--accent);
+}
+
+.rp-texture-list {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem;
+  margin: 0.5rem 0;
+}
+
+.rp-texture-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.85rem;
+  border-radius: 4px;
+}
+
+.rp-texture-list-row:hover {
+  background: var(--surface-hover);
+}
+
+.rp-texture-list-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.back-link {
+  display: inline-block;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.back-link:hover {
+  color: var(--text);
+}
+
+.tools-group {
+  margin-top: 2rem;
+}
+
+.tools-group:first-of-type {
+  margin-top: 1.5rem;
+}
+
+.tools-group-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent-strong);
+  margin: 0 0 0.75rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+/* Karta narzędzia - płaska, bez kolorowania per kategoria. Hover to tylko zmiana
+   koloru ramki na fioletowy akcent, bez cienia/uniesienia - spójnie z płaskim stylem
+   przycisków w reszcie apki. Stała wysokość (nie min-height) + line-clamp na opisie
+   (patrz .tool-card-desc) - bez tego każda karta miała wysokość swojego opisu, więc
+   siatka wyglądała nierówno zamiast jak siatka jednakowych kafli. */
+.tool-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  height: 160px;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.tool-card:hover {
+  border-color: var(--accent);
+}
+
+.tool-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.tool-card-icon {
+  display: flex;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.tool-card-title {
+  font-weight: 600;
+  font-size: 1.05rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Ucina dłuższe opisy do 3 linii zamiast rozpychać kartę - patrz stała wysokość
+   na .tool-card wyżej, dzięki temu ma sens niezależnie od długości tekstu. */
+.tool-card-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Karta narzędzia z ilustracją (patrz PLUGIN_ART w pluginArt.ts) - ten sam układ
+   co karta pluginu w Sklepie: grafika do samych krawędzi, treść z własnym paddingiem. */
+.tool-card.has-art {
+  padding: 0;
+  overflow: hidden;
+  gap: 0;
+}
+
+.tool-card-art {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: var(--bg);
+}
+
+.tool-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.9rem 1.1rem 1.1rem;
+}
+
+.rp-subtabs,
+.subtabs {
+  margin: 1rem 0;
+  flex-wrap: wrap;
+}
+
+/* Minecraft-inventory-style slot grid: dark bevelled panel, icon-first slots
+   (real texture when a material is known, small MC-like corner badge for a
+   price/count, text only as a fallback when there's no icon to show), thin
+   colored top accent per "kind" instead of full background tinting so icons
+   stay legible - the visual language of an MC GUI, kept in this app's dark
+   palette rather than MC's literal light gray. */
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 4px;
+  background: #2b2f3a;
+  border: 3px solid #0d0b09;
+  box-shadow: inset 0 0 0 2px #4a3f2e;
+  padding: 8px;
+  border-radius: 3px;
+  width: 100%;
+  max-width: 960px;
+}
+
+.slot-cell {
+  aspect-ratio: 1;
+  background: #2e2720;
+  border-radius: 1px;
+  box-shadow:
+    inset 0 2px 0 #4a3f2e,
+    inset 1px 0 0 rgba(255, 255, 255, 0.06),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  font-size: 0.6rem;
+  line-height: 1.1;
+  text-align: center;
+  padding: 1px;
+  overflow: hidden;
+  color: var(--text);
+}
+
+/* Higher-specificity double-class selector so this reliably beats the
+   plain .material-field-icon 28px sizing regardless of CSS source order. */
+.material-field-icon.slot-cell-icon {
+  width: 96%;
+  height: 96%;
+  min-width: 0;
+  border: none;
+  background: none;
+}
+
+.material-field-icon.slot-cell-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.slot-cell-badge {
+  position: absolute;
+  right: 2px;
+  bottom: 1px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 1px 1px 0 #000;
+  pointer-events: none;
+}
+
+.slot-cell-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+.slot-cell-sublabel {
+  font-size: 0.55rem;
+  color: var(--text-muted);
+}
+
+.slot-filler {
+  background: #1c1712;
+  box-shadow:
+    inset 1px 0 0 rgba(255, 255, 255, 0.03),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* A grid with a handful of real entries and dozens of empty "+" add-slots
+   was showing every "+" at the same full brightness as real content -
+   visually the empty slots outnumbered and outshouted the actual data. Fully
+   hiding it until hover (opacity: 0) turned out to remove the "you can add
+   something here" affordance entirely for anyone not actively hovering -
+   dimmed-but-still-visible is the right middle ground: quiet enough that
+   real content wins the eye, present enough that "there's more room here"
+   stays obvious at a glance.
+
+   Keyed off `.slot-dim` (an explicit per-slot flag), NOT `.slot-filler` -
+   an empty QUEST_SLOT/ITEM_SLOT placeholder keeps its real `kind` (quest/
+   item) so its role accent-line survives even when empty. Quest/item slots
+   are sometimes laid out in a scattered, non-contiguous pattern mirroring
+   the real in-game path visual ("wężyk") - if an empty slot's kind were
+   forced to "filler" it would lose its accent line and visibly break that
+   path exactly where a "+" happens to be. */
+.slot-dim .slot-cell-label {
+  opacity: 0.22;
+  font-size: 0.95rem;
+  transition: opacity 0.12s;
+}
+
+.slot-dim.slot-clickable:hover .slot-cell-label {
+  opacity: 0.9;
+}
+
+.slot-quest {
+  box-shadow:
+    inset 0 2px 0 #caa53d,
+    inset 1px 0 0 rgba(255, 255, 255, 0.06),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.45);
+}
+
+.slot-category {
+  box-shadow:
+    inset 0 2px 0 #4caf6e,
+    inset 1px 0 0 rgba(255, 255, 255, 0.06),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.45);
+}
+
+.slot-item {
+  box-shadow:
+    inset 0 2px 0 var(--accent-strong),
+    inset 1px 0 0 rgba(255, 255, 255, 0.06),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.45);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.data-table th,
+.data-table td {
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.data-table th {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.slot-nav {
+  box-shadow:
+    inset 0 2px 0 var(--text-muted),
+    inset 1px 0 0 rgba(255, 255, 255, 0.06),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.45);
+}
+
+.slot-clickable {
+  cursor: pointer;
+}
+
+.slot-clickable:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.slot-editable {
+  position: relative;
+  cursor: pointer;
+}
+
+.slot-drop-target {
+  outline: 1px dashed #4a3f2e;
+  outline-offset: -1px;
+}
+
+.slot-drop-target:hover {
+  background: rgba(126, 224, 138, 0.18);
+  outline-color: var(--success);
+}
+
+.material-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.material-field-icon {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.material-field-icon img {
+  width: 92%;
+  height: 92%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.slot-picked-up {
+  outline: 2px solid #ffcc4d;
+  box-shadow: 0 0 0 2px #ffcc4d inset;
+}
+
+.slot-remove-btn {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 14px;
+  height: 14px;
+  line-height: 12px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #a3313f;
+  color: #fff;
+  font-size: 0.65rem;
+  cursor: pointer;
+}
+
+.slot-pickup-btn,
+.slot-edit-btn {
+  position: absolute;
+  top: 1px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(20, 18, 15, 0.8);
+  color: var(--accent);
+  cursor: pointer;
+  opacity: 0.65;
+  z-index: 1;
+}
+
+.slot-pickup-btn {
+  left: 1px;
+}
+
+.slot-edit-btn {
+  right: 1px;
+  color: #7ec8e3;
+}
+
+.slot-cell:hover .slot-pickup-btn,
+.slot-cell:hover .slot-edit-btn {
+  opacity: 1;
+}
+
+.build-log {
+  max-height: 320px;
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Tło ZAWSZE ciemne, niezależnie od motywu appki (nie var(--bg)) - to podgląd tego, jak
+   wiadomość wygląda na czacie W GRZE, a czat Minecrafta jest zawsze na czarnym tle.
+   Kolory typu &e (żółty) czy &f (biały) byłyby nieczytelne na jasnym tle jasnego motywu. */
+.mc-preview {
+  background: #16141c;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-family: "Consolas", monospace;
+  min-height: 1.4rem;
+}
+
+.mc-message-row {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Zwinięty wiersz wiadomości (Announcer) - jedna zwarta linia zamiast pełnego edytora,
+   żeby dłuższa lista ogłoszeń dawała się przejrzeć bez przewijania każdej z osobna.
+   Podgląd (MinecraftTextPreview) pokazuje efekt końcowy, nie surowe kody &x. */
+.mc-message-collapsed {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+}
+
+.mc-message-toggle {
+  padding: 0.1rem 0.4rem;
+  min-width: auto;
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.mc-message-toggle:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+/* To samo stałe ciemne tło co .mc-preview (patrz komentarz tam) - kolory czatu
+   Minecrafta muszą zostać czytelne niezależnie od jasnego/ciemnego motywu appki. */
+.mc-message-collapsed-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: "Consolas", monospace;
+  background: #16141c;
+  border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+}
+
+.mc-message-collapsed-actions {
+  margin: 0;
+  flex-wrap: nowrap;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  width: min(560px, 90vw);
+  max-height: 80vh;
+  overflow-y: auto;
+}

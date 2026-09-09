@@ -1,0 +1,303 @@
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link, useParams } from "react-router-dom";
+import { shopCatalog, shopCheckoutUrl, shopMyLicenses } from "../lib/api";
+import { FREE_PLUGINS } from "../lib/freePlugins";
+import { PLUGIN_ART } from "../lib/pluginArt";
+import { PLUGIN_BANNERS } from "../lib/pluginBanners";
+import { PLUGIN_FEATURES } from "../lib/pluginFeatures";
+import { PACKAGE_ICON, PLUGIN_ICONS } from "../lib/pluginIcons";
+import type { Catalog, LicenseRecord } from "../lib/types";
+
+/** Ikona nagłówka - kwadrat po lewej obok tytułu, w stylu strony projektu na Modrinth
+    (ikona + tytuł + tagi w jednym rzędzie na górze). Pakiety dostają generyczną ikonę
+    (patrz PACKAGE_ICON) - nie są same w sobie "pluginem" z PLUGIN_ICONS. */
+function HeaderIcon({ id, isPackage }: { id: string; isPackage?: boolean }) {
+  const Icon = isPackage ? PACKAGE_ICON : PLUGIN_ICONS[id] ?? PACKAGE_ICON;
+  return (
+    <div className="plugin-detail-icon">
+      <Icon size={34} strokeWidth={1.5} />
+    </div>
+  );
+}
+
+/** Logo/wordmark pluginu (patrz PLUGIN_BANNERS) - TYLKO na tej stronie, nie na karcie
+    w Sklepie/Twoje pluginy. object-fit: contain w panelu zamiast przycięcia jak przy
+    PLUGIN_ART - to grafika ze słowem/logo, nie zdjęcie/screenshot do kadrowania. */
+function PluginBanner({ id }: { id: string }) {
+  const banner = PLUGIN_BANNERS[id];
+  if (!banner) return null;
+  return (
+    <div className="plugin-detail-banner-wrap">
+      <img src={banner} alt="" />
+    </div>
+  );
+}
+
+/** Rozbicie opisu na kilka konkretnych cech (patrz PLUGIN_FEATURES) - jedna ramka na
+    cechę, fioletowy akcent u góry niezależnie od tego, czy zdjęcie już istnieje. Bez
+    zdjęcia ramka po prostu pokazuje tekst - nie ma tu żadnego złamanego/pustego <img>. */
+function PluginFeatures({ id }: { id: string }) {
+  const features = PLUGIN_FEATURES[id];
+  if (!features || features.length === 0) return null;
+  return (
+    <>
+      <h2 style={{ marginTop: "1.5rem" }}>Co robi</h2>
+      <div className="plugin-feature-grid">
+        {features.map((f) => (
+          <div key={f.title} className="plugin-feature-card">
+            {f.image && <img src={f.image} alt="" className="plugin-feature-image" />}
+            <div className="card-title">{f.title}</div>
+            <p className="muted small">{f.description}</p>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+type Kind = "free" | "plugin" | "package";
+
+function formatPrice(price: number | null, suffix = ""): string {
+  if (price == null) return "Cena wkrótce";
+  return `${price} zł${suffix}`;
+}
+
+/** Czy KTÓRAKOLWIEK aktywna licencja obejmuje ten plugin - ta sama logika co
+    licenseGrants w license-server/src/db.js (plugin="*", albo lista po przecinku). */
+function ownsPluginId(licenses: LicenseRecord[], id: string): boolean {
+  return licenses.some(
+    (l) => l.status === "active" && (l.plugin === "*" || l.plugin.split(",").map((s) => s.trim()).includes(id))
+  );
+}
+
+/** Dla pakietu - dokładne dopasowanie stringa (tak jak go zapisuje resolveVariant przy
+    zakupie: "*" albo lista id po przecinku) - pakiet nie jest sam w sobie "pluginem",
+    więc ownsPluginId by tu nie zadziałało. */
+function ownsPackage(licenses: LicenseRecord[], pluginsField: string): boolean {
+  return licenses.some((l) => l.status === "active" && (l.plugin === "*" || l.plugin === pluginsField));
+}
+
+/** Dedykowana strona jednego pluginu/pakietu w Sklepie, w układzie inspirowanym stroną
+    projektu na Modrinth: nagłówek (ikona + tytuł + tagi) na górze, potem dwie kolumny -
+    szeroka z opisem/cechami po lewej, wąski panel z ceną/przyciskiem "Kup" i szczegółami
+    po prawej. To samo źródło danych (katalog + moje licencje) co ShopPage. */
+export default function PluginDetailPage() {
+  const { kind, id } = useParams<{ kind: Kind; id: string }>();
+  const [catalog, setCatalog] = useState<Catalog | null>(null);
+  const [licenses, setLicenses] = useState<LicenseRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [buyingVariant, setBuyingVariant] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    Promise.all([shopCatalog(), shopMyLicenses()])
+      .then(([cat, myLicenses]) => {
+        setCatalog(cat);
+        setLicenses(myLicenses);
+      })
+      .catch((e) => setError(String(e)))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function buy(variantId: string | null) {
+    setBuyingVariant(variantId);
+    setError(null);
+    try {
+      const url = await shopCheckoutUrl(variantId ?? "");
+      await openUrl(url);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBuyingVariant(null);
+    }
+  }
+
+  const backLink = (
+    <Link to="/shop" className="back-link">
+      ← Sklep
+    </Link>
+  );
+
+  if (loading) {
+    return (
+      <div className="page">
+        {backLink}
+        <p className="muted">Ładowanie...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="page">
+        {backLink}
+        <p className="error">{error}</p>
+      </div>
+    );
+  }
+
+  if (kind === "free") {
+    const item = FREE_PLUGINS.find((p) => p.id === id);
+    if (!item) return <NotFound backLink={backLink} />;
+    const art = PLUGIN_ART[item.id];
+    return (
+      <div className="page">
+        {backLink}
+        <div className="plugin-detail-header">
+          <HeaderIcon id={item.id} />
+          <div>
+            <h1 style={{ margin: 0 }}>{item.label}</h1>
+            <div className="row" style={{ margin: "0.3rem 0 0" }}>
+              <span className="badge badge-on">dołączony za darmo</span>
+            </div>
+          </div>
+        </div>
+        <PluginBanner id={item.id} />
+        {art && <img src={art} alt="" className="plugin-detail-art" />}
+        <div className="plugin-detail-layout">
+          <div className="plugin-detail-main">
+            <p>{item.description}</p>
+            <PluginFeatures id={item.id} />
+          </div>
+          <div className="plugin-detail-sidebar">
+            <div className="plugin-detail-sidebar-card">
+              <div className="muted small">Dostępność</div>
+              <div className="card-title">Za darmo</div>
+              <p className="muted small" style={{ marginTop: "0.5rem" }}>
+                Dołączony do każdej instalacji, nie wymaga licencji.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (kind === "plugin") {
+    const item = catalog?.individualPlugins.find((p) => p.id === id);
+    if (!item) return <NotFound backLink={backLink} />;
+    const art = PLUGIN_ART[item.id];
+    const category = catalog?.categories.find((c) => c.id === item.category);
+    const owned = ownsPluginId(licenses, item.id);
+    return (
+      <div className="page">
+        {backLink}
+        <div className="plugin-detail-header">
+          <HeaderIcon id={item.id} />
+          <div>
+            <h1 style={{ margin: 0 }}>{item.label}</h1>
+            <div className="row" style={{ margin: "0.3rem 0 0" }}>
+              {category && <span className="badge">{category.label}</span>}
+              {owned && <span className="badge badge-on">masz licencję</span>}
+            </div>
+          </div>
+        </div>
+        <PluginBanner id={item.id} />
+        {art && <img src={art} alt="" className="plugin-detail-art" />}
+        <div className="plugin-detail-layout">
+          <div className="plugin-detail-main">
+            <p>{item.description}</p>
+            <PluginFeatures id={item.id} />
+          </div>
+          <div className="plugin-detail-sidebar">
+            <div className="plugin-detail-sidebar-card">
+              <div className="muted small">Cena</div>
+              <div className="card-title" style={{ fontSize: "1.3rem" }}>
+                {formatPrice(item.price)}
+              </div>
+              {owned ? (
+                <p className="muted small" style={{ marginTop: "0.5rem" }}>Masz aktywną licencję na ten plugin.</p>
+              ) : (
+                <button
+                  style={{ width: "100%", marginTop: "0.75rem" }}
+                  disabled={buyingVariant === item.variantId}
+                  onClick={() => buy(item.variantId)}
+                >
+                  Kup
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // kind === "package"
+  const pkg = catalog?.packages.find((p) => p.id === id);
+  if (!pkg) return <NotFound backLink={backLink} />;
+  const art = PLUGIN_ART[pkg.id];
+  const pluginsField = pkg.plugins === "*" ? "*" : pkg.plugins.join(",");
+  const owned = ownsPackage(licenses, pluginsField);
+  const containedPlugins = pkg.plugins === "*" ? null : catalog?.individualPlugins.filter((p) => (pkg.plugins as string[]).includes(p.id)) ?? [];
+
+  return (
+    <div className="page">
+      {backLink}
+      <div className="plugin-detail-header">
+        <HeaderIcon id={pkg.id} isPackage />
+        <div>
+          <h1 style={{ margin: 0 }}>{pkg.label}</h1>
+          {owned && (
+            <div className="row" style={{ margin: "0.3rem 0 0" }}>
+              <span className="badge badge-on">masz licencję</span>
+            </div>
+          )}
+        </div>
+      </div>
+      <PluginBanner id={pkg.id} />
+      {art && <img src={art} alt="" className="plugin-detail-art" />}
+      <div className="plugin-detail-layout">
+        <div className="plugin-detail-main">
+          <p>{pkg.description}</p>
+
+          <h2 style={{ marginTop: "1.5rem" }}>Zawiera</h2>
+          {containedPlugins === null ? (
+            <p className="muted">Wszystkie pluginy - obecne i przyszłe.</p>
+          ) : (
+            <ul>
+              {containedPlugins.map((p) => (
+                <li key={p.id}>
+                  <Link to={`/shop/plugin/${p.id}`}>{p.label}</Link> - <span className="muted small">{p.description}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <PluginFeatures id={pkg.id} />
+        </div>
+        <div className="plugin-detail-sidebar">
+          <div className="plugin-detail-sidebar-card">
+            <div className="muted small">Cena</div>
+            <div className="card-title" style={{ fontSize: "1.3rem" }}>
+              {formatPrice(pkg.price)}
+            </div>
+            {owned ? (
+              <p className="muted small" style={{ marginTop: "0.5rem" }}>Masz aktywną licencję z tego pakietu.</p>
+            ) : (
+              <button
+                style={{ width: "100%", marginTop: "0.75rem" }}
+                disabled={buyingVariant === pkg.variantId}
+                onClick={() => buy(pkg.variantId)}
+              >
+                Kup
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NotFound({ backLink }: { backLink: ReactNode }) {
+  return (
+    <div className="page">
+      {backLink}
+      <p className="error">Nie znaleziono tej pozycji w katalogu.</p>
+    </div>
+  );
+}

@@ -1,0 +1,18 @@
+node_modules/
+dist/
+target/
+*.log
+.DS_Store
+Thumbs.db
+
+# Sekrety / lokalna konfiguracja - nigdy nie powinny trafić do gita
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Edytory/IDE
+.vscode/
+.idea/
+*.iml
