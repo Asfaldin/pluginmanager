@@ -11,14 +11,15 @@ import {
   shopMyLicenses,
   type EmbeddedJar,
 } from "../lib/api";
+import { FREE_PLUGIN_IDS } from "../lib/freePlugins";
 import { MAINPLUGINS_PROJECT_DIR_KEY as PROJECT_DIR_KEY } from "../lib/paths";
 import { PLUGIN_ICONS, PLUGIN_LABELS } from "../lib/pluginIcons";
 import type { LicenseRecord, LocalJar } from "../lib/types";
 import { useProfiles } from "../state/ProfilesContext";
 
-// Pluginy bez bramki licencyjnej w kodzie - działają u każdego bez klucza (patrz też
-// PluginGraph.tsx). Reszta (12 płatnych) sama się wyłączy na serwerze bez licencji.
-const ALWAYS_FREE = new Set(["core", "announcer", "farming", "menu", "teleport", "chatfilter", "hud", "ranks"]);
+// Lista darmowych pluginów = jedno źródło prawdy w lib/freePlugins.ts (patrz też
+// PluginGraph.tsx). Reszta (płatne) sama się wyłączy na serwerze bez licencji.
+const ALWAYS_FREE = FREE_PLUGIN_IDS;
 
 function formatSize(bytes: number): string {
   return `${(bytes / 1024).toFixed(0)} KB`;
@@ -227,6 +228,10 @@ export default function DeployPage() {
         </fieldset>
       </div>
 
+      {/* Ścieżka developerska (build z Mavena) - widoczna TYLKO w trybie dev (npm run
+          tauri dev). W wersji zbudowanej dla klienta znika: klient i tak nie ma kodu
+          źródłowego Mainplugins, więc te przyciski byłyby dla niego mylące. */}
+      {import.meta.env.DEV && (
       <ToolbarMore>
         <p className="muted small" style={{ marginTop: 0 }}>
           Dla developera: zbuduj świeże jary z lokalnego projektu Maven (mvn package) i wyślij z folderu <code>dist/</code>.
@@ -284,6 +289,7 @@ export default function DeployPage() {
           </fieldset>
         )}
       </ToolbarMore>
+      )}
 
       {status && <p className="status">{status}</p>}
     </div>

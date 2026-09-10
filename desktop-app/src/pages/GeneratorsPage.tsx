@@ -33,7 +33,7 @@ const EMPTY_GENERATOR: GeneratorEntry = {
 };
 
 const HEADER_COMMENT =
-  "# Zarzadzane przez RSMC Manager. Silnik T2-T4, dodatkowy obok GENERATOR_BRUK_T1/GENERATOR_KRUCHY_T1\n" +
+  "# Zarzadzane przez PluginManager. Silnik T2-T4, dodatkowy obok GENERATOR_BRUK_T1/GENERATOR_KRUCHY_T1\n" +
   "# (te dwa zostaja w custom-items.yml, edytowane w zakladce Custom itemy).\n" +
   "# Wydawanie: @dajgenerator <id> [gracz]. Przeladowanie: @reloadgeneratory.\n";
 

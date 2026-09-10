@@ -1,3 +1,4 @@
+import { desktopDir } from "@tauri-apps/api/path";
 import { open } from "@tauri-apps/plugin-dialog";
 import { PackageOpen, Rocket } from "lucide-react";
 import { useState } from "react";
@@ -39,11 +40,21 @@ export default function LocalExportButton({
     setStatus(null);
     const name = folderName.trim() || pluginId;
 
+    // Pulpit zalogowanego użytkownika jako punkt startowy dialogu - NIE zaszywamy tu
+    // żadnej konkretnej ścieżki. Gdy się nie uda (np. brak uprawnień), dialog otwiera
+    // się w domyślnej lokalizacji systemu.
+    let defaultPath: string | undefined;
+    try {
+      defaultPath = await desktopDir();
+    } catch {
+      defaultPath = undefined;
+    }
+
     const parentDir = await open({
       directory: true,
       multiple: false,
       title: `Wybierz lokalizację - w niej powstanie folder "${name}"`,
-      defaultPath: "C:\\Users\\stasi\\Desktop",
+      defaultPath,
     });
     if (typeof parentDir !== "string") return;
     const destDir = `${parentDir.replace(/[\\/]+$/, "")}\\${name}`;

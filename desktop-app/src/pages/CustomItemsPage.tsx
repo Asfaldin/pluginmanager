@@ -35,7 +35,7 @@ const EMPTY_ITEM: CustomItemEntry = {
 };
 
 const HEADER_COMMENT =
-  "# Zarzadzane przez RSMC Manager. Wydawanie: @dajcustom <id> [gracz] [ilosc]. Przeladowanie: @reloadcustomitems.\n";
+  "# Zarzadzane przez PluginManager. Wydawanie: @dajcustom <id> [gracz] [ilosc]. Przeladowanie: @reloadcustomitems.\n";
 
 // A lore line that's just "~" (a common decorative divider in item lore)
 // parses as YAML null, not the literal text "~" - unquoted, YAML only

@@ -22,6 +22,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { FREE_PLUGIN_IDS } from "../lib/freePlugins";
 import type { LicenseRecord } from "../lib/types";
 
 interface GraphNode {
@@ -64,10 +65,9 @@ const STANDALONE: GraphNode[] = [
 
 const ALL_IDS = [CORE.id, ...DEPENDENTS.map((n) => n.id), ...STANDALONE.map((n) => n.id)];
 
-// Pluginy bez bramki licencyjnej w kodzie (patrz onEnable() w każdym module) - core
-// jako współdzielona infrastruktura oraz garstka pluginów, które jeszcze nie trafiły
-// do płatnego katalogu, więc dziś działają u każdego klienta bez klucza.
-const ALWAYS_INCLUDED = new Set(["core", "announcer", "farming", "menu", "teleport", "chatfilter", "hud", "ranks"]);
+// Pluginy bez bramki licencyjnej w kodzie (patrz onEnable() w każdym module) - jedno
+// źródło prawdy w lib/freePlugins.ts, współdzielone z DeployPage.
+const ALWAYS_INCLUDED = FREE_PLUGIN_IDS;
 
 /** Id pluginów, do których użytkownik ma dziś realny dostęp: zawsze dołączone za darmo
     (patrz ALWAYS_INCLUDED) plus wszystko pokryte jego aktywnymi licencjami (pojedynczy

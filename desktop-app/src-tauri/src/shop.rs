@@ -6,15 +6,29 @@ use tauri::AppHandle;
 // narzędzie operatora, patrz Mainplugins/license-server/README.md, wystawianie
 // kluczy przez curl).
 //
-// Adres serwera licencyjnego jest ZASZYTY NA STAŁE (SHOP_API_URL) - klient appki
-// nigdy go nie konfiguruje, to Ty jako operator decydujesz, gdzie appka się łączy.
-// PRZED ZBUDOWANIEM WERSJI DLA KLIENTÓW: podmień na prawdziwy adres produkcyjny
-// (patrz license-server/README.md, sekcja "Deploy za darmo").
+// Adres serwera licencyjnego jest wbudowany w binarkę W CZASIE KOMPILACJI - klient
+// appki nigdy go nie konfiguruje, to Ty jako operator decydujesz, gdzie appka się łączy:
+//
+//   * build dla klienta:  ustaw zmienną PLUGINMANAGER_API_URL na prawdziwy adres
+//                         produkcyjny (https://...) PRZED `tauri build`. option_env!
+//                         wczytuje ją w czasie kompilacji i wypala w .exe.
+//   * dev u operatora:    bez tej zmiennej appka używa SHOP_API_URL_FALLBACK poniżej
+//                         (localhost), czyli lokalnego license-servera.
+//
+// !!! PRZED SPRZEDAŻĄ: albo zawsze buduj z PLUGINMANAGER_API_URL, albo zmień fallback
+//     na produkcyjny adres - inaczej klient dostanie localhost i nie przejdzie logowania.
 //
 // Token sesji trzymany w keychain OS jak reszta sekretów appki (SFTP/RCON) - jedno
 // konto na instalację appki, prosty model bez multi-account switchingu na razie.
 
-const SHOP_API_URL: &str = "http://localhost:3000";
+const SHOP_API_URL_FALLBACK: &str = "http://localhost:3000";
+
+fn shop_api_url() -> &'static str {
+    match option_env!("PLUGINMANAGER_API_URL") {
+        Some(url) if !url.is_empty() => url,
+        _ => SHOP_API_URL_FALLBACK,
+    }
+}
 
 const KEYRING_SERVICE: &str = "pluginmanager-shop";
 const KEYRING_ACCOUNT: &str = "session-token";
@@ -117,7 +131,7 @@ fn set_token(token: &str) -> Result<(), String> {
 }
 
 fn base_url(_app: &AppHandle) -> Result<String, String> {
-    Ok(SHOP_API_URL.trim_end_matches('/').to_string())
+    Ok(shop_api_url().trim_end_matches('/').to_string())
 }
 
 #[tauri::command]
