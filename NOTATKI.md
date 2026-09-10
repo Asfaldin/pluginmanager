@@ -28,6 +28,11 @@ na swój serwer Minecraft (SFTP), a potem przeładowuje przez RCON.
 - [ ] **Ścieżka `C:\Users\stasi\Desktop` zaszyta w kodzie** (`LocalExportButton.tsx`) –
       u klienta ten folder nie istnieje. Zamienić na Pulpit bieżącego użytkownika.
 
+- [ ] **Podpis cyfrowy aplikacji (code signing).** Windows 11 z włączonym „Smart App Control”
+      blokuje niepodpisane programy – u części klientów nasza aplikacja w ogóle się nie uruchomi.
+      Przed premierą kupić certyfikat do podpisywania kodu (albo np. Azure Trusted Signing).
+      Wykryte 2026-09-10: ta sama blokada zatrzymała instalację Rusta na komputerze Ruchalskiego.
+
 ### Ważne
 - [ ] **Ochrona płatnych pluginów:** wszystkie 20 jarów (też płatne) jest w aplikacji i każde
       darmowe konto może je wysłać na serwer. Jedyną blokadą jest sprawdzanie licencji
@@ -54,4 +59,6 @@ na swój serwer Minecraft (SFTP), a potem przeładowuje przez RCON.
 - [ ] Włączyć zabezpieczenie CSP w `tauri.conf.json` (obecnie wyłączone).
 
 ## Zrobione
+- 2026-09-10 – gałąź `dev` wysłana na GitHuba. Zainstalowany Rust (rustup, wersja stable);
+  Visual Studio 2022 z C++ i WebView2 już były. Bezpieczeństwo (https itd.) świadomie odłożone na później.
 - 2026-09-10 – utworzona gałąź `dev` do bieżącej pracy; dodany ten plik z notatkami.
