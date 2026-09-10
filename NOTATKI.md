@@ -19,8 +19,10 @@ na swój serwer Minecraft (SFTP), a potem przeładowuje przez RCON.
 
 ### Krytyczne – bez tego nie da się sprzedawać
 - [ ] **Adres serwera licencji to `http://localhost:3000`** (`src-tauri/src/shop.rs`).
-      U klienta aplikacja nie przejdzie ekranu logowania, czyli nie zadziała w ogóle.
-      Trzeba postawić serwer licencji w internecie i wpisać jego adres (https).
+      Celowo – na razie wszystko testujemy lokalnie, docelowo serwer licencji będzie na VPS.
+      Do zrobienia przed premierą: postawić go na VPS z **https** (szyfrowane połączenie,
+      inaczej hasła klientów lecą otwartym tekstem) i ustawić adres tak, żeby wersja testowa
+      sama używała localhost, a wersja dla klientów – adresu VPS (bez ręcznej podmiany).
 - [ ] **Gdy serwer licencji leży, cała aplikacja jest zablokowana** (logowanie przy starcie).
       Rozważyć tryb offline (np. ostatnie udane logowanie ważne X dni).
 - [ ] **Ścieżka `C:\Users\stasi\Desktop` zaszyta w kodzie** (`LocalExportButton.tsx`) –
@@ -31,6 +33,9 @@ na swój serwer Minecraft (SFTP), a potem przeładowuje przez RCON.
       darmowe konto może je wysłać na serwer. Jedyną blokadą jest sprawdzanie licencji
       wewnątrz samych pluginów (core/LicenseManager). Sprawdzić, jak mocne jest to sprawdzanie
       (kod w Mainplugins) i czy pluginy są zaciemnione (obfuskacja).
+- [ ] **Licencja na każdym pluginie (decyzja z 2026-09-10):** docelowo każdy plugin ma
+      sprawdzać licencję. Dziś 8 pluginów tego nie robi (core, announcer, farming, menu,
+      teleport, chatfilter, hud, ranks) – trzeba to dodać w Mainplugins i uaktualnić aplikację.
 - [ ] **Niespójna lista darmowych pluginów:** `freePlugins.ts` mówi, że darmowy jest tylko
       Announcer, a `DeployPage.tsx` i `PluginGraph.tsx` – że 8 (core, announcer, farming, menu,
       teleport, chatfilter, hud, ranks). Ustalić biznesowo i trzymać listę w jednym miejscu.
