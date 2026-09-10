@@ -1,6 +1,7 @@
 import { LayoutDashboard, Server, Settings, ShoppingCart, Wrench, type LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
+import logo from "../assets/logo.png";
 import { setLastPath } from "../lib/appSettings";
 import { useProfiles } from "../state/ProfilesContext";
 
@@ -53,7 +54,8 @@ export default function Layout() {
           {collapsed ? "›" : "‹"}
         </button>
         <div className="sidebar-header">
-          <span className="sidebar-title-text">RSMC Manager</span>
+          <img src={logo} alt="" className="sidebar-logo" />
+          <span className="sidebar-title-text">PluginManager</span>
         </div>
         <div className="sidebar-server-picker">
           <label className="muted small">Aktywny serwer</label>

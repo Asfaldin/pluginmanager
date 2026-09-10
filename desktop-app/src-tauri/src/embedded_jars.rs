@@ -47,6 +47,26 @@ pub fn jar_filename(plugin_id: &str) -> Option<&'static str> {
     JARS.iter().find(|(id, _, _)| *id == plugin_id).map(|(_, name, _)| *name)
 }
 
+#[derive(serde::Serialize)]
+pub struct EmbeddedJarInfo {
+    pub id: String,
+    pub filename: String,
+    pub size: usize,
+}
+
+/// Lista wszystkich wbudowanych jarów - do zakładki Wdrożenie, żeby klient appki mógł
+/// wybrać, które pluginy wypchnąć na serwer, bez posiadania kodu źródłowego ani Mavena.
+#[tauri::command]
+pub fn list_embedded_jars() -> Vec<EmbeddedJarInfo> {
+    JARS.iter()
+        .map(|(id, filename, bytes)| EmbeddedJarInfo {
+            id: id.to_string(),
+            filename: filename.to_string(),
+            size: bytes.len(),
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

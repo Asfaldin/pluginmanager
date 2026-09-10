@@ -51,3 +51,27 @@ export const PLUGIN_ICONS: Record<string, LucideIcon> = {
 
 /** Domyślna ikona dla pakietów (nie są "pluginem" same w sobie, więc nie ma dla nich wpisu wyżej). */
 export const PACKAGE_ICON: LucideIcon = Package;
+
+/** Czytelna nazwa per id pluginu (te same id co PLUGIN_ICONS i embedded_jars.rs). */
+export const PLUGIN_LABELS: Record<string, string> = {
+  core: "Core (wspólne API + licencje)",
+  advancements: "Osiągnięcia",
+  chatfilter: "Filtr czatu",
+  crates: "Skrzynki",
+  dungeons: "Loch i boss",
+  fishing: "Wędkarstwo",
+  hud: "HUD i placeholdery",
+  market: "Rynek graczy",
+  quests: "Questy",
+  ranks: "Rangi",
+  redstone: "Redstone-urządzenia",
+  shop: "Sklep (ekonomia)",
+  skyblock: "Skyblock",
+  spawn: "Spawn, warpy, obszary",
+  spawners: "Customowe spawnery",
+  tools: "Custom itemy i narzędzia",
+  announcer: "Announcer",
+  farming: "Uprawy specjalne",
+  menu: "Główne menu serwera",
+  teleport: "Teleporty",
+};

@@ -58,6 +58,17 @@ export function sftpUploadEmbeddedJar(profileId: string, pluginId: string): Prom
   return invoke("sftp_upload_embedded_jar", { profileId, pluginId });
 }
 
+export interface EmbeddedJar {
+  id: string;
+  filename: string;
+  size: number;
+}
+
+/** Wszystkie jary wbudowane w appkę (patrz embedded_jars.rs) - do zakładki Wdrożenie. */
+export function listEmbeddedJars(): Promise<EmbeddedJar[]> {
+  return invoke("list_embedded_jars");
+}
+
 export function rpReadMeta(packDir: string): Promise<PackMeta> {
   return invoke("rp_read_meta", { packDir });
 }

@@ -101,9 +101,24 @@ body {
 }
 
 .sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
   padding: 0 1.25rem 1rem;
   border-bottom: 1px solid var(--border);
   margin-bottom: 0.5rem;
+}
+
+.sidebar-logo {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.sidebar.collapsed .sidebar-header {
+  padding: 0 0 1rem;
+  justify-content: center;
 }
 
 .sidebar-title-text {
@@ -216,6 +231,191 @@ body {
   padding: 2rem;
   overflow-y: auto;
   min-width: 0;
+}
+
+/* Ekran logowania - JEDNO ciągłe tło na całą szerokość (gradient + siatka kropek),
+   oba panele przezroczyste, formularz jako karta unosząca się na tym tle. Żadnej
+   linii/zmiany koloru między połówkami. Poniżej ~800px lewy panel znika. */
+.auth-screen {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  background:
+    radial-gradient(circle at 22% 30%, rgba(168, 85, 247, 0.2), transparent 55%),
+    radial-gradient(circle at 78% 80%, rgba(192, 132, 252, 0.1), transparent 45%),
+    var(--bg);
+}
+
+/* Subtelna siatka kropek na CAŁYM ekranie, wygaszana ku krawędziom - łączy obie
+   połówki w jedno pole zamiast je dzielić. */
+.auth-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(var(--border-strong) 1px, transparent 1px);
+  background-size: 28px 28px;
+  opacity: 0.28;
+  -webkit-mask-image: radial-gradient(circle at 45% 50%, #000, transparent 80%);
+  mask-image: radial-gradient(circle at 45% 50%, #000, transparent 80%);
+  pointer-events: none;
+}
+
+@media (max-width: 800px) {
+  .auth-screen {
+    grid-template-columns: 1fr;
+  }
+  .auth-brand {
+    display: none;
+  }
+}
+
+.auth-brand {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 3rem;
+}
+
+.auth-brand-content {
+  position: relative;
+  max-width: 380px;
+}
+
+.auth-logo {
+  width: 104px;
+  height: 104px;
+  object-fit: contain;
+  display: block;
+  margin-bottom: 1.1rem;
+}
+
+/* Mały logotyp w karcie formularza - widoczny tylko gdy lewy panel z dużym logo znika. */
+.auth-card-logo {
+  display: none;
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  margin: 0 auto 0.25rem;
+}
+
+@media (max-width: 800px) {
+  .auth-card-logo {
+    display: block;
+  }
+}
+
+.auth-brand-content h1 {
+  font-family: "Cinzel", "Segoe UI", serif;
+  font-weight: 700;
+  font-size: 2.1rem;
+  margin: 0 0 0.6rem;
+}
+
+.auth-brand-content > p {
+  color: var(--text-muted);
+  font-size: 1.02rem;
+  margin: 0 0 1.5rem;
+}
+
+.auth-brand-points {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.auth-brand-points li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.auth-brand-points svg {
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.auth-form-side {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.auth-password-field {
+  position: relative;
+  display: block;
+}
+
+.auth-password-field input {
+  width: 100%;
+  padding-right: 2.4rem;
+}
+
+.auth-password-toggle {
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+}
+
+.auth-password-toggle:hover {
+  background: transparent;
+  border: none;
+  color: var(--text);
+}
+
+.auth-submit {
+  width: 100%;
+  margin-top: 0.25rem;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.auth-submit:hover:not(:disabled) {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+.auth-mode-link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.auth-mode-link:hover {
+  background: transparent;
+  border: none;
+  color: var(--accent-strong);
 }
 
 .page h1 {
