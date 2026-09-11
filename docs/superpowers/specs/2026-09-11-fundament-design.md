@@ -154,6 +154,14 @@ Wspólne pola:
 - zgodności wstecz ze starymi formatami configów;
 - tworzenia nowych pluginów w aplikacji.
 
+## Etap 2 – ustalenia (2026-09-11)
+
+- **Tryb `economy: vault`** (pieniądze innego pluginu): ranking najbogatszych w nim nie działa, bo Vault go nie udostępnia. Lista w TAB-ie jest wtedy pusta. W trybie `own` (domyślnym) wszystko działa jak dziś.
+- **Angielskie nazwy komend graczy** są domyślne, a polskie zostają jako aliasy. Lista jest w `commands.yml` core: `/pay`, `/balance`, `/shop`, `/sell`, `/sellall`, `/market`, `/quests`, `/achievements`, `/tpa`, `/tpaccept`, `/tpdeny`, `/home`, `/commands`, `/mute`, `/rod`, `/fishtop`, `/fishmenu`, `/fishbar`, `/boss`, `/dungeon`. `/is`, `/spawn`, `/warp`, `/menu`, `/discord` bez zmian. Komendy adminów (`@…`) zmieniamy przy przerabianiu każdego pluginu.
+- **Alias `/tp`** komendy teleportu został usunięty (zabierał vanilla `/tp`), a zamiast niego jest `/tpa`.
+- **Placeholdery HUD-a** przechodzą pod core (jedna ekspansja `mainplugins`), a obecne nazwy (`kasa`, `saldo`, `top_gracz_linia_N`…) działają dalej. Core dodaje `money` i `money_short`.
+- **Kolizja nazw z innym pluginem:** wygrywa tamten plugin, a nasza komenda zostaje pod `/<plugin>:<nazwa>` z ostrzeżeniem w logu.
+
 ## 5. Do ustalenia przy planie
 
 - Który plugin będzie próbny (propozycja: Skrzynki).
