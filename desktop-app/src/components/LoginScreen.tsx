@@ -38,7 +38,7 @@ export default function LoginScreen() {
       <div className="auth-brand">
         <div className="auth-brand-content">
           <img src={logo} alt="" className="auth-logo" />
-          <h1>PluginManager</h1>
+          <h1>RSMCMANAGER</h1>
           <p>Zarządzaj pluginami i konfiguracją serwera Minecraft z jednego miejsca.</p>
           <ul className="auth-brand-points">
             {BRAND_POINTS.map((pt) => (

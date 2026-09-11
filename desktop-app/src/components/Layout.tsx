@@ -55,7 +55,7 @@ export default function Layout() {
         </button>
         <div className="sidebar-header">
           <img src={logo} alt="" className="sidebar-logo" />
-          <span className="sidebar-title-text">PluginManager</span>
+          <span className="sidebar-title-text">RSMCMANAGER</span>
         </div>
         <div className="sidebar-server-picker">
           <label className="muted small">Aktywny serwer</label>
