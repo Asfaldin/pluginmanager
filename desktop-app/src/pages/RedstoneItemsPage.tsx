@@ -36,7 +36,7 @@ const EMPTY_ITEM: RedstoneItemEntry = {
 };
 
 const HEADER_COMMENT =
-  "# Zarzadzane przez PluginManager. Wydawanie: @dajredstone <id> [gracz] [ilosc]. Przeladowanie: @reloadredstone.\n";
+  "# Zarzadzane przez RSMCMANAGER. Wydawanie: @dajredstone <id> [gracz] [ilosc]. Przeladowanie: @reloadredstone.\n";
 
 // Patrz sanitizeLoreLine w CustomItemsPage.tsx - "~" bez cudzyslowu parsuje sie jako
 // YAML null, co wywala MinecraftTextInput (wola .length na null).

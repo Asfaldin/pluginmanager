@@ -316,7 +316,7 @@ const EMPTY_TOOL: EditingTool = {
 };
 
 const HEADER_COMMENT =
-  "# Zarzadzane przez PluginManager. Wydawanie: @dajewoluujace <id> [gracz]. Przeladowanie: @reloadnarzedzia.\n";
+  "# Zarzadzane przez RSMCMANAGER. Wydawanie: @dajewoluujace <id> [gracz]. Przeladowanie: @reloadnarzedzia.\n";
 
 function quoteYaml(value: string): string {
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;

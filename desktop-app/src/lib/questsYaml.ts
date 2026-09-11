@@ -9,7 +9,7 @@ import type {
 } from "./types";
 
 const HEADER =
-  "# Zarzadzane przez PluginManager. Przeladowanie: @reloadquesty.\n";
+  "# Zarzadzane przez RSMCMANAGER. Przeladowanie: @reloadquesty.\n";
 
 // A line that's just "~" (a common decorative divider in quest descriptions)
 // parses as YAML null, not the literal text "~" - unquoted, YAML only

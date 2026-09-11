@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { shopLogin, shopLogout, shopMe, shopRegister } from "../lib/api";
 import type { CustomerInfo } from "../lib/types";
 
-// Logowanie jest bramką na WEJŚCIU do całej appki (patrz App.tsx) - PluginManager to
+// Logowanie jest bramką na WEJŚCIU do całej appki (patrz App.tsx) - RSMCMANAGER to
 // teraz produkt, nie darmowe narzędzie, więc nic poza ekranem logowania nie jest
 // dostępne bez konta. Osobny panel admina (dawna zakładka "Licencje") świadomie
 // usunięty z appki - operator wystawia klucze przez curl (patrz
