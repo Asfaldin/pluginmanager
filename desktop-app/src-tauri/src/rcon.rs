@@ -47,6 +47,12 @@ async fn read_packet(stream: &mut TcpStream) -> Result<RconPacket, String> {
 }
 
 async fn run_command(profile: &ServerProfile, command: &str) -> Result<String, String> {
+    // Bez RCON (typowe dla serwera testowego na tym komputerze) - jasna podpowiedź zamiast błędu połączenia.
+    if profile.rcon_host.trim().is_empty() {
+        return Err(format!(
+            "Ten serwer nie ma ustawionego RCON - wpisz komendę w konsoli serwera: {command}"
+        ));
+    }
     let password = profiles::get_rcon_secret(&profile.id).ok_or("No RCON password stored for this profile")?;
 
     let mut stream = TcpStream::connect((profile.rcon_host.as_str(), profile.rcon_port))

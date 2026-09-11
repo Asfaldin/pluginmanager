@@ -59,6 +59,9 @@ export interface Catalog {
   packages: CatalogPackage[];
 }
 
+/** Gdzie jest serwer: w internecie (SFTP) albo w folderze na tym komputerze. */
+export type ProfileKind = "Remote" | "Local";
+
 export interface ServerProfile {
   id: string;
   name: string;
@@ -67,9 +70,17 @@ export interface ServerProfile {
   sftp_username: string;
   auth_method: AuthMethod;
   private_key_path: string | null;
+  /** Dla serwera lokalnego: `<local_path>/plugins` - dzięki temu każda zakładka działa bez zmian. */
   remote_plugins_path: string;
   rcon_host: string;
   rcon_port: number;
+  kind: ProfileKind;
+  local_path: string | null;
+}
+
+/** Krótki opis, gdzie jest serwer - do list profili. */
+export function profileWhere(p: ServerProfile): string {
+  return p.kind === "Local" ? `Ten komputer: ${p.local_path ?? ""}` : `${p.sftp_username}@${p.sftp_host}:${p.sftp_port}`;
 }
 
 export interface RemoteEntry {

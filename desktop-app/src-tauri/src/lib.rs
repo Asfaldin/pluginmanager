@@ -1,5 +1,6 @@
 mod deploy;
 mod embedded_jars;
+mod local_fs;
 mod models;
 mod profiles;
 mod rcon;

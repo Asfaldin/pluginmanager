@@ -1,3 +1,4 @@
+use crate::local_fs;
 use crate::models::{AuthMethod, RemoteEntry, ServerProfile};
 use crate::profiles;
 use russh::client::{self, Handle};
@@ -88,6 +89,9 @@ fn resolve_profile(app: &AppHandle, profile_id: &str) -> Result<ServerProfile, S
 #[tauri::command]
 pub async fn sftp_list_dir(app: AppHandle, profile_id: String, path: String) -> Result<Vec<RemoteEntry>, String> {
     let profile = resolve_profile(&app, &profile_id)?;
+    if let Some(root) = profile.local_root() {
+        return local_fs::list_dir(root, &path);
+    }
     let sftp = connect_sftp(&profile).await?;
 
     let mut entries = Vec::new();
@@ -115,6 +119,9 @@ pub async fn sftp_read_file(app: AppHandle, profile_id: String, path: String) ->
     use tokio::io::AsyncReadExt;
 
     let profile = resolve_profile(&app, &profile_id)?;
+    if let Some(root) = profile.local_root() {
+        return local_fs::read_file(root, &path);
+    }
     let sftp = connect_sftp(&profile).await?;
 
     let mut file = sftp.open(&path).await.map_err(|e| e.to_string())?;
@@ -136,6 +143,9 @@ pub async fn sftp_write_file(
     use tokio::io::AsyncWriteExt;
 
     let profile = resolve_profile(&app, &profile_id)?;
+    if let Some(root) = profile.local_root() {
+        return local_fs::write_bytes(root, &path, contents.as_bytes());
+    }
     let sftp = connect_sftp(&profile).await?;
 
     let mut file = sftp
@@ -171,6 +181,10 @@ pub async fn sftp_upload_embedded_jar(
 
     let profile = resolve_profile(&app, &profile_id)?;
     let remote_path = format!("{}/{}", profile.remote_plugins_path.trim_end_matches('/'), jar_filename);
+    if let Some(root) = profile.local_root() {
+        local_fs::write_bytes(root, &remote_path, bytes)?;
+        return Ok(remote_path);
+    }
     let sftp = connect_sftp(&profile).await?;
 
     let mut file = sftp
@@ -193,9 +207,11 @@ pub async fn sftp_upload_local_file(
     use tokio::io::AsyncWriteExt;
 
     let profile = resolve_profile(&app, &profile_id)?;
-    let sftp = connect_sftp(&profile).await?;
-
     let bytes = tokio::fs::read(&local_path).await.map_err(|e| e.to_string())?;
+    if let Some(root) = profile.local_root() {
+        return local_fs::write_bytes(root, &remote_path, &bytes);
+    }
+    let sftp = connect_sftp(&profile).await?;
 
     let mut file = sftp
         .open_with_flags(

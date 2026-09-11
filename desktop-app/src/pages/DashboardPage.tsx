@@ -5,7 +5,7 @@ import PluginGraph from "../components/PluginGraph";
 import { sftpListDir, shopMyLicenses } from "../lib/api";
 import { useAuth } from "../state/AuthContext";
 import { useProfiles } from "../state/ProfilesContext";
-import type { LicenseRecord } from "../lib/types";
+import { profileWhere, type LicenseRecord } from "../lib/types";
 
 type ConnState = "idle" | "checking" | "ok" | "error";
 
@@ -98,9 +98,7 @@ export default function DashboardPage() {
                   <span className={`status-dot ${state === "checking" ? "idle" : state}`} />
                   {p.name}
                 </div>
-                <div className="muted small">
-                  {p.sftp_username}@{p.sftp_host}:{p.sftp_port}
-                </div>
+                <div className="muted small">{profileWhere(p)}</div>
                 {state === "error" && <div className="error small">{conn[p.id]?.message}</div>}
               </div>
               <button type="button" onClick={() => testConnection(p.id, p.remote_plugins_path)} disabled={state === "checking"}>
