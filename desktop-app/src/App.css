@@ -2138,6 +2138,30 @@ button:disabled:hover {
   border-color: var(--accent-strong);
 }
 
+.ci-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.ci-table th {
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0.3rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ci-table td {
+  padding: 0.25rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ci-table td input:not([type="checkbox"]) {
+  width: 100%;
+}
+
 @media (max-width: 1100px) {
   .ci-layout {
     grid-template-columns: 170px minmax(0, 1fr);

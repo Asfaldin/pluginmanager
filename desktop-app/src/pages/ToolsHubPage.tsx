@@ -16,6 +16,7 @@ import {
   PawPrint,
   Rocket,
   ScrollText,
+  Settings,
   Skull,
   Sprout,
   Tv,
@@ -56,7 +57,7 @@ const TOOL_GROUPS: ToolGroup[] = [
       {
         to: "/customitems",
         title: "Custom itemy",
-        description: "Rejestr custom itemów: material, nazwa, lore, blask, własny model z resource packa.",
+        description: "Własne przedmioty z nazwą, opisem i enchantami — do sklepu, skrzynek, questów i nagród.",
         icon: Gem,
       },
       {
@@ -129,6 +130,12 @@ const TOOL_GROUPS: ToolGroup[] = [
   {
     title: "Serwer i społeczność",
     tools: [
+      {
+        to: "/core",
+        title: "Ustawienia serwera",
+        description: "Język serwera (PL/EN), czyje pieniądze (nasze albo Vault) i nazwy komend dla graczy.",
+        icon: Settings,
+      },
       {
         to: "/announcements",
         title: "Announcer",

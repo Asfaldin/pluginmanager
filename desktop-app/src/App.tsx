@@ -6,6 +6,7 @@ import LoginScreen from "./components/LoginScreen";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
 import ConfigEditorPage from "./pages/ConfigEditorPage";
 import ChatFilterPage from "./pages/ChatFilterPage";
+import CoreSettingsPage from "./pages/CoreSettingsPage";
 import CrateEditorPage from "./pages/CrateEditorPage";
 import CustomItemsPage from "./pages/CustomItemsPage";
 import DeployPage from "./pages/DeployPage";
@@ -88,6 +89,7 @@ function Gate() {
               <Route path="farming" element={<FarmingPage />} />
               <Route path="fishing" element={<FishingPage />} />
               <Route path="hud" element={<HudPage />} />
+              <Route path="core" element={<CoreSettingsPage />} />
             </Route>
           </Routes>
         </HashRouter>
