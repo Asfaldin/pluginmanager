@@ -75,8 +75,9 @@ mod tests {
     fn announcer_jar_matches_source_file_byte_for_byte() {
         let embedded = jar_bytes("announcer").expect("announcer jar should be embedded");
         let source = std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/plugin-jars/mainplugins-announcer-1.0-SNAPSHOT.jar")).unwrap();
+        // Bez sprawdzania konkretnego rozmiaru - zmieniałby się przy każdej aktualizacji jarów.
         assert_eq!(embedded, source.as_slice());
-        assert_eq!(embedded.len(), 65156);
+        assert!(!embedded.is_empty());
     }
 
     #[test]
