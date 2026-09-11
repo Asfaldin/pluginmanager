@@ -2,23 +2,23 @@ import { useDirtyTracking } from "../state/DirtyContext";
 import { Save } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import MaterialIcon from "../components/MaterialIcon";
 import MinecraftTextInput from "../components/MinecraftTextInput";
-import MinecraftTextPreview from "../components/MinecraftTextPreview";
 import PresetBar from "../components/PresetBar";
 import ToolbarMore from "../components/ToolbarMore";
-import { rconSendCommand, rpMakeTransparent, rpTextureStatus, rpWriteTextFile } from "../lib/api";
-import { categoryLabel, changedFiles, DEFAULT_FILE, duplicateIds, normalizeEntry } from "../lib/itemCatalog";
+import { listTexturePacks, rconSendCommand, rpMakeTransparent, rpTextureStatus, rpWriteTextFile } from "../lib/api";
+import { changedFiles, DEFAULT_FILE, duplicateIds, normalizeEntry } from "../lib/itemCatalog";
 import { itemsDir, loadItemCatalog, saveItemFiles } from "../lib/itemCatalogRemote";
 import { getLastUsed, setLastUsed } from "../lib/lastUsed";
 import { COMMON_ENCHANTMENTS, COMMON_MATERIALS } from "../lib/minecraftData";
-import { useIconPack } from "../lib/useIconPack";
 import { useLocalPresets } from "../lib/useLocalPresets";
 import { useProfiles } from "../state/ProfilesContext";
-import type { CustomItemEntry } from "../lib/types";
+import type { CustomItemEntry, TexturePackProject } from "../lib/types";
+
+// KOPIA: zakładka Custom itemy z 2026-09-11 w starym wyglądzie (dwie kolumny), już na
+// folderze items/ z enchantami i "niezniszczalny" - sprzed przeróbki na kategorie.
 
 const LAST_USED_KEY = "customitems";
-const ALL = "";
+const ALL_FILES = "";
 
 const EMPTY_ITEMS: CustomItemEntry[] = [];
 
@@ -35,27 +35,12 @@ const EMPTY_ITEM: CustomItemEntry = {
 };
 
 const ENCHANT_KEYS = COMMON_ENCHANTMENTS.map((e) => e.toLowerCase());
-const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
-
-function roman(level: number): string {
-  return ROMAN[level] ?? String(level);
-}
-
-/** Tekst bez kodów kolorów - do wyszukiwania. */
-function plain(text: string): string {
-  return text.replace(/&#[0-9a-fA-F]{6}|&[0-9a-fk-orA-FK-OR]/g, "");
-}
-
-function sameItem(a: CustomItemEntry, key: { id: string; file: string } | null): boolean {
-  return !!key && a.id === key.id && a.file === key.file;
-}
 
 export default function CustomItemsPage() {
   const { profiles, loading: profilesLoading, activeProfileId: profileId, setActiveProfileId: setProfileId } = useProfiles();
   const [pluginsPath, setPluginsPath] = useState("");
   const [files, setFiles] = useState<string[]>([]);
-  const [category, setCategory] = useState(ALL);
-  const [search, setSearch] = useState("");
+  const [fileFilter, setFileFilter] = useState(ALL_FILES);
   const [items, setItems] = useState<CustomItemEntry[]>(EMPTY_ITEMS);
   const [serverItems, setServerItems] = useState<CustomItemEntry[]>(EMPTY_ITEMS);
   const [editing, setEditing] = useState<CustomItemEntry>(EMPTY_ITEM);
@@ -65,8 +50,9 @@ export default function CustomItemsPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const autoLoadedRef = useRef(false);
+
+  const [packProjects, setPackProjects] = useState<TexturePackProject[]>([]);
   const [selectedPackId, setSelectedPackId] = useState("");
-  const { iconPackDir, packProjects } = useIconPack(setStatus);
 
   const {
     presets: presetList,
@@ -78,31 +64,19 @@ export default function CustomItemsPage() {
     find: findPreset,
   } = useLocalPresets<CustomItemEntry[]>("customitems");
 
-  // Kategorie = pliki z serwera + dodane lokalnie + zawsze "Moje itemy".
+  useEffect(() => {
+    listTexturePacks()
+      .then(setPackProjects)
+      .catch(() => {});
+  }, []);
+
+  // Pliki do wyboru przy nowym itemie: te z serwera + te dodane lokalnie + zawsze "my-items.yml".
   const allFiles = useMemo(
     () => [...new Set([...files, ...items.map((it) => it.file), DEFAULT_FILE])].sort(),
     [files, items]
   );
-  const dups = useMemo(() => new Set(duplicateIds(items).map((d) => d.toLowerCase())), [items]);
-  const pending = useMemo(() => changedFiles(serverItems, items), [serverItems, items]);
-
-  const visible = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return items.filter(
-      (it) =>
-        (category === ALL || it.file === category) &&
-        (!q || it.id.toLowerCase().includes(q) || plain(it.name).toLowerCase().includes(q))
-    );
-  }, [items, category, search]);
-
-  // Przy "Wszystkie" lista jest pogrupowana pod nagłówkami kategorii.
-  const groups = useMemo(
-    () =>
-      allFiles
-        .map((f) => ({ file: f, items: visible.filter((it) => it.file === f) }))
-        .filter((g) => g.items.length > 0),
-    [allFiles, visible]
-  );
+  const dups = useMemo(() => duplicateIds(items), [items]);
+  const visible = fileFilter === ALL_FILES ? items : items.filter((it) => it.file === fileFilter);
 
   function selectProfile(id: string) {
     setProfileId(id);
@@ -164,7 +138,7 @@ export default function CustomItemsPage() {
       await saveItemFiles(profileId, pluginsPath, items, toWrite);
       setServerItems(items);
       setFiles([...new Set([...files, ...toWrite])].sort());
-      let statusMsg = `Wysłano na serwer (${toWrite.length ? toWrite.map(categoryLabel).join(", ") : "bez zmian"}).`;
+      let statusMsg = `Wysłano na serwer (${toWrite.length ? toWrite.join(", ") : "bez zmian"}).`;
       if (reloadCommand) {
         try {
           const result = await rconSendCommand(profileId, reloadCommand);
@@ -183,7 +157,7 @@ export default function CustomItemsPage() {
 
   function revertToServer() {
     setItems(serverItems);
-    newItem();
+    clearForm();
     setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
   }
 
@@ -202,8 +176,8 @@ export default function CustomItemsPage() {
     setStatus(`Wczytano preset „${name}" do edycji — kliknij "Wyślij na serwer", żeby go opublikować.`);
   }
 
-  function newItem() {
-    setEditing({ ...EMPTY_ITEM, file: category || DEFAULT_FILE });
+  function clearForm() {
+    setEditing({ ...EMPTY_ITEM, file: fileFilter || DEFAULT_FILE });
     setEditingKey(null);
   }
 
@@ -222,7 +196,7 @@ export default function CustomItemsPage() {
     };
     const next = [...items];
     const key = editingKey ?? { id, file: toSave.file };
-    const idx = next.findIndex((it) => sameItem(it, key));
+    const idx = next.findIndex((it) => it.id === key.id && it.file === key.file);
     if (idx >= 0) next[idx] = toSave;
     else next.push(toSave);
     setItems(next);
@@ -237,16 +211,14 @@ export default function CustomItemsPage() {
     setEditingKey({ id: item.id, file: item.file });
   }
 
-  function removeEditing() {
-    if (!editingKey) return;
-    if (!window.confirm(`Usunąć item ${editingKey.id}? (Na serwerze zniknie dopiero po „Wyślij na serwer”.)`)) return;
-    setItems(items.filter((it) => !sameItem(it, editingKey)));
-    newItem();
+  function removeItem(item: CustomItemEntry) {
+    setItems(items.filter((it) => !(it.id === item.id && it.file === item.file)));
+    if (editingKey?.id === item.id && editingKey.file === item.file) clearForm();
   }
 
   async function testGive(id: string) {
     if (!testPlayer.trim()) {
-      setStatus("Podaj nick gracza do testu w „Więcej opcji” u góry.");
+      setStatus("Podaj nick gracza do testu (konsola RCON nie ma własnej pozycji/tożsamości).");
       return;
     }
     setBusy(true);
@@ -325,41 +297,14 @@ export default function CustomItemsPage() {
     setEditing({ ...editing, enchants: next });
   }
 
-  function itemRow(item: CustomItemEntry) {
-    const isDup = dups.has(item.id.toLowerCase());
-    return (
-      <button
-        key={`${item.file}/${item.id}`}
-        type="button"
-        className={`ci-item${sameItem(item, editingKey) ? " active" : ""}`}
-        onClick={() => editItem(item)}
-      >
-        <MaterialIcon material={item.material} iconPackDir={iconPackDir} />
-        <span className="ci-item-text">
-          <span className="ci-item-name">
-            <MinecraftTextPreview text={item.name} emptyLabel={item.id} />
-          </span>
-          <span className="ci-badges">
-            <span className="muted small">{item.id}</span>
-            {item.enchants.length > 0 && <span className="ci-badge">enchanty</span>}
-            {item.unbreakable && <span className="ci-badge">niezniszczalny</span>}
-            {item.model && <span className="ci-badge">model</span>}
-            {isDup && <span className="ci-badge warn">duplikat ID</span>}
-          </span>
-        </span>
-      </button>
-    );
-  }
-
-  const catCount = (f: string) => items.filter((it) => it.file === f).length;
-
   return (
     <div className="page">
       <Link to="/tools" className="back-link">← Twoje pluginy</Link>
       <h1>Custom itemy</h1>
       <p className="muted">
-        Tu tworzysz własne przedmioty z nazwą, opisem i enchantami. Każdy możesz potem dać graczom w sklepie, skrzynce
-        albo jako nagrodę.
+        Katalog itemów mainplugins-core (folder items/, każdy plik *.yml) — materiał, nazwa, lore, blask, enchanty,
+        niezniszczalność i opcjonalny własny model z resource packa. ID itemu działa wszędzie: w nagrodach
+        („custom: ID”), sklepie, skrzynkach i questach.
       </p>
 
       <div className="row">
@@ -371,14 +316,13 @@ export default function CustomItemsPage() {
             </option>
           ))}
         </select>
-        <span style={{ flex: 1 }} />
+        <button onClick={publish} disabled={!profileId || !dirty || busy}>
+          <Save size={14} strokeWidth={1.75} /> Wyślij na serwer
+        </button>
         <button type="button" onClick={revertToServer} disabled={!dirty}>
           ↶ Cofnij do stanu z serwera
         </button>
-        <button className="ci-publish" onClick={publish} disabled={!profileId || !dirty || busy}>
-          <Save size={14} strokeWidth={1.75} /> Wyślij na serwer
-          {pending.length > 0 && ` (${pending.length} ${pending.length === 1 ? "zmieniona kategoria" : "zmienione kategorie"})`}
-        </button>
+        {dirty && <span className="muted small">masz niezapisane zmiany</span>}
       </div>
 
       <ToolbarMore>
@@ -386,17 +330,6 @@ export default function CustomItemsPage() {
           <span className="muted small">Folder: {pluginsPath ? itemsDir(pluginsPath) : "—"}</span>
           <button onClick={() => load()} disabled={!profileId || busy}>
             Wczytaj ponownie
-          </button>
-        </div>
-        <div className="row">
-          <input placeholder="Nick gracza do „Wydaj testowo”" value={testPlayer} onChange={(e) => setTestPlayer(e.target.value)} />
-          <input
-            placeholder="komenda RCON, np. @reloadcustomitems"
-            value={reloadCommand}
-            onChange={(e) => setReloadCommand(e.target.value)}
-          />
-          <button onClick={reload} disabled={busy || !profileId}>
-            Wyślij RCON
           </button>
         </div>
         <PresetBar
@@ -410,85 +343,71 @@ export default function CustomItemsPage() {
         />
       </ToolbarMore>
 
-      {status && <p className="status">{status}</p>}
-      {dups.size > 0 && (
+      {dups.length > 0 && (
         <p className="error">
-          To samo ID jest w kilku kategoriach — plugin użyje tylko pierwszego (alfabetycznie wg pliku). Zmień ID albo usuń
-          duplikat.
+          To samo ID jest w kilku plikach: {dups.join(", ")}. Plugin użyje tylko pierwszego (alfabetycznie wg pliku) —
+          zmień ID albo usuń duplikat.
         </p>
       )}
 
-      <div className="ci-layout">
-        <aside className="card ci-cats">
-          <input placeholder="Szukaj itemu..." value={search} onChange={(e) => setSearch(e.target.value)} />
-          <button type="button" className={`ci-cat${category === ALL ? " active" : ""}`} onClick={() => setCategory(ALL)}>
-            <span>Wszystkie</span>
-            <span className="ci-count">{items.length}</span>
-          </button>
-          {allFiles.map((f) => (
-            <button
-              key={f}
-              type="button"
-              className={`ci-cat${category === f ? " active" : ""}`}
-              onClick={() => setCategory(f)}
-              title={f}
-            >
-              <span>{categoryLabel(f)}</span>
-              <span className="ci-count">{catCount(f)}</span>
-            </button>
-          ))}
-          <button type="button" onClick={newItem} disabled={!profileId} style={{ marginTop: "0.5rem" }}>
-            + Nowy item
-          </button>
-        </aside>
-
-        <section className="card ci-list">
-          {visible.length === 0 && <p className="muted">Brak itemów{search ? " pasujących do wyszukiwania" : ""}.</p>}
-          {category === ALL
-            ? groups.map((g) => (
-                <div key={g.file}>
-                  <div className="ci-group">
-                    {categoryLabel(g.file)} ({g.items.length})
-                  </div>
-                  {g.items.map(itemRow)}
-                </div>
-              ))
-            : visible.map(itemRow)}
-        </section>
-
-        <section className="card form ci-editor">
-          <h2>{editingKey ? `Edycja: ${editingKey.id}` : "Nowy item"}</h2>
-
-          <div className="ci-tooltip">
-            <div>
-              <MinecraftTextPreview text={editing.name} emptyLabel={editing.material || "(nazwa)"} />
-            </div>
-            {editing.lore.map((line, i) => (
-              <div key={i}>
-                <MinecraftTextPreview text={line} emptyLabel=" " />
-              </div>
-            ))}
-            {editing.enchants.map((en, i) => (
-              <div key={`e${i}`} className="ci-tip-gray">
-                {en.name} {roman(en.level)}
-              </div>
-            ))}
-            {editing.unbreakable && <div className="ci-tip-blue">Niezniszczalny</div>}
+      <div className="two-col">
+        <div className="card">
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <h2>Itemy ({visible.length})</h2>
+            <select value={fileFilter} onChange={(e) => setFileFilter(e.target.value)}>
+              <option value={ALL_FILES}>Wszystkie pliki</option>
+              {allFiles.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </select>
           </div>
+          <div className="card-grid">
+            {visible.map((item) => (
+              <div key={`${item.file}/${item.id}`} className="card">
+                <div className="card-title">{item.id}</div>
+                <div className="muted small">
+                  {item.material} · {item.file}
+                  {item.model ? ` · model: ${item.model}` : ""}
+                  {item.glint ? " · blask" : ""}
+                  {item.enchants.length ? ` · ${item.enchants.map((e) => `${e.name} ${e.level}`).join(", ")}` : ""}
+                  {item.unbreakable ? " · niezniszczalny" : ""}
+                </div>
+                <div className="row">
+                  <button onClick={() => editItem(item)}>Edytuj</button>
+                  <button onClick={() => removeItem(item)}>Usuń</button>
+                  <button onClick={() => testGive(item.id)} disabled={busy || !profileId}>
+                    Wydaj testowo
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
-          <div className="ci-section-title">Podstawowe</div>
+        <div className="card form">
+          <h2>{editingKey ? "Edytuj item" : "Nowy item"}</h2>
+
           <label>
             ID (WIELKIMI LITERAMI, np. MOJ_CUSTOM_MIECZ)
             <input value={editing.id} onChange={(e) => setEditing({ ...editing, id: e.target.value })} />
           </label>
+
           <label>
-            Nazwa (opcjonalnie — bez tego item ma domyślną nazwę materiału)
-            <MinecraftTextInput
-              value={editing.name}
-              onChange={(v) => setEditing({ ...editing, name: v })}
-              placeholder="&b&lNazwa itemu"
+            Plik w folderze items/
+            <input
+              list="item-files"
+              value={editing.file}
+              onChange={(e) => setEditing({ ...editing, file: e.target.value })}
             />
+            <datalist id="item-files">
+              {allFiles.map((f) => (
+                <option key={f} value={f} />
+              ))}
+            </datalist>
           </label>
+
           <label>
             Materiał
             <input
@@ -502,19 +421,18 @@ export default function CustomItemsPage() {
               ))}
             </datalist>
           </label>
+
           <label>
-            Kategoria
-            <select value={editing.file} onChange={(e) => setEditing({ ...editing, file: e.target.value })}>
-              {allFiles.map((f) => (
-                <option key={f} value={f}>
-                  {categoryLabel(f)}
-                </option>
-              ))}
-            </select>
+            Nazwa (opcjonalnie — bez tego item ma domyślną nazwę materiału)
+            <MinecraftTextInput
+              value={editing.name}
+              onChange={(v) => setEditing({ ...editing, name: v })}
+              placeholder="&b&lNazwa itemu"
+            />
           </label>
 
-          <div className="ci-section">
-            <div className="ci-section-title">Opis (lore)</div>
+          <fieldset>
+            <legend>Lore</legend>
             {editing.lore.map((line, i) => (
               <div key={i} className="mc-message-row">
                 <MinecraftTextInput
@@ -534,10 +452,10 @@ export default function CustomItemsPage() {
             <button type="button" onClick={() => setEditing({ ...editing, lore: [...editing.lore, ""] })}>
               + Dodaj linijkę
             </button>
-          </div>
+          </fieldset>
 
-          <div className="ci-section">
-            <div className="ci-section-title">Enchanty i właściwości</div>
+          <fieldset>
+            <legend>Enchanty</legend>
             {editing.enchants.map((en, i) => (
               <div key={i} className="row">
                 <select value={en.name} onChange={(e) => setEnchant(i, { name: e.target.value })}>
@@ -569,22 +487,24 @@ export default function CustomItemsPage() {
             >
               + Dodaj enchant
             </button>
-            <label className="checkbox">
-              <input
-                type="checkbox"
-                checked={editing.unbreakable}
-                onChange={(e) => setEditing({ ...editing, unbreakable: e.target.checked })}
-              />
-              Niezniszczalny
-            </label>
-            <label className="checkbox">
-              <input type="checkbox" checked={editing.glint} onChange={(e) => setEditing({ ...editing, glint: e.target.checked })} />
-              Wymuszony blask (jak z enczantu)
-            </label>
-          </div>
+          </fieldset>
 
-          <details className="ci-section">
-            <summary className="ci-section-title">Zaawansowane — własny model z resource packa</summary>
+          <label className="checkbox">
+            <input type="checkbox" checked={editing.glint} onChange={(e) => setEditing({ ...editing, glint: e.target.checked })} />
+            Wymuszony blask (jak z enczantu)
+          </label>
+
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={editing.unbreakable}
+              onChange={(e) => setEditing({ ...editing, unbreakable: e.target.checked })}
+            />
+            Niezniszczalny
+          </label>
+
+          <fieldset>
+            <legend>Własny model (opcjonalnie)</legend>
             <label>
               Referencja modelu (namespace:ścieżka, bez .json)
               <input
@@ -606,21 +526,39 @@ export default function CustomItemsPage() {
                 Wygeneruj pliki modelu w paczce
               </button>
             </div>
-          </details>
+            <p className="muted small">
+              Tworzy assets/&lt;ns&gt;/items/&lt;ścieżka&gt;.json + assets/&lt;ns&gt;/models/item/&lt;ścieżka&gt;.json + pustą
+              teksturę — dalej otwórz teksturę w Texture Pack, żeby ją narysować.
+            </p>
+          </fieldset>
 
-          <div className="row ci-section">
-            <button className="ci-publish" onClick={upsertEditing} disabled={!profileId}>
+          <div className="row">
+            <button onClick={upsertEditing} disabled={!profileId}>
               Zapisz item
             </button>
-            <button type="button" onClick={() => testGive(editing.id.trim().toUpperCase())} disabled={busy || !profileId || !editingKey}>
-              Wydaj testowo
-            </button>
-            <button type="button" onClick={removeEditing} disabled={!editingKey}>
-              Usuń item
+            <button type="button" onClick={clearForm}>
+              Wyczyść formularz
             </button>
           </div>
-        </section>
+
+          <div className="row">
+            <input placeholder="Nick gracza do testu" value={testPlayer} onChange={(e) => setTestPlayer(e.target.value)} />
+          </div>
+
+          <div className="row">
+            <input
+              placeholder="komenda RCON, np. @reloadcustomitems"
+              value={reloadCommand}
+              onChange={(e) => setReloadCommand(e.target.value)}
+            />
+            <button onClick={reload} disabled={busy || !profileId}>
+              Wyślij RCON
+            </button>
+          </div>
+        </div>
       </div>
+
+      {status && <p className="status">{status}</p>}
     </div>
   );
 }
