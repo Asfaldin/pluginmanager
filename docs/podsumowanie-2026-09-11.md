@@ -56,27 +56,35 @@ Pluginy w pełni ustawialne z aplikacji (nic na sztywno w Javie), klient może z
   - enchanty, niezniszczalny, wykrywanie duplikatów ID.
   - Kopia starego wyglądu: gałąź `kopia-custom-itemy-stary-wyglad`.
 - **Questy** — lista custom itemów czyta nowy folder.
-- **W trakcie testu:** strona „Ustawienia serwera” (język, pieniądze, edytor `commands.yml`).
+- **Strona „Ustawienia serwera”** — język serwera (PL/EN), pieniądze (nasze / Vault), edytor `commands.yml`. Przetestowana; do lekkiej przeróbki graficznej później.
+- **Wbudowane jary pluginów** (`src-tauri/plugin-jars`) podmienione na nowe (fundament + Twoja praca + poprawka sklepu).
 - Dodany `vitest` (testy logiki aplikacji).
+
+## Połączenie z Twoją pracą (wieczór 11.09)
+
+- W obu repo gałąź **`dev`** = `Karol` + `Stasik`. W Pluginy jedna kolizja (`IslandManager` — zostało nasze wklejanie wyspy + Twoja linijka `ServerAnnounceEvent`), w appce jedna (`CustomItemsPage`, wzięta nasza wersja). 20/20 pluginów się buduje, testy przechodzą.
+- **Licencje:** Twoje wycofanie sprawdzania licencji w 11 płatnych pluginach **cofnęliśmy na dev/Karol** (licencje włączone — przydają się do testów). Ostateczna decyzja do ustalenia razem.
+- **Zacznij nowe rzeczy od `dev`**, żebyśmy się znowu nie rozjechali.
+- Poprawka **sklepu**: `StatystykiSklepu.zapisz()` przy wyłączaniu serwera wołało `runTaskAsynchronously` na wyłączonym pluginie → wyjątek przerywał `DynamicPriceManager.zamknij()`, więc przepadały statystyki **i ceny dynamiczne**. Teraz przy wyłączaniu zapis idzie od razu.
 
 ## Znane sprawy / uwaga
 
-- **Aplikacja ma w środku stare jary pluginów** (`src-tauri/plugin-jars`) — sprzed tych zmian. Trzeba je podmienić przed jakimkolwiek realnym użyciem „Wdrożenia”.
 - Zapis przez aplikację nadpisuje pliki `items/*.yml` i `commands.yml` → komentarze w nich giną.
+- Przy każdej zmianie pluginów trzeba znów podmienić jary wbudowane w aplikację.
 - Na serwerze testowym jest lokalny serwer licencji i jeden klucz testowy „na wszystko”.
 
 ## Plany dalej
 
-1. **Dokończyć aplikację** — ustawienia serwera (w teście), podmiana wbudowanych jarów na nowe.
-2. **Pilot: Skrzynki (Crates) od A do Z** — nagrody na nowy format `rewards:` (+ typ `key`), itemy z katalogu, teksty w plikach językowych, a w aplikacji **wspólny edytor nagród**, który potem wejdzie do wszystkich edytorów.
-3. **Reszta pluginów po kolei na nowe core** — każdy dostaje:
+1. **Następne (12.09): Pilot — Skrzynki (Crates) od A do Z** — nagrody na nowy format `rewards:` (+ typ `key`), itemy z katalogu, teksty w plikach językowych, a w aplikacji **wspólny edytor nagród**, który potem wejdzie do wszystkich edytorów.
+2. **Reszta pluginów po kolei na nowe core** — każdy dostaje:
    - pliki językowe,
    - itemy z katalogu (koniec `new ItemStack` na sztywno — ~30 miejsc),
    - wspólne nagrody (koniec trzech osobnych modeli: advancements / quests / crates),
    - kwoty bez `.00`,
    - angielskie nazwy komend adminów (`@…`).
-4. **„Każdy plugin sam z core”** — test każdego pluginu osobno, ukrywanie funkcji, gdy brakuje innego pluginu.
-5. **Ewoluujące narzędzia** — podpięcie do katalogu itemów, jak ich projekt się ustabilizuje.
-6. **Później** — tłumaczenie całej aplikacji na angielski, licencje na każdym pluginie, serwer licencji na VPS z https.
+3. **„Każdy plugin sam z core”** — test każdego pluginu osobno, ukrywanie funkcji, gdy brakuje innego pluginu.
+4. **Ewoluujące narzędzia** — podpięcie do katalogu itemów, jak ich projekt się ustabilizuje.
+5. **Decyzja o licencjach** (gdzie są, które pluginy darmowe).
+6. **Później** — przeróbka graficzna „Ustawień serwera”, tłumaczenie całej aplikacji na angielski, serwer licencji na VPS z https, tryb offline aplikacji, podpis cyfrowy aplikacji.
 
 **Jeśli ruszasz któryś z tych pluginów albo core — daj znać, żebyśmy nie pracowali na tym samym naraz.**
