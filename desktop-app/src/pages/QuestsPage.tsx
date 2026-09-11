@@ -9,6 +9,7 @@ import SlotGrid from "../components/SlotGrid";
 import ToolbarMore from "../components/ToolbarMore";
 import type { SlotContent } from "../components/SlotGrid";
 import { rconSendCommand, sftpReadFile, sftpWriteFile } from "../lib/api";
+import { loadItemCatalog } from "../lib/itemCatalogRemote";
 import { getLastUsed, setLastUsed } from "../lib/lastUsed";
 import { conventionalRoleIcon, getVanillaCacheDir } from "../lib/materialIcons";
 import { parseQuestsContent, serializeQuestsContent } from "../lib/questsYaml";
@@ -120,13 +121,11 @@ export default function QuestsPage() {
     load(id, path);
     // CUSTOM_ITEM reward/requirement id-y - dwa NIEZALEŻNE rejestry, ale z perspektywy
     // questa to jedna wspólna lista (QuestManager#stworzCustomItem szuka w obu po kolei).
-    const customItemsPath = `${p.remote_plugins_path.replace(/\/+$/, "")}/MainpluginsCore/custom-items.yml`;
     const evolvingToolsPath = `${p.remote_plugins_path.replace(/\/+$/, "")}/MainpluginsTools/ewoluujace-narzedzia.yml`;
-    Promise.allSettled([sftpReadFile(id, customItemsPath), sftpReadFile(id, evolvingToolsPath)]).then(([customItems, evolvingTools]) => {
+    Promise.allSettled([loadItemCatalog(id, p.remote_plugins_path), sftpReadFile(id, evolvingToolsPath)]).then(([catalog, evolvingTools]) => {
       const ids: string[] = [];
-      if (customItems.status === "fulfilled") {
-        const raw = (yaml.load(customItems.value) ?? {}) as any;
-        ids.push(...Object.keys(raw.items ?? {}));
+      if (catalog.status === "fulfilled") {
+        ids.push(...catalog.value.items.map((it) => it.id));
       }
       if (evolvingTools.status === "fulfilled") {
         const raw = (yaml.load(evolvingTools.value) ?? {}) as any;

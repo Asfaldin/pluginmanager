@@ -281,14 +281,23 @@ export interface TexturePackProject {
   base_version: string | null;
 }
 
-// Mirrors mainplugins-core's custom-items.yml entry shape.
+export interface ItemEnchant {
+  /** Klucz Minecrafta małymi literami, np. "sharpness". */
+  name: string;
+  level: number;
+}
+
+// Mirrors one entry of mainplugins-core's items/*.yml (katalog itemów) + nazwa pliku, z którego pochodzi.
 export interface CustomItemEntry {
   id: string;
+  file: string;
   material: string;
   name: string;
   lore: string[];
   model: string;
   glint: boolean;
+  enchants: ItemEnchant[];
+  unbreakable: boolean;
 }
 
 // Mirrors mainplugins-redstone's redstone-items.yml entry shape (custom-items.yml fields + kind).

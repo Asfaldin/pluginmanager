@@ -1983,3 +1983,166 @@ button:disabled:hover {
   max-height: 80vh;
   overflow-y: auto;
 }
+
+/* ---- Custom itemy: kategorie | lista | edycja ---- */
+.ci-layout {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.ci-cats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.ci-cat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+  background: none;
+  border: 1px solid transparent;
+}
+
+.ci-cat.active {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.ci-cat .ci-count {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.ci-list {
+  max-height: calc(100vh - 12rem);
+  overflow-y: auto;
+}
+
+.ci-group {
+  margin: 0.9rem 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ci-group:first-child {
+  margin-top: 0;
+}
+
+.ci-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 1px solid transparent;
+  padding: 0.35rem 0.5rem;
+  margin-bottom: 2px;
+}
+
+.ci-item:hover {
+  background: var(--surface-hover);
+}
+
+.ci-item.active {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+}
+
+.ci-item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.ci-item-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ci-badges {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.ci-badge {
+  font-size: 0.7rem;
+  padding: 0 0.35rem;
+  border-radius: 4px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.ci-badge.warn {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* Dymek jak w grze - celowo zawsze ciemny, niezależnie od motywu appki. */
+.ci-tooltip {
+  background: rgba(16, 0, 16, 0.94);
+  border: 2px solid #2d0a63;
+  border-radius: 4px;
+  padding: 0.5rem 0.7rem;
+  font-family: "Consolas", "Courier New", monospace;
+  line-height: 1.45;
+  margin-bottom: 1rem;
+}
+
+.ci-tooltip .ci-tip-gray {
+  color: #aaaaaa;
+}
+
+.ci-tooltip .ci-tip-blue {
+  color: #5555ff;
+}
+
+.ci-section {
+  border-top: 1px solid var(--border);
+  padding-top: 0.6rem;
+  margin-top: 0.8rem;
+}
+
+.ci-section-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.ci-publish:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.ci-publish:not(:disabled):hover {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+@media (max-width: 1100px) {
+  .ci-layout {
+    grid-template-columns: 170px minmax(0, 1fr);
+  }
+  .ci-editor {
+    grid-column: 1 / -1;
+  }
+}
