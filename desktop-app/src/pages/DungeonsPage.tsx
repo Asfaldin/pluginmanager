@@ -13,6 +13,7 @@ import { useIconPack } from "../lib/useIconPack";
 import { useLocalPresets } from "../lib/useLocalPresets";
 import { useProfiles } from "../state/ProfilesContext";
 import type { DungeonConfig } from "../lib/types";
+import { showPrompt } from "../components/PromptModal";
 
 const LAST_USED_KEY = "dungeons";
 
@@ -137,9 +138,9 @@ export default function DungeonsPage() {
     setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
   }
 
-  function saveCurrentPresetAs() {
+  async function saveCurrentPresetAs() {
     if (!config || !profileId) return;
-    const name = window.prompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
+    const name = await showPrompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
     if (!name) return;
     savePresetAs(profileId, name, config);
     setStatus(`Zapisano preset lokalnie jako „${name}" (nie wysłano na serwer).`);

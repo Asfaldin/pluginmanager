@@ -14,6 +14,7 @@ import { useIconPack } from "../lib/useIconPack";
 import { useLocalPresets } from "../lib/useLocalPresets";
 import { useProfiles } from "../state/ProfilesContext";
 import type { SpawnerConfig, SpawnerTypeDef } from "../lib/types";
+import { showPrompt } from "../components/PromptModal";
 
 const LAST_USED_KEY = "spawners";
 const EMPTY_TYPE: SpawnerTypeDef = { id: "", encja: "COW", nazwaOdmieniona: "", nazwaPojedyncza: "" };
@@ -168,9 +169,9 @@ export default function SpawnersPage() {
     setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
   }
 
-  function saveCurrentPresetAs() {
+  async function saveCurrentPresetAs() {
     if (!profileId) return;
-    const name = window.prompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
+    const name = await showPrompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
     if (!name) return;
     savePresetAs(profileId, name, config);
     setStatus(`Zapisano preset lokalnie jako „${name}" (nie wysłano na serwer).`);

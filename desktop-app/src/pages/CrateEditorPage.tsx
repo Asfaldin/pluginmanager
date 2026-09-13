@@ -11,6 +11,7 @@ import { COMMON_MATERIALS } from "../lib/minecraftData";
 import { useLocalPresets } from "../lib/useLocalPresets";
 import { useProfiles } from "../state/ProfilesContext";
 import type { CrateReward } from "../lib/types";
+import { showPrompt } from "../components/PromptModal";
 
 const LAST_USED_KEY = "crates";
 
@@ -207,9 +208,9 @@ export default function CrateEditorPage() {
   // tier is its own file. Loading one only replaces the local draft; it
   // still has to go through "Wyślij na serwer" to go live - handy if
   // something got overwritten on the server and you want back what you had.
-  function saveCurrentPresetAs() {
+  async function saveCurrentPresetAs() {
     if (!profileId) return;
-    const name = window.prompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
+    const name = await showPrompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
     if (!name) return;
     savePresetAs(presetScope(profileId, tier), name, rewards);
     setStatus(`Zapisano preset lokalnie jako „${name}" (nie wysłano na serwer).`);

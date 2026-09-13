@@ -7,6 +7,9 @@ export type LandingPage = "dashboard" | "tools" | "last";
 const LANDING_PAGE_KEY = "pluginmanager.defaultLandingPage";
 const CONFIRM_UNSAVED_KEY = "pluginmanager.confirmUnsavedOnClose";
 const LAST_PATH_KEY = "pluginmanager.lastPath";
+const HAS_DEPLOYED_KEY = "pluginmanager.hasDeployed";
+const HAS_TESTED_CONNECTION_KEY = "pluginmanager.hasTestedConnection";
+const HAS_CONFIGURED_KEY = "pluginmanager.hasConfigured";
 
 export function getDefaultLandingPage(): LandingPage {
   try {
@@ -57,5 +60,60 @@ export function setLastPath(path: string) {
     localStorage.setItem(LAST_PATH_KEY, path);
   } catch {
     // Jak wyżej - nie krytyczne, "ostatnio otwarta strona" po prostu nie zadziała.
+  }
+}
+
+/** Czy kiedykolwiek udało się wysłać choć jeden plugin na serwer (patrz DeployPage.tsx) -
+    używane przez checklistę "Pierwsze kroki" na Dashboardzie. Jednokierunkowe (raz true,
+    zostaje true) - nie ma potrzeby cofać tego, nawet jeśli ktoś potem usunie profil. */
+export function getHasDeployed(): boolean {
+  try {
+    return localStorage.getItem(HAS_DEPLOYED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setHasDeployed() {
+  try {
+    localStorage.setItem(HAS_DEPLOYED_KEY, "1");
+  } catch {
+    // Nie krytyczne - checklista po prostu nie zapamięta tego kroku między sesjami.
+  }
+}
+
+/** Jak wyżej, ale dla udanego "Testuj połączenie" na Dashboardzie. */
+export function getHasTestedConnection(): boolean {
+  try {
+    return localStorage.getItem(HAS_TESTED_CONNECTION_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setHasTestedConnection() {
+  try {
+    localStorage.setItem(HAS_TESTED_CONNECTION_KEY, "1");
+  } catch {
+    // Jak wyżej.
+  }
+}
+
+/** Jak wyżej, ale dla pierwszego udanego zapisu configu na serwer - ustawiane w jednym
+    miejscu (sftpWriteFile w api.ts), przez które przechodzi "Wyślij na serwer" ze
+    wszystkich edytorów configów, więc nie trzeba tego dotykać w każdym z osobna. */
+export function getHasConfigured(): boolean {
+  try {
+    return localStorage.getItem(HAS_CONFIGURED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setHasConfigured() {
+  try {
+    localStorage.setItem(HAS_CONFIGURED_KEY, "1");
+  } catch {
+    // Jak wyżej.
   }
 }

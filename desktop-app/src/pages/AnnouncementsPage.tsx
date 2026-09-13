@@ -9,6 +9,7 @@ import PresetBar from "../components/PresetBar";
 import RemoteFilePicker from "../components/RemoteFilePicker";
 import ToolbarMore from "../components/ToolbarMore";
 import { rconSendCommand, sftpReadFile, sftpWriteFile } from "../lib/api";
+import { showPrompt } from "../components/PromptModal";
 import {
   EMPTY_CONFIG,
   EMPTY_EVENT,
@@ -141,9 +142,9 @@ export default function AnnouncementsPage() {
     setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
   }
 
-  function saveCurrentPresetAs() {
+  async function saveCurrentPresetAs() {
     if (!profileId) return;
-    const name = window.prompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
+    const name = await showPrompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
     if (!name) return;
     savePresetAs(profileId, name, config);
     setStatus(`Zapisano preset lokalnie jako „${name}" (nie wysłano na serwer).`);

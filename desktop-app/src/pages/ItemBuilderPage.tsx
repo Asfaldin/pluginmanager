@@ -21,6 +21,7 @@ import { useIconPack } from "../lib/useIconPack";
 import { useLocalPresets } from "../lib/useLocalPresets";
 import { useProfiles } from "../state/ProfilesContext";
 import type { ShopGuiContent, ShopItem, ShopScreen, ShopSlotEntry, ShopSlotRole } from "../lib/types";
+import { showPrompt } from "../components/PromptModal";
 
 const LAST_USED_KEY = "items";
 
@@ -847,9 +848,9 @@ export default function ItemBuilderPage() {
   // draft (GUI layout + currently open category); it still has to go through
   // "Wyślij na serwer" to go live - handy if something got overwritten on
   // the server and you want back what you had.
-  function saveCurrentPresetAs() {
+  async function saveCurrentPresetAs() {
     if (!profileId) return;
-    const name = window.prompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
+    const name = await showPrompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
     if (!name) return;
     savePresetAs(profileId, name, { guiContent, categoryMeta, items });
     setStatus(`Zapisano preset lokalnie jako „${name}" (nie wysłano na serwer).`);
