@@ -367,7 +367,7 @@ export default function CrateEditorPage() {
           <div className="ci-section-title">Wygląd (przedmiot)</div>
           <ItemRefPicker value={c.item} onChange={(r) => updateCrate(c.id, { item: r })} materials={allMaterials} customIds={customIds} />
         </Fold>
-        <Fold title="Opis">
+        <Fold title="Opis przedmiotu w ekwipunku">
           <LoreEditor value={c.lore} onChange={(l) => updateCrate(c.id, { lore: l })} />
         </Fold>
         <Fold title="Klucze, które ją otwierają">
@@ -524,7 +524,7 @@ export default function CrateEditorPage() {
           <div className="ci-section-title">Wygląd (przedmiot)</div>
           <ItemRefPicker value={k.item} onChange={(r) => updateKey(k.id, { item: r })} materials={allMaterials} customIds={customIds} />
         </Fold>
-        <Fold title="Opis">
+        <Fold title="Opis przedmiotu w ekwipunku">
           <LoreEditor value={k.lore} onChange={(l) => updateKey(k.id, { lore: l })} />
         </Fold>
         <p className="muted small">
