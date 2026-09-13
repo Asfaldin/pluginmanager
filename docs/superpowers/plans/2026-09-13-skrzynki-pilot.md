@@ -59,7 +59,7 @@
 
 ---
 
-## PART A — plugin (Pluginy repo)
+## PART A - plugin (Pluginy repo)
 
 ### Task A1: Model + parser (pure) + JUnit
 
@@ -599,7 +599,7 @@ cd "D:\folder z mc"; git add mainplugins-crates/src/main/java/elo/mainplugins/cr
 
 ---
 
-### Task A3: Resources — default crates.yml, lang files, plugin.yml
+### Task A3: Resources - default crates.yml, lang files, plugin.yml
 
 **Files:**
 - Create: `mainplugins-crates/src/main/resources/crates.yml`
@@ -1448,7 +1448,7 @@ The server must be stopped before copying jars. Copy `mainplugins-core` and `mai
 
 ---
 
-## PART B — app (pluginmanager repo)
+## PART B - app (pluginmanager repo)
 
 ### Task B1: `lib/rewards.ts` + `lib/cratesYaml.ts` (pure) + tests
 
@@ -1939,7 +1939,7 @@ export default function RewardEditor({ value, onChange, materials, customIds, cr
 
   return (
     <div>
-      {value.length === 0 && <p className="muted small">Brak nagród — dodaj co najmniej jedną.</p>}
+      {value.length === 0 && <p className="muted small">Brak nagród - dodaj co najmniej jedną.</p>}
       {value.map((r, i) => (
         <div key={i} className="card" style={{ padding: "0.6rem", marginBottom: "0.5rem" }}>
           <div className="row">
@@ -2206,7 +2206,7 @@ export default function CrateEditorPage() {
       <Link to="/tools" className="back-link">← Twoje pluginy</Link>
       <h1>Skrzynki</h1>
       <p className="muted">
-        Twoje skrzynki: wygląd, klucze, które je otwierają, i co można wygrać. Wygrana może dać kilka rzeczy naraz —
+        Twoje skrzynki: wygląd, klucze, które je otwierają, i co można wygrać. Wygrana może dać kilka rzeczy naraz -
         pieniądze, itemy, inne skrzynki albo klucze.
       </p>
 
@@ -2472,7 +2472,7 @@ export default function CrateEditorPage() {
 - [ ] **Step 2: Update the crates card in `ToolsHubPage.tsx`**
 
 Replace the crates description with:
-`"Twoje skrzynki: wygląd, klucze (własne albo wspólne) i wygrane — pieniądze, itemy, klucze i więcej."`
+`"Twoje skrzynki: wygląd, klucze (własne albo wspólne) i wygrane - pieniądze, itemy, klucze i więcej."`
 
 - [ ] **Step 3: Type-check and run tests**
 

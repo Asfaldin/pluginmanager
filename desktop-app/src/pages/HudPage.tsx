@@ -52,7 +52,7 @@ export default function HudPage() {
         await sftpWriteFile(pid, path, serializeHudConfig(DEFAULT_HUD_CONFIG));
         setConfig(DEFAULT_HUD_CONFIG);
         setServerConfig(DEFAULT_HUD_CONFIG);
-        setStatus("hud-config.yml nie istniało — wgrano domyślną wersję. Serwer użyje jej po /@reloadhud albo restarcie.");
+        setStatus("hud-config.yml nie istniało - wgrano domyślną wersję. Serwer użyje jej po /@reloadhud albo restarcie.");
       }
       setLastUsed(LAST_USED_KEY, { profileId: pid, remotePath: path });
     } catch (e) {
@@ -169,7 +169,7 @@ export default function HudPage() {
 
   function revertToServer() {
     setConfig(serverConfig);
-    setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
+    setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
   function saveCurrentPresetAs() {
@@ -184,7 +184,7 @@ export default function HudPage() {
     const found = findPreset(name);
     if (!found) return;
     setConfig(found);
-    setStatus(`Wczytano preset „${name}" do edycji — kliknij "Wyślij na serwer", żeby go opublikować.`);
+    setStatus(`Wczytano preset „${name}" do edycji - kliknij "Wyślij na serwer", żeby go opublikować.`);
   }
 
   function refetchFromServer() {

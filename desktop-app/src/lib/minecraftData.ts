@@ -1,4 +1,4 @@
-// Small helper lists for autocomplete in the item builder. Not exhaustive —
+// Small helper lists for autocomplete in the item builder. Not exhaustive -
 // any valid Bukkit Material/Enchantment/ItemFlag name can still be typed in.
 
 export const COMMON_MATERIALS = [

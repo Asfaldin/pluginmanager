@@ -221,7 +221,7 @@ function ProgresjaListEditor({
   return (
     <div className="card" style={{ marginTop: "0.4rem" }}>
       <div className="card-title">Jawna progresja (poziom → wartość{unit})</div>
-      {sorted.length === 0 && <p className="muted small">Brak progów — obowiązuje formuła liniowa powyżej.</p>}
+      {sorted.length === 0 && <p className="muted small">Brak progów - obowiązuje formuła liniowa powyżej.</p>}
       {sorted.map(([poziom, wartosc]) => (
         <div key={poziom} className="row">
           <label>
@@ -253,7 +253,7 @@ function ProgresjaListEditor({
           + Dodaj próg ręcznie
         </button>
         <label>
-          Wygeneruj z formuły — ile progów
+          Wygeneruj z formuły - ile progów
           <input type="number" min={1} value={steps} style={{ width: "4rem" }} onChange={(e) => setSteps(Number(e.target.value))} />
         </label>
         <button type="button" onClick={generateFromLinear}>
@@ -745,7 +745,7 @@ function EnchantRow({
     <div className="card" style={{ marginBottom: 6 }}>
       <div className="row">
         <select value={entry.enchant} onChange={(ev) => onChange({ ...entry, enchant: ev.target.value })}>
-          <option value="">— wybierz enczant —</option>
+          <option value="">- wybierz enczant -</option>
           {entry.enchant && !ENCHANT_KEYS.includes(entry.enchant) && (
             <option value={entry.enchant}>{entry.enchant} (spoza listy)</option>
           )}
@@ -796,7 +796,7 @@ function EnchantRow({
 
       <div className="row" style={{ marginTop: "0.5rem", alignItems: "flex-end" }}>
         <label>
-          Wylicz automatycznie — maks. poziom enczantu
+          Wylicz automatycznie - maks. poziom enczantu
           <input
             type="number"
             min={1}
@@ -810,9 +810,9 @@ function EnchantRow({
         </button>
       </div>
       <p className="muted small">
-        Plugin (EnchantProgress.java) obsługuje tylko progi — enczant jest na stałym poziomie od danego progu aż do
+        Plugin (EnchantProgress.java) obsługuje tylko progi - enczant jest na stałym poziomie od danego progu aż do
         następnego, bez własnej formuły. "Rozłóż równomiernie" tylko wypełnia te progi za Ciebie, rozstawione równo
-        między poziomem 1 a {toolMaxLevel} (maks. poziomem TEGO narzędzia) — dalej możesz je ręcznie doprecyzować.
+        między poziomem 1 a {toolMaxLevel} (maks. poziomem TEGO narzędzia) - dalej możesz je ręcznie doprecyzować.
       </p>
     </div>
   );
@@ -880,7 +880,7 @@ export default function EvolvingToolsPage() {
       } catch {
         await sftpWriteFile(pid, path, DEFAULT_TOOLS_YAML);
         text = DEFAULT_TOOLS_YAML;
-        setStatus("ewoluujace-narzedzia.yml nie istniało — wgrano domyślną wersję. Serwer użyje jej po /@reloadnarzedzia albo restarcie.");
+        setStatus("ewoluujace-narzedzia.yml nie istniało - wgrano domyślną wersję. Serwer użyje jej po /@reloadnarzedzia albo restarcie.");
       }
       const parsed = parseToolsYaml(text);
       setItems(parsed);
@@ -940,7 +940,7 @@ export default function EvolvingToolsPage() {
     setItems(serverItems);
     setEditing(EMPTY_TOOL);
     setEditingId(null);
-    setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
+    setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
   function saveCurrentPresetAs() {
@@ -955,7 +955,7 @@ export default function EvolvingToolsPage() {
     const found = findPreset(name);
     if (!found) return;
     setItems(found);
-    setStatus(`Wczytano preset „${name}" do edycji — kliknij "Wyślij na serwer", żeby go opublikować.`);
+    setStatus(`Wczytano preset „${name}" do edycji - kliknij "Wyślij na serwer", żeby go opublikować.`);
   }
 
   function upsertEditing() {
@@ -1081,9 +1081,9 @@ export default function EvolvingToolsPage() {
       <Link to="/tools" className="back-link">← Twoje pluginy</Link>
       <h1>Ewoluujące narzędzia</h1>
       <p className="muted">
-        Silnik narzędzi mainplugins-tools (ewoluujace-narzedzia.yml) — poziomy, prawdziwe enczanty rosnące z poziomem,
+        Silnik narzędzi mainplugins-tools (ewoluujace-narzedzia.yml) - poziomy, prawdziwe enczanty rosnące z poziomem,
         stałe kamienie milowe odblokowujące efekty (na wzór Kilofa Niflheim, który zostaje osobno, poza tym rejestrem),
-        custom nazwane staty i cząsteczki otoczenia. Te narzędzia NIE są przypisane do gracza — można je swobodnie
+        custom nazwane staty i cząsteczki otoczenia. Te narzędzia NIE są przypisane do gracza - można je swobodnie
         sprzedać/wyrzucić/wręczyć.
       </p>
 
@@ -1208,7 +1208,7 @@ export default function EvolvingToolsPage() {
             </div>
             <p className="muted small">
               Tworzy assets/&lt;ns&gt;/items/&lt;ścieżka&gt;.json + assets/&lt;ns&gt;/models/item/&lt;ścieżka&gt;.json + pustą
-              teksturę — dalej otwórz teksturę w Texture Pack, żeby ją narysować.
+              teksturę - dalej otwórz teksturę w Texture Pack, żeby ją narysować.
             </p>
           </fieldset>
 
@@ -1229,7 +1229,7 @@ export default function EvolvingToolsPage() {
           </div>
 
           <label>
-            Cząsteczki otoczenia (Particle, opcjonalnie — stała aura gdy trzymane)
+            Cząsteczki otoczenia (Particle, opcjonalnie - stała aura gdy trzymane)
             <input value={editing.czastkiOtoczenia} onChange={(e) => setEditing({ ...editing, czastkiOtoczenia: e.target.value })} />
           </label>
 
@@ -1301,7 +1301,7 @@ export default function EvolvingToolsPage() {
                         setEditing({ ...editing, staty: next });
                       }}
                     >
-                      <option value="">— brak (czysto informacyjny) —</option>
+                      <option value="">- brak (czysto informacyjny) -</option>
                       {s.enchant && !ENCHANT_KEYS.includes(s.enchant) && <option value={s.enchant}>{s.enchant} (spoza listy)</option>}
                       {ENCHANT_KEYS.map((key) => (
                         <option key={key} value={key}>
@@ -1406,7 +1406,7 @@ export default function EvolvingToolsPage() {
 
           <div className="row">
             <button onClick={upsertEditing} disabled={!profileId}>
-              Zapisz narzędzie (lokalnie — pamiętaj o "Wyślij na serwer")
+              Zapisz narzędzie (lokalnie - pamiętaj o "Wyślij na serwer")
             </button>
             <button
               type="button"

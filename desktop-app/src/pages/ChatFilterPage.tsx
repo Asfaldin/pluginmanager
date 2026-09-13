@@ -73,7 +73,7 @@ export default function ChatFilterPage() {
         await sftpWriteFile(pid, path, serializeChatFilterConfig(DEFAULT_CHATFILTER_CONFIG));
         setConfig(DEFAULT_CHATFILTER_CONFIG);
         setServerConfig(DEFAULT_CHATFILTER_CONFIG);
-        setStatus("chatfilter-config.yml nie istniało — wgrano domyślną wersję. Serwer użyje jej po /@reloadchatfilter albo restarcie.");
+        setStatus("chatfilter-config.yml nie istniało - wgrano domyślną wersję. Serwer użyje jej po /@reloadchatfilter albo restarcie.");
       }
       setLastUsed(LAST_USED_KEY, { profileId: pid, remotePath: path });
     } catch (e) {
@@ -151,7 +151,7 @@ export default function ChatFilterPage() {
 
   function revertToServer() {
     setConfig(serverConfig);
-    setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
+    setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
   function saveCurrentPresetAs() {
@@ -166,7 +166,7 @@ export default function ChatFilterPage() {
     const found = findPreset(name);
     if (!found) return;
     setConfig(found);
-    setStatus(`Wczytano preset „${name}" do edycji — kliknij "Wyślij na serwer", żeby go opublikować.`);
+    setStatus(`Wczytano preset „${name}" do edycji - kliknij "Wyślij na serwer", żeby go opublikować.`);
   }
 
   function refetchFromServer() {

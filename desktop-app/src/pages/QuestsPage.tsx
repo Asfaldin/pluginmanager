@@ -242,7 +242,7 @@ export default function QuestsPage() {
     setQuickEditCategoryId(null);
     setPickedUpCategorySlot(null);
     setPickedUpQuestIndex(null);
-    setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
+    setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
   // Local presets are a separate, opt-in safety net on top of the draft -
@@ -261,7 +261,7 @@ export default function QuestsPage() {
     const found = findPreset(name);
     if (!found) return;
     setContent(found);
-    setStatus(`Wczytano preset „${name}" do edycji — kliknij "Wyślij na serwer", żeby go opublikować.`);
+    setStatus(`Wczytano preset „${name}" do edycji - kliknij "Wyślij na serwer", żeby go opublikować.`);
   }
 
   async function reload() {
@@ -567,7 +567,7 @@ export default function QuestsPage() {
       <Link to="/tools" className="back-link">← Twoje pluginy</Link>
       <h1>Questy</h1>
       <p className="muted">
-        Pełny, klikalny podgląd menu questów mainplugins-quests — dokładnie w takim układzie jak w grze. Kliknij slot,
+        Pełny, klikalny podgląd menu questów mainplugins-quests - dokładnie w takim układzie jak w grze. Kliknij slot,
         żeby edytować quest lub przejść do kategorii.
       </p>
 
@@ -599,7 +599,7 @@ export default function QuestsPage() {
             {iconPackDir === ""
               ? "brak (pobieranie bazy Vanilla w toku...)"
               : (packProjects.find((p) => p.local_path === iconPackDir)?.name ?? "Baza Vanilla (automatyczna)")}
-            {iconPackDir && ` — ${allMaterials.length} materiałów dostępnych z ikonkami`}
+            {iconPackDir && ` - ${allMaterials.length} materiałów dostępnych z ikonkami`}
           </span>
           {packProjects.length > 0 && (
             <select
@@ -660,7 +660,7 @@ export default function QuestsPage() {
               <div className="card">
                 <h2>Menu główne (klikalne)</h2>
                 <p className="muted small">
-                  Kliknij kategorię, żeby wejść do jej strony, ikona przesunięcia w rogu — żeby ją przenieść, ikona ołówka (albo prawy klik) —
+                  Kliknij kategorię, żeby wejść do jej strony, ikona przesunięcia w rogu - żeby ją przenieść, ikona ołówka (albo prawy klik) -
                   szybka edycja nazwy/ikony/opisu. "+" na pustym polu dodaje nową kategorię.
                 </p>
                 {quickEditCategoryId && (
@@ -737,10 +737,10 @@ export default function QuestsPage() {
                         Uporządkuj kolejność questów wg numeru slotu
                       </button>
                       <span className="muted small">
-                        Questy trafiają do slotów w kolejności zapisu w pliku, nie wg numeru slotu — po wielu
+                        Questy trafiają do slotów w kolejności zapisu w pliku, nie wg numeru slotu - po wielu
                         przeciągnięciach ta kolejność mogła się rozjechać (np. quest #10 ląduje w slocie z połowy
                         planszy zamiast od razu po #9). Ten przycisk NIE zmienia rozmieszczenia sloty na planszy,
-                        tylko porządkuje, KTÓRY quest trafia do KTÓREGO slotu (od najmniejszego numeru w górę) — to
+                        tylko porządkuje, KTÓRY quest trafia do KTÓREGO slotu (od najmniejszego numeru w górę) - to
                         realnie przełoży się na inny układ questów w grze, więc sprawdź podgląd przed wysłaniem.
                       </span>
                     </div>
@@ -1155,7 +1155,7 @@ export default function QuestsPage() {
                     </fieldset>
 
                     <label>
-                      Etykieta nagrody (opcjonalnie — bez tego składa się automatycznie)
+                      Etykieta nagrody (opcjonalnie - bez tego składa się automatycznie)
                       <input
                         value={editingQuest.rewardLabel ?? ""}
                         onChange={(e) => setEditingQuest({ ...editingQuest, rewardLabel: e.target.value || undefined })}
@@ -1163,7 +1163,7 @@ export default function QuestsPage() {
                     </label>
 
                     <div className="row">
-                      <button onClick={saveEditingQuest}>Zapisz quest (lokalnie — pamiętaj o "Wyślij na serwer")</button>
+                      <button onClick={saveEditingQuest}>Zapisz quest (lokalnie - pamiętaj o "Wyślij na serwer")</button>
                       <button type="button" onClick={() => setEditingQuest(null)}>
                         Anuluj
                       </button>
@@ -1234,7 +1234,7 @@ function QuickEditCategory({
   if (!category) return null;
   return (
     <div className="card form" style={{ marginBottom: "0.75rem" }}>
-      <h2>Szybka edycja — {categoryId}</h2>
+      <h2>Szybka edycja - {categoryId}</h2>
       <div className="row">
         <label>
           Nazwa

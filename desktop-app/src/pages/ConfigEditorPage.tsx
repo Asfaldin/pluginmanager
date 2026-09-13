@@ -159,7 +159,7 @@ export default function ConfigEditorPage() {
 
   function revertToServer() {
     setContent(serverContent);
-    setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
+    setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
   // Local presets are a separate, opt-in safety net on top of the draft -
@@ -179,7 +179,7 @@ export default function ConfigEditorPage() {
     const found = findPreset(name);
     if (found == null) return;
     setContent(found);
-    setStatus(`Wczytano preset „${name}" do edycji — kliknij "Wyślij na serwer", żeby go opublikować.`);
+    setStatus(`Wczytano preset „${name}" do edycji - kliknij "Wyślij na serwer", żeby go opublikować.`);
   }
 
   async function reload() {

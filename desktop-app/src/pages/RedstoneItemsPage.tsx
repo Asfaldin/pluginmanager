@@ -191,7 +191,7 @@ export default function RedstoneItemsPage() {
     setItems(serverItems);
     setEditing(EMPTY_ITEM);
     setEditingId(null);
-    setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
+    setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
   function saveCurrentPresetAs() {
@@ -206,7 +206,7 @@ export default function RedstoneItemsPage() {
     const found = findPreset(name);
     if (!found) return;
     setItems(found);
-    setStatus(`Wczytano preset „${name}" do edycji — kliknij "Wyślij na serwer", żeby go opublikować.`);
+    setStatus(`Wczytano preset „${name}" do edycji - kliknij "Wyślij na serwer", żeby go opublikować.`);
   }
 
   function upsertEditing() {
@@ -320,10 +320,10 @@ export default function RedstoneItemsPage() {
       <h1>Redstone (drony + golemy)</h1>
       <p className="muted">
         Rejestr redstone-itemów mainplugins-redstone (redstone-items.yml). Prawdziwy wanilijski redstone
-        występuje tylko jako lokalna bramka on/off (RedstonePower) na STATION/HARVESTER — żaden graf/zanik
+        występuje tylko jako lokalna bramka on/off (RedstonePower) na STATION/HARVESTER - żaden graf/zanik
         sygnału. CABLE (kabel przesyłowy, łącze danych bez zaniku), STATION (dron sadzi puste pola na siatce 5x5
         wokół sadzarki), HARVESTER (dron zbiera dojrzałe uprawy z siatki 5x5 wokół siebie do skrzynki),
-        GOLEM_STATION (golem kursujący między dwiema skrzynkami połączonymi CHEST_LINKER), PLANTER (sadzarka —
+        GOLEM_STATION (golem kursujący między dwiema skrzynkami połączonymi CHEST_LINKER), PLANTER (sadzarka -
         NIE jest wanilijskim Dropperem mimo tekstury) i CHEST_LINKER (PPM w dwie skrzynki po kolei, żeby je
         połączyć).
       </p>
@@ -405,12 +405,12 @@ export default function RedstoneItemsPage() {
           <label>
             Rodzaj
             <select value={editing.kind} onChange={(e) => setEditing({ ...editing, kind: e.target.value as RedstoneItemKind })}>
-              <option value="CABLE">CABLE — kabel przesyłowy (łącze danych, Stacja↔Sadzarka/skrzynka)</option>
-              <option value="STATION">STATION — stacja drona: sadzenie (redstone + kabel do sadzarki)</option>
-              <option value="HARVESTER">HARVESTER — stacja zbierania (redstone + kabel do skrzynki)</option>
-              <option value="GOLEM_STATION">GOLEM_STATION — stacja zbiorcza (golem, obok skrzynki połączonej łącznikiem)</option>
-              <option value="PLANTER">PLANTER — sadzarka (sadzi na polu wskazanym przez drona)</option>
-              <option value="CHEST_LINKER">CHEST_LINKER — łącznik skrzynek (PPM w dwie skrzynki po kolei)</option>
+              <option value="CABLE">CABLE - kabel przesyłowy (łącze danych, Stacja↔Sadzarka/skrzynka)</option>
+              <option value="STATION">STATION - stacja drona: sadzenie (redstone + kabel do sadzarki)</option>
+              <option value="HARVESTER">HARVESTER - stacja zbierania (redstone + kabel do skrzynki)</option>
+              <option value="GOLEM_STATION">GOLEM_STATION - stacja zbiorcza (golem, obok skrzynki połączonej łącznikiem)</option>
+              <option value="PLANTER">PLANTER - sadzarka (sadzi na polu wskazanym przez drona)</option>
+              <option value="CHEST_LINKER">CHEST_LINKER - łącznik skrzynek (PPM w dwie skrzynki po kolei)</option>
             </select>
           </label>
 
@@ -429,7 +429,7 @@ export default function RedstoneItemsPage() {
           </label>
 
           <label>
-            Nazwa (opcjonalnie — bez tego item ma domyślną nazwę materiału)
+            Nazwa (opcjonalnie - bez tego item ma domyślną nazwę materiału)
             <MinecraftTextInput
               value={editing.name}
               onChange={(v) => setEditing({ ...editing, name: v })}
@@ -490,13 +490,13 @@ export default function RedstoneItemsPage() {
             </div>
             <p className="muted small">
               Tworzy assets/&lt;ns&gt;/items/&lt;ścieżka&gt;.json + assets/&lt;ns&gt;/models/item/&lt;ścieżka&gt;.json + pustą
-              teksturę — dalej otwórz teksturę w Texture Pack, żeby ją narysować.
+              teksturę - dalej otwórz teksturę w Texture Pack, żeby ją narysować.
             </p>
           </fieldset>
 
           <div className="row">
             <button onClick={upsertEditing} disabled={!profileId}>
-              Zapisz item (lokalnie — pamiętaj o "Wyślij na serwer")
+              Zapisz item (lokalnie - pamiętaj o "Wyślij na serwer")
             </button>
             <button
               type="button"

@@ -327,7 +327,7 @@ fn extract_assets_from_jar(bytes: &[u8], dest_dir: &Path) -> Result<usize, Strin
         let mut entry = archive.by_index(i).map_err(|e| e.to_string())?;
         let Some(enclosed) = entry.enclosed_name() else { continue };
         // The client jar also ships compiled game code (top-level .class
-        // files), META-INF, and a `data/` datapack tree — none of that
+        // files), META-INF, and a `data/` datapack tree - none of that
         // belongs in a resource pack, so only `assets/**` is extracted.
         if !enclosed.starts_with("assets") {
             continue;
@@ -349,8 +349,8 @@ fn extract_assets_from_jar(bytes: &[u8], dest_dir: &Path) -> Result<usize, Strin
 }
 
 /// Downloads the official Minecraft client for `version` (or the latest
-/// release when omitted) via Mojang's public launcher-meta API — the same
-/// endpoints every Minecraft launcher uses — verifies it against the SHA1
+/// release when omitted) via Mojang's public launcher-meta API - the same
+/// endpoints every Minecraft launcher uses - verifies it against the SHA1
 /// Mojang itself publishes, and extracts just the `assets/` tree into
 /// `pack_dir` as a full vanilla template to build a custom pack on top of.
 #[tauri::command]

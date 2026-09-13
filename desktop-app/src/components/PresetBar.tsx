@@ -21,7 +21,7 @@ export default function PresetBar({ presets, selectedName, onSelectName, onSaveA
     <div className="row card" style={{ alignItems: "center", flexWrap: "wrap" }}>
       <strong className="card-title">Presety (lokalnie):</strong>
       <select value={selectedName} onChange={(e) => onSelectName(e.target.value)}>
-        <option value="">— wybierz —</option>
+        <option value="">- wybierz -</option>
         {presets.map((p) => (
           <option key={p.name} value={p.name}>
             {p.name} ({new Date(p.savedAt).toLocaleString()})

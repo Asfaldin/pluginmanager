@@ -81,7 +81,7 @@ export default function FishingPage() {
         await sftpWriteFile(pid, path, serializeFishingConfig(DEFAULT_FISHING_CONFIG));
         setConfig(DEFAULT_FISHING_CONFIG);
         setServerConfig(DEFAULT_FISHING_CONFIG);
-        setStatus("fishing-config.yml nie istniało — wgrano domyślną wersję. Serwer użyje jej po /@reloadfishing albo restarcie.");
+        setStatus("fishing-config.yml nie istniało - wgrano domyślną wersję. Serwer użyje jej po /@reloadfishing albo restarcie.");
       }
       setLastUsed(LAST_USED_KEY, { profileId: pid, remotePath: path });
     } catch (e) {
@@ -171,7 +171,7 @@ export default function FishingPage() {
 
   function revertToServer() {
     setConfig(serverConfig);
-    setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
+    setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
   function saveCurrentPresetAs() {
@@ -186,7 +186,7 @@ export default function FishingPage() {
     const found = findPreset(name);
     if (!found) return;
     setConfig(found);
-    setStatus(`Wczytano preset „${name}" do edycji — kliknij "Wyślij na serwer", żeby go opublikować.`);
+    setStatus(`Wczytano preset „${name}" do edycji - kliknij "Wyślij na serwer", żeby go opublikować.`);
   }
 
   function refetchFromServer() {
@@ -214,7 +214,7 @@ export default function FishingPage() {
       <h1>Łowienie</h1>
       <p className="muted small">
         ID każdego gatunku musi się zgadzać z custom-id w Kreatorze sklepu (kategoria "ryby_wedkarskie") oraz w
-        wymogach questów kategorii "Rybak" — zmiana/usunięcie istniejącego ID zepsuje tę zgodność.
+        wymogach questów kategorii "Rybak" - zmiana/usunięcie istniejącego ID zepsuje tę zgodność.
       </p>
 
       <div className="row">

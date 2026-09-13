@@ -54,7 +54,7 @@ export default function DungeonsPage() {
         await sftpWriteFile(pid, path, serializeDungeonConfig(DEFAULT_DUNGEON_CONFIG));
         setConfig(DEFAULT_DUNGEON_CONFIG);
         setServerConfig(DEFAULT_DUNGEON_CONFIG);
-        setStatus("dungeons-config.yml nie istniało — wgrano domyślną wersję. Serwer użyje jej po /@reloaddungeons albo restarcie.");
+        setStatus("dungeons-config.yml nie istniało - wgrano domyślną wersję. Serwer użyje jej po /@reloaddungeons albo restarcie.");
       }
       setLastUsed(LAST_USED_KEY, { profileId: pid, remotePath: path });
     } catch (e) {
@@ -134,7 +134,7 @@ export default function DungeonsPage() {
 
   function revertToServer() {
     setConfig(serverConfig);
-    setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
+    setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
   function saveCurrentPresetAs() {
@@ -149,7 +149,7 @@ export default function DungeonsPage() {
     const found = findPreset(name);
     if (!found) return;
     setConfig(found);
-    setStatus(`Wczytano preset „${name}" do edycji — kliknij "Wyślij na serwer", żeby go opublikować.`);
+    setStatus(`Wczytano preset „${name}" do edycji - kliknij "Wyślij na serwer", żeby go opublikować.`);
   }
 
   function refetchFromServer() {
@@ -177,7 +177,7 @@ export default function DungeonsPage() {
       <h1>Loch i boss</h1>
       <p className="muted small">
         Proof-of-concept (patrz README/komentarze w kodzie) - platformy generowane proceduralnie, nie schematem.
-        Przeładowanie działa tylko na PRZYSZŁE generowanie/spawny — już postawione bloki nie są przebudowywane
+        Przeładowanie działa tylko na PRZYSZŁE generowanie/spawny - już postawione bloki nie są przebudowywane
         retroaktywnie. Trofeum bossa (custom-id) zostaje na stałe w kodzie, wymagane przez quest "Pierwszy Loch".
       </p>
 
@@ -301,31 +301,31 @@ export default function DungeonsPage() {
             </label>
             <div className="row">
               <label>
-                Ilość — bazowa
+                Ilość - bazowa
                 <input type="number" value={config.pokoje.iloscBazowa} onChange={(e) => updatePokoje({ iloscBazowa: Number(e.target.value) })} />
               </label>
               <label>
-                Ilość — na pokój
+                Ilość - na pokój
                 <input type="number" value={config.pokoje.iloscNaPokoj} onChange={(e) => updatePokoje({ iloscNaPokoj: Number(e.target.value) })} />
               </label>
             </div>
             <div className="row">
               <label>
-                HP — bazowe
+                HP - bazowe
                 <input type="number" value={config.pokoje.hpBazowe} onChange={(e) => updatePokoje({ hpBazowe: Number(e.target.value) })} />
               </label>
               <label>
-                HP — na pokój
+                HP - na pokój
                 <input type="number" value={config.pokoje.hpNaPokoj} onChange={(e) => updatePokoje({ hpNaPokoj: Number(e.target.value) })} />
               </label>
             </div>
             <div className="row">
               <label>
-                Obrażenia — bazowe
+                Obrażenia - bazowe
                 <input type="number" value={config.pokoje.obrazeniaBazowe} onChange={(e) => updatePokoje({ obrazeniaBazowe: Number(e.target.value) })} />
               </label>
               <label>
-                Obrażenia — na pokój
+                Obrażenia - na pokój
                 <input type="number" value={config.pokoje.obrazeniaNaPokoj} onChange={(e) => updatePokoje({ obrazeniaNaPokoj: Number(e.target.value) })} />
               </label>
             </div>

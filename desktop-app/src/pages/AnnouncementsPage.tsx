@@ -138,7 +138,7 @@ export default function AnnouncementsPage() {
 
   function revertToServer() {
     setConfig(serverConfig);
-    setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
+    setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
   function saveCurrentPresetAs() {
@@ -153,7 +153,7 @@ export default function AnnouncementsPage() {
     const found = findPreset(name);
     if (!found) return;
     setConfig(found);
-    setStatus(`Wczytano preset „${name}" do edycji — kliknij "Wyślij na serwer", żeby go opublikować.`);
+    setStatus(`Wczytano preset „${name}" do edycji - kliknij "Wyślij na serwer", żeby go opublikować.`);
   }
 
   // ---- grupy ----

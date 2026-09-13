@@ -63,7 +63,7 @@ export default function SpawnersPage() {
         await sftpWriteFile(pid, path, serializeSpawnerConfig(DEFAULT_SPAWNER_CONFIG));
         setConfig(DEFAULT_SPAWNER_CONFIG);
         setServerConfig(DEFAULT_SPAWNER_CONFIG);
-        setStatus("spawnery-typy.yml nie istniało — wgrano domyślną wersję. Serwer użyje jej po /@reloadspawnery albo restarcie.");
+        setStatus("spawnery-typy.yml nie istniało - wgrano domyślną wersję. Serwer użyje jej po /@reloadspawnery albo restarcie.");
       }
       setLastUsed(LAST_USED_KEY, { profileId: pid, remotePath: path });
     } catch (e) {
@@ -165,7 +165,7 @@ export default function SpawnersPage() {
 
   function revertToServer() {
     setConfig(serverConfig);
-    setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
+    setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
   function saveCurrentPresetAs() {
@@ -180,7 +180,7 @@ export default function SpawnersPage() {
     const found = findPreset(name);
     if (!found) return;
     setConfig(found);
-    setStatus(`Wczytano preset „${name}" do edycji — kliknij "Wyślij na serwer", żeby go opublikować.`);
+    setStatus(`Wczytano preset „${name}" do edycji - kliknij "Wyślij na serwer", żeby go opublikować.`);
   }
 
   function refetchFromServer() {
@@ -272,7 +272,7 @@ export default function SpawnersPage() {
 
       <p className="muted small">
         ID każdego typu jest zapisywane na już postawionych spawnerach graczy i musi się zgadzać z custom-id w
-        Kreatorze sklepu (kategoria "spawnery") oraz z id w konfiguracji Wysp — zmiana/usunięcie istniejącego ID
+        Kreatorze sklepu (kategoria "spawnery") oraz z id w konfiguracji Wysp - zmiana/usunięcie istniejącego ID
         zepsuje zapisany stan graczy, którzy już go mają.
       </p>
 

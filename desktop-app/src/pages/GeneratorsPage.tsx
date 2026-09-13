@@ -206,7 +206,7 @@ export default function GeneratorsPage() {
       } catch {
         await sftpWriteFile(pid, path, DEFAULT_GENERATORS_YAML);
         text = DEFAULT_GENERATORS_YAML;
-        setStatus("generatory.yml nie istniało — wgrano domyślną wersję. Serwer użyje jej po /@reloadgeneratory albo restarcie.");
+        setStatus("generatory.yml nie istniało - wgrano domyślną wersję. Serwer użyje jej po /@reloadgeneratory albo restarcie.");
       }
       const parsed = parseGeneratorsYaml(text);
       setItems(parsed);
@@ -266,7 +266,7 @@ export default function GeneratorsPage() {
     setItems(serverItems);
     setEditing(EMPTY_GENERATOR);
     setEditingId(null);
-    setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
+    setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
   function saveCurrentPresetAs() {
@@ -281,7 +281,7 @@ export default function GeneratorsPage() {
     const found = findPreset(name);
     if (!found) return;
     setItems(found);
-    setStatus(`Wczytano preset „${name}" do edycji — kliknij "Wyślij na serwer", żeby go opublikować.`);
+    setStatus(`Wczytano preset „${name}" do edycji - kliknij "Wyślij na serwer", żeby go opublikować.`);
   }
 
   function upsertEditing() {
@@ -357,11 +357,11 @@ export default function GeneratorsPage() {
       <Link to="/tools" className="back-link">← Twoje pluginy</Link>
       <h1>Generatory (tier 2-4)</h1>
       <p className="muted">
-        Nowy silnik generatorów mainplugins-quests (generatory.yml) — dodatkowe tiery obok istniejących, nietkniętych
+        Nowy silnik generatorów mainplugins-quests (generatory.yml) - dodatkowe tiery obok istniejących, nietkniętych
         GENERATOR_BRUK_T1/GENERATOR_KRUCHY_T1 (te dwa dalej edytujesz w zakładce „Custom itemy", bo żyją w
         custom-items.yml). Tryb PRZEPUSZCZAJĄCY (rodzina kilofowa) podmienia blok na prawdziwy materiał i integruje
         się z resztą ekonomii kilofa; BEZPOŚREDNI (rodzina łopatowa) sam losuje jeden z „baza-dropy". W obu trybach
-        „bonus-dropy" to niezależne % szansy na dodatkowy, rzadszy surowiec — tu ustawiasz balans per tier.
+        „bonus-dropy" to niezależne % szansy na dodatkowy, rzadszy surowiec - tu ustawiasz balans per tier.
       </p>
 
       <div className="row">
@@ -532,7 +532,7 @@ export default function GeneratorsPage() {
 
           <div className="row">
             <button onClick={upsertEditing} disabled={!profileId}>
-              Zapisz generator (lokalnie — pamiętaj o "Wyślij na serwer")
+              Zapisz generator (lokalnie - pamiętaj o "Wyślij na serwer")
             </button>
             <button
               type="button"

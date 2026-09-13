@@ -1,4 +1,4 @@
-# Pilot: Skrzynki na nowym fundamencie — projekt
+# Pilot: Skrzynki na nowym fundamencie - projekt
 
 Data: 2026-09-13 · Status: zatwierdzony w rozmowie (Karol)
 
@@ -6,13 +6,13 @@ Pierwszy plugin przerobiony od A do Z na fundament z `2026-09-11-fundament-desig
 
 ## 1. Decyzje (Karol, 2026-09-13)
 
-1. **Dowolna liczba skrzynek** — ustawiane w aplikacji. Obecne 3 (Tajemnicza / Otchłanna / DARKSTAR) zostają jako domyślny przykład.
-2. **Klucze (opcja C)** — domyślnie każda skrzynka ma własny klucz, ale właściciel może ustawić, że jeden klucz otwiera kilka skrzynek (przy każdej skrzynce: lista kluczy, które ją otwierają).
-3. **Otwieranie** — tylko skrzynka jako przedmiot (jak dziś: PPM skrzynką w ręce + klucz w ekwipunku → animacja). **Skrzynki postawione na spawnie (blok) — do zrobienia zaraz po pilocie, na koniec prac nad Skrzynkami.**
-4. **Podgląd nagród** — LPM skrzynką w ręce otwiera okno z możliwymi wygranymi i szansą na każdą.
+1. **Dowolna liczba skrzynek** - ustawiane w aplikacji. Obecne 3 (Tajemnicza / Otchłanna / DARKSTAR) zostają jako domyślny przykład.
+2. **Klucze (opcja C)** - domyślnie każda skrzynka ma własny klucz, ale właściciel może ustawić, że jeden klucz otwiera kilka skrzynek (przy każdej skrzynce: lista kluczy, które ją otwierają).
+3. **Otwieranie** - tylko skrzynka jako przedmiot (jak dziś: PPM skrzynką w ręce + klucz w ekwipunku → animacja). **Skrzynki postawione na spawnie (blok) - do zrobienia zaraz po pilocie, na koniec prac nad Skrzynkami.**
+4. **Podgląd nagród** - LPM skrzynką w ręce otwiera okno z możliwymi wygranymi i szansą na każdą.
 5. Animacja „ruletki” jak w CS **zostaje bez zmian**.
 
-## 2. Model danych — `plugins/MainpluginsCrates/crates.yml`
+## 2. Model danych - `plugins/MainpluginsCrates/crates.yml`
 
 ```yaml
 keys:
@@ -49,19 +49,19 @@ crates:
           - key: basic_key
 ```
 
-- **Odwołanie do przedmiotu** (`item`, `icon`) — mapa `{ item: MATERIAL, amount? }` albo `{ custom: ID, amount? }` (katalog itemów core). Dla skrzynki i klucza `name`/`lore` z pliku nakładają się na przedmiot bazowy.
+- **Odwołanie do przedmiotu** (`item`, `icon`) - mapa `{ item: MATERIAL, amount? }` albo `{ custom: ID, amount? }` (katalog itemów core). Dla skrzynki i klucza `name`/`lore` z pliku nakładają się na przedmiot bazowy.
 - **Jedna wygrana = dowolnie wiele nagród** (`rewards:`), w tym kasa, itemy, custom itemy, komendy, skrzynki (`crate: id`) i klucze (`key: id`), z `fallback`/`silent` jak w fundamencie.
 - Kolejność skrzynek w pliku ma znaczenie tylko dla zgodności wstecz (niżej).
 - Domyślny `crates.yml` (tworzony przy pierwszym starcie): 3 obecne skrzynki (`basic`, `abyss`, `darkstar`) z obecnymi pulami przepisanymi na `rewards:`, klucze `basic_key`, `abyss_key`, `darkstar_key` + `universal_key` (otwiera wszystkie 3). Teksty domyślne po angielsku.
 - Stare pliki `crate-rewards*.yml` nie są już czytane (ostrzeżenie w logu, jeśli istnieją). Bez zgodności wstecz formatu (brak klientów).
 
-**Błędy w pliku** — nigdy wyjątek: zła skrzynka/wygrana/klucz → pominięta z ostrzeżeniem (plik + ścieżka). Skrzynka bez żadnej poprawnej wygranej albo bez żadnego istniejącego klucza → pominięta. Waga < 1 → wygrana pominięta.
+**Błędy w pliku** - nigdy wyjątek: zła skrzynka/wygrana/klucz → pominięta z ostrzeżeniem (plik + ścieżka). Skrzynka bez żadnej poprawnej wygranej albo bez żadnego istniejącego klucza → pominięta. Waga < 1 → wygrana pominięta.
 
 ## 3. Działanie w grze
 
 - **PPM** skrzynką w ręce: jeśli w ekwipunku jest dowolny klucz z listy `keys` tej skrzynki → zużywa skrzynkę i jeden taki klucz, animacja, na końcu `RewardService.give(gracz, wygrana.rewards)`. Brak klucza → komunikat, który klucz jest potrzebny.
-- **LPM** skrzynką w ręce: okno podglądu (do 54 pozycji) — ikona każdej wygranej + w opisie „Szansa: X%” (1 miejsce po przecinku). Kliknięcia w oknie zablokowane.
-- **Ogłoszenie** (`announce: true`): `ServerAnnounceEvent("crate-legendary", gracz, {reward, crate})` dla Announcera; bez Announcera — wbudowany broadcast z pliku językowego.
+- **LPM** skrzynką w ręce: okno podglądu (do 54 pozycji) - ikona każdej wygranej + w opisie „Szansa: X%” (1 miejsce po przecinku). Kliknięcia w oknie zablokowane.
+- **Ogłoszenie** (`announce: true`): `ServerAnnounceEvent("crate-legendary", gracz, {reward, crate})` dla Announcera; bez Announcera - wbudowany broadcast z pliku językowego.
 - Przedmioty rozpoznawane po tagach PDC: `crate-id` (tekst) na skrzynce, `key-id` (tekst) na kluczu.
 - **Stare przedmioty** w ekwipunkach (tag tieru 1–3 / stary tag klucza) → traktowane jak `basic`/`abyss`/`darkstar` / `universal_key` (jeśli istnieją).
 
@@ -79,22 +79,22 @@ crates:
 - `/@crate give <gracz> <skrzynka> [ile]`, `/@crate key <gracz> <klucz> [ile]`, `/@crate list`, `/@crate reload` (uprawnienie `mainplugins.crates.admin`, podpowiedzi Tab). Stare `@dajklucz`, `@dajskrzynia`, `@dajskrzynie1-3`, `@reloadcrates` usunięte.
 - Wszystkie teksty dla graczy/adminów w `lang/en.yml` + `lang/pl.yml` pluginu (`LangService.registerDefaults`).
 
-## 6. Aplikacja — edytor Skrzynek + wspólne komponenty
+## 6. Aplikacja - edytor Skrzynek + wspólne komponenty
 
-- **`RewardEditor`** (wspólny) — lista nagród: typ (kasa / item / custom item / komenda / skrzynka / klucz / tytuł), pola zależne od typu, ilość, „bez wiadomości”, nagroda zastępcza (lista nagród, jeden poziom).
-- **`ItemRefPicker`** (wspólny) — zwykły item (lista materiałów) albo custom item (lista z katalogu `items/`), + ilość opcjonalnie.
-- **Edytor Skrzynek** (nowy `CrateEditorPage`, styl jak Custom itemy): z lewej lista skrzynek + zakładka Klucze; w środku wygrane wybranej skrzynki (ikona, nazwa, szansa %); z prawej edycja wygranej (nazwa, ikona, waga, ogłoszenie, `RewardEditor`) albo ustawienia skrzynki (nazwa, wygląd, opis, klucze — wybór wielu). Nowa skrzynka dostaje automatycznie własny klucz. Zapis do `MainpluginsCrates/crates.yml`, jak inne zakładki („Zapisz” lokalnie → „Wyślij na serwer”).
+- **`RewardEditor`** (wspólny) - lista nagród: typ (kasa / item / custom item / komenda / skrzynka / klucz / tytuł), pola zależne od typu, ilość, „bez wiadomości”, nagroda zastępcza (lista nagród, jeden poziom).
+- **`ItemRefPicker`** (wspólny) - zwykły item (lista materiałów) albo custom item (lista z katalogu `items/`), + ilość opcjonalnie.
+- **Edytor Skrzynek** (nowy `CrateEditorPage`, styl jak Custom itemy): z lewej lista skrzynek + zakładka Klucze; w środku wygrane wybranej skrzynki (ikona, nazwa, szansa %); z prawej edycja wygranej (nazwa, ikona, waga, ogłoszenie, `RewardEditor`) albo ustawienia skrzynki (nazwa, wygląd, opis, klucze - wybór wielu). Nowa skrzynka dostaje automatycznie własny klucz. Zapis do `MainpluginsCrates/crates.yml`, jak inne zakładki („Zapisz” lokalnie → „Wyślij na serwer”).
 - Walidacja przed wysłaniem: skrzynka bez wygranych / bez klucza / wygrana bez nagród → ostrzeżenie.
 
 ## 7. Testy
 
 - **Java (JUnit, moduł crates):** parser `crates.yml` (poprawne + błędne wpisy), obliczanie szans, losowanie ważone (z podanym generatorem losowym), mapowanie starych tierów/klucza.
-- **Aplikacja (vitest):** parse/serialize `crates.yml`, parse/serialize listy nagród (w tym fallback i typy pluginów) — w obie strony bez utraty danych.
+- **Aplikacja (vitest):** parse/serialize `crates.yml`, parse/serialize listy nagród (w tym fallback i typy pluginów) - w obie strony bez utraty danych.
 - **Ręcznie na serwerze testowym:** skrzynka z własnym kluczem i z uniwersalnym, podgląd LPM, każda z typów nagród w wygranej, ogłoszenie, `/@crate` komendy, stara skrzynka z ekwipunku, nagroda questu dająca skrzynkę (stara metoda), edycja w aplikacji → wysłanie → `/@crate reload`.
 - Po zmianach: podmiana jarów wbudowanych w aplikację.
 
 ## 8. Poza zakresem pilotu
 
-- Skrzynki postawione na spawnie (blok) — **następny krok po pilocie**.
+- Skrzynki postawione na spawnie (blok) - **następny krok po pilocie**.
 - Przerabianie innych pluginów na typy `crate`/`key`.
 - Stronicowanie podglądu powyżej 54 wygranych.

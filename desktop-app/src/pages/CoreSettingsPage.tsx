@@ -103,7 +103,7 @@ export default function CoreSettingsPage() {
         hints.push("komendy: zrestartuj serwer");
       }
       setServer((s) => ({ ...s, language, economy, commands }));
-      setStatus(`Wysłano na serwer. Żeby zadziałało — ${hints.join("; ")}.`);
+      setStatus(`Wysłano na serwer. Żeby zadziałało - ${hints.join("; ")}.`);
     } catch (e) {
       setStatus(String(e));
     } finally {

@@ -25,7 +25,7 @@ function formatSize(bytes: number): string {
   return `${(bytes / 1024).toFixed(0)} KB`;
 }
 function formatTime(unixSeconds: number): string {
-  if (!unixSeconds) return "—";
+  if (!unixSeconds) return "-";
   return new Date(unixSeconds * 1000).toLocaleString("pl-PL");
 }
 
@@ -128,7 +128,7 @@ export default function DeployPage() {
       setStatus("Build zakończony.");
     } catch (e) {
       setBuildOutput(String(e));
-      setStatus("Build nie powiódł się — patrz log poniżej.");
+      setStatus("Build nie powiódł się - patrz log poniżej.");
     } finally {
       setBusy(false);
     }

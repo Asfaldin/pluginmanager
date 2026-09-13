@@ -248,7 +248,7 @@ export default function SpawnWarpsPage() {
     setEditingWarpIndex(null);
     setEditingArea(EMPTY_AREA);
     setEditingAreaIndex(null);
-    setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
+    setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
   // Local presets are a separate, opt-in safety net on top of the draft -
@@ -269,7 +269,7 @@ export default function SpawnWarpsPage() {
     setSpawnPoint(found.spawnPoint);
     setWarps(found.warps);
     setAreas(found.areas);
-    setStatus(`Wczytano preset „${name}" do edycji — kliknij "Wyślij na serwer", żeby go opublikować.`);
+    setStatus(`Wczytano preset „${name}" do edycji - kliknij "Wyślij na serwer", żeby go opublikować.`);
   }
 
   function upsertWarp() {
@@ -322,7 +322,7 @@ export default function SpawnWarpsPage() {
       <h1>Spawn, warpy i obszary</h1>
       <p className="muted">
         Edytuje spawn.yml, warps.yml i obszary.yml mainplugins-spawn bezpośrednio na serwerze. Ten plugin nie ma
-        komendy reload — zmiany zadziałają po restarcie serwera.
+        komendy reload - zmiany zadziałają po restarcie serwera.
       </p>
 
       <div className="row">
@@ -424,7 +424,7 @@ export default function SpawnWarpsPage() {
                   />
                 </label>
               </div>
-              <p className="muted small">Zmiany zapisują się lokalnie od razu — pamiętaj kliknąć "Wyślij na serwer" u góry.</p>
+              <p className="muted small">Zmiany zapisują się lokalnie od razu - pamiętaj kliknąć "Wyślij na serwer" u góry.</p>
             </div>
           )}
 
@@ -508,7 +508,7 @@ export default function SpawnWarpsPage() {
                   </label>
                 </div>
                 <div className="row">
-                  <button onClick={upsertWarp}>Zapisz warp (lokalnie — pamiętaj o "Wyślij na serwer")</button>
+                  <button onClick={upsertWarp}>Zapisz warp (lokalnie - pamiętaj o "Wyślij na serwer")</button>
                   <button
                     type="button"
                     onClick={() => {
@@ -631,7 +631,7 @@ export default function SpawnWarpsPage() {
                   </label>
                 </div>
                 <div className="row">
-                  <button onClick={upsertArea}>Zapisz obszar (lokalnie — pamiętaj o "Wyślij na serwer")</button>
+                  <button onClick={upsertArea}>Zapisz obszar (lokalnie - pamiętaj o "Wyślij na serwer")</button>
                   <button
                     type="button"
                     onClick={() => {

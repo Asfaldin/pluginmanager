@@ -99,12 +99,12 @@ export default function SlotGrid({ content, size = 54, editable, iconPackDir, on
                 ? occupied
                   ? isPickedUp
                     ? "Kliknij ponownie, żeby anulować"
-                    : `${c!.label} — kliknij, żeby podnieść (slot ${i})`
+                    : `${c!.label} - kliknij, żeby podnieść (slot ${i})`
                   : pickedUp !== null
                     ? `Kliknij, żeby tu przenieść (slot ${i})`
                     : `Kliknij, żeby dodać nowy slot (slot ${i})`
                 : c
-                  ? `${c.label}${c.sublabel ? " — " + c.sublabel : ""} (slot ${i})`
+                  ? `${c.label}${c.sublabel ? " - " + c.sublabel : ""} (slot ${i})`
                   : `pusty (slot ${i})`
             }
           >

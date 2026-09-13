@@ -1,4 +1,4 @@
-# Foundation Plan 2 — Compatibility: PlaceholderAPI, Vault, commands
+# Foundation Plan 2 - Compatibility: PlaceholderAPI, Vault, commands
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -531,7 +531,7 @@ cd "D:\folder z mc"; git add mainplugins-core/src/main/java/elo/mainplugins/core
 
 ---
 
-### Task 3: VaultBackedEconomy (pure) — our plugins on someone else's money
+### Task 3: VaultBackedEconomy (pure) - our plugins on someone else's money
 
 **Files:**
 - Create: `mainplugins-core/src/main/java/elo/mainplugins/core/economy/BalanceBackend.java`
@@ -757,7 +757,7 @@ cd "D:\folder z mc"; git add mainplugins-core/src/main/java/elo/mainplugins/core
 
 ---
 
-### Task 4: Vault hook — both directions + `economy:` setting
+### Task 4: Vault hook - both directions + `economy:` setting
 
 **Files:**
 - Create: `mainplugins-core/src/main/java/elo/mainplugins/core/economy/VaultEconomyProvider.java`

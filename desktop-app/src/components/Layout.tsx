@@ -60,7 +60,7 @@ export default function Layout() {
         <div className="sidebar-server-picker">
           <label className="muted small">Aktywny serwer</label>
           <select value={activeProfileId} onChange={(e) => setActiveProfileId(e.target.value)}>
-            <option value="">— wybierz —</option>
+            <option value="">- wybierz -</option>
             {profiles.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}

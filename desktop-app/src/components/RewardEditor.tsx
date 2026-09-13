@@ -40,7 +40,7 @@ export default function RewardEditor(props: Props) {
 
   return (
     <div>
-      {value.length === 0 && <p className="muted small">Brak nagród — dodaj co najmniej jedną.</p>}
+      {value.length === 0 && <p className="muted small">Brak nagród - dodaj co najmniej jedną.</p>}
       {value.map((r, i) => (
         <div key={i} className="card" style={{ padding: "0.6rem", marginBottom: "0.5rem" }}>
           <div className="row">

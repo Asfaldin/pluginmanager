@@ -1,4 +1,4 @@
-# Fundament: ustawialne i zgodne pluginy — projekt
+# Fundament: ustawialne i zgodne pluginy - projekt
 
 Data: 2026-09-11 · Status: zatwierdzony
 

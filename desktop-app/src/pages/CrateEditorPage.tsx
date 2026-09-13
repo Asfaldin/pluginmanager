@@ -107,7 +107,7 @@ const ALL_COMMANDS: { cmd: string; what: string }[] = [
   { cmd: "/@crate give <gracz> <skrzynka> 1", what: "daje graczowi skrzynkę (ostatnia liczba = ile sztuk)" },
   { cmd: "/@crate key <gracz> <klucz> 1", what: "daje graczowi klucz" },
   { cmd: "/@crate place <skrzynka>", what: "blok, na który patrzysz, staje się tą skrzynką (np. na spawnie)" },
-  { cmd: "/@crate remove", what: "patrzysz na postawioną skrzynkę — wraca do zwykłego bloku" },
+  { cmd: "/@crate remove", what: "patrzysz na postawioną skrzynkę - wraca do zwykłego bloku" },
   { cmd: "/@crate list", what: "lista skrzynek, kluczy i miejsc, gdzie stoją skrzynki" },
   { cmd: "/@crate reload", what: "wczytuje skrzynki od nowa (aplikacja robi to sama po „Wyślij na serwer”)" },
 ];
@@ -125,7 +125,7 @@ function CrateCommandsModal({ file, onClose }: { file: CratesFile; onClose: () =
         </div>
         <p className="muted small">
           Dla admina (uprawnienie mainplugins.crates.admin). W konsoli serwera wpisuj bez „/” na początku. Zamiast
-          &lt;gracz&gt; wpisz nick, zamiast &lt;skrzynka&gt;/&lt;klucz&gt; — ID z list niżej.
+          &lt;gracz&gt; wpisz nick, zamiast &lt;skrzynka&gt;/&lt;klucz&gt; - ID z list niżej.
         </p>
         <div className="ci-protip">
           {ALL_COMMANDS.map((c) => (
@@ -359,7 +359,7 @@ export default function CrateEditorPage() {
           commands={[
             { cmd: `/@crate give <gracz> ${c.id} 1`, what: "daje graczowi skrzynkę" },
             { cmd: `/@crate place ${c.id}`, what: "blok, na który patrzysz, staje się tą skrzynką" },
-            { cmd: "/@crate remove", what: "patrzysz na postawioną skrzynkę — wraca do zwykłego bloku" },
+            { cmd: "/@crate remove", what: "patrzysz na postawioną skrzynkę - wraca do zwykłego bloku" },
           ]}
         />
         <Fold title="Nazwa i wygląd" open>
@@ -791,7 +791,7 @@ export default function CrateEditorPage() {
               </button>
             </>
           )}
-          {!view && <p className="muted">{profileId ? "Brak skrzynek — dodaj pierwszą." : "Wybierz serwer, żeby wczytać skrzynki."}</p>}
+          {!view && <p className="muted">{profileId ? "Brak skrzynek - dodaj pierwszą." : "Wybierz serwer, żeby wczytać skrzynki."}</p>}
         </section>
 
         <section className="card form ci-editor">

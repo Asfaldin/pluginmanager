@@ -839,7 +839,7 @@ export default function ItemBuilderPage() {
     setQuickEditCategoryId(null);
     setPickedUpItemIndex(null);
     setPickedUpCategorySlot(null);
-    setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
+    setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
   // Local presets are a separate, opt-in safety net on top of the draft -
@@ -861,7 +861,7 @@ export default function ItemBuilderPage() {
     if (found.guiContent) setGuiContent(found.guiContent);
     setCategoryMeta(found.categoryMeta);
     setItems(found.items);
-    setStatus(`Wczytano preset „${name}" do edycji — kliknij "Wyślij na serwer", żeby go opublikować.`);
+    setStatus(`Wczytano preset „${name}" do edycji - kliknij "Wyślij na serwer", żeby go opublikować.`);
   }
 
   function upsertEditing() {
@@ -934,11 +934,11 @@ export default function ItemBuilderPage() {
       <ToolbarMore>
         <p className="muted small">
           Ikonki materiałów: {iconPackDir ? `${allMaterials.length} dostępnych` : "ładowanie bazy Vanilla..."}
-          {" — "}
+          {" - "}
           <button type="button" onClick={refreshVanillaBase} disabled={busy}>
             Odśwież bazę Vanilla
           </button>
-          {" — "}
+          {" - "}
           <button
             type="button"
             onClick={() => {
@@ -1049,13 +1049,13 @@ export default function ItemBuilderPage() {
                 {!layoutEditMode && (
                   <p className="muted small">
                     {pickedUpCategorySlot !== null
-                      ? "Kategoria podniesiona — kliknij inne pole, żeby ją tam przenieść (albo kliknij ikonę przesunięcia na niej jeszcze raz, żeby anulować)."
-                      : "Kliknij kategorię, żeby wejść do jej Strony kategorii, ikona przesunięcia w rogu — żeby ją przenieść, prawy klik — szybka edycja nazwy/ikony. \"+\" na pustym polu dodaje nową kategorię."}
+                      ? "Kategoria podniesiona - kliknij inne pole, żeby ją tam przenieść (albo kliknij ikonę przesunięcia na niej jeszcze raz, żeby anulować)."
+                      : "Kliknij kategorię, żeby wejść do jej Strony kategorii, ikona przesunięcia w rogu - żeby ją przenieść, prawy klik - szybka edycja nazwy/ikony. \"+\" na pustym polu dodaje nową kategorię."}
                   </p>
                 )}
                 {quickEditCategoryId && (
                   <div className="card form" style={{ marginBottom: "0.75rem" }}>
-                    <h2>Szybka edycja — {quickEditCategoryId}</h2>
+                    <h2>Szybka edycja - {quickEditCategoryId}</h2>
                     {categoryIdFromPath(remotePath) !== quickEditCategoryId ? (
                       <p className="muted small">Wczytywanie...</p>
                     ) : (
@@ -1100,7 +1100,7 @@ export default function ItemBuilderPage() {
                 <h2>Kolejność kategorii ({guiContent.categoryOrder.length})</h2>
                 <p className="muted small">
                   i-ty CATEGORY_SLOT w Menu głównym → i-ta pozycja z tej listy. Kategoria z plikiem na dysku, ale
-                  spoza tej listy, nadal działa — po prostu nie ma własnej ikony w menu głównym.
+                  spoza tej listy, nadal działa - po prostu nie ma własnej ikony w menu głównym.
                 </p>
                 <div className="card-grid">
                   {guiContent.categoryOrder.map((id, index) => (
@@ -1161,13 +1161,13 @@ export default function ItemBuilderPage() {
 
               <div className="two-col two-col-grid-wide">
                 <div className="card">
-                  <h2>Strona kategorii {layoutEditMode ? "" : `— ${categoryMeta.name || "?"}`}</h2>
+                  <h2>Strona kategorii {layoutEditMode ? "" : `- ${categoryMeta.name || "?"}`}</h2>
                   {!layoutEditMode && (
                     <>
                       <p className="muted small">
                         {pickedUpItemIndex !== null
-                          ? "Przedmiot podniesiony — kliknij inny, żeby zamienić miejscami, albo dowolne puste pole, żeby przenieść na koniec."
-                          : "Kliknij przedmiot, żeby go edytować, ikona przesunięcia w rogu — żeby go przenieść, \"+ Dodaj\" na pustym polu dodaje nowy. Kolejność tu = realna pozycja w grze (pole \"slot\" w pliku nie jest czytane przez wtyczkę)."}
+                          ? "Przedmiot podniesiony - kliknij inny, żeby zamienić miejscami, albo dowolne puste pole, żeby przenieść na koniec."
+                          : "Kliknij przedmiot, żeby go edytować, ikona przesunięcia w rogu - żeby go przenieść, \"+ Dodaj\" na pustym polu dodaje nowy. Kolejność tu = realna pozycja w grze (pole \"slot\" w pliku nie jest czytane przez wtyczkę)."}
                       </p>
                       {itemTotalPages > 1 && (
                         <div className="row">
@@ -1289,8 +1289,8 @@ export default function ItemBuilderPage() {
                     </label>
                   </div>
                   <p className="muted small">
-                    Ceny muszą być liczbami całkowitymi — plugin obcina ułamki. "Cena kupna" to cena za CAŁY lot
-                    ({editing.amount} szt.), nie za sztukę — w grze gracz zobaczy{" "}
+                    Ceny muszą być liczbami całkowitymi - plugin obcina ułamki. "Cena kupna" to cena za CAŁY lot
+                    ({editing.amount} szt.), nie za sztukę - w grze gracz zobaczy{" "}
                     <strong>{buyPricePerUnit(editing)}$ za szt.</strong>
                   </p>
 
@@ -1301,7 +1301,7 @@ export default function ItemBuilderPage() {
 
                   <div className="row">
                     <button onClick={upsertEditing} disabled={!profileId}>
-                      Zapisz pozycję (lokalnie — pamiętaj o "Wyślij na serwer")
+                      Zapisz pozycję (lokalnie - pamiętaj o "Wyślij na serwer")
                     </button>
                     {editingIndex != null && (
                       <button type="button" onClick={() => removeItem(editingIndex)} disabled={busy}>
@@ -1380,7 +1380,7 @@ export default function ItemBuilderPage() {
                         </div>
                         {stats && (
                           <div className="muted small">
-                            Sprzedano łącznie: {stats.sztukLacznie} szt. / {stats.wyplaconoLacznie}$ — dziś: {stats.sztukDzis} szt.
+                            Sprzedano łącznie: {stats.sztukLacznie} szt. / {stats.wyplaconoLacznie}$ - dziś: {stats.sztukDzis} szt.
                           </div>
                         )}
                         <MultiplierControl
@@ -1402,7 +1402,7 @@ export default function ItemBuilderPage() {
               <div className="card">
                 <h2>Statystyki sprzedaży (cały sklep)</h2>
                 <p className="muted small">
-                  Dane z statystyki-sklepu.yml (zbierane przez serwer od zawsze), dla wszystkich kategorii naraz —
+                  Dane z statystyki-sklepu.yml (zbierane przez serwer od zawsze), dla wszystkich kategorii naraz -
                   tylko podgląd sprzedaży, ale mnożnik ceny obok każdego itemu wyżej można zmienić na żywo.
                 </p>
                 <div className="row">
@@ -1416,7 +1416,7 @@ export default function ItemBuilderPage() {
                   </button>
                 </div>
                 {salesStats.length === 0 ? (
-                  <p className="muted small">Brak danych — jeszcze nikt nic nie sprzedał do sklepu na tym serwerze.</p>
+                  <p className="muted small">Brak danych - jeszcze nikt nic nie sprzedał do sklepu na tym serwerze.</p>
                 ) : (
                   <div className="build-log">
                     <table className="data-table">

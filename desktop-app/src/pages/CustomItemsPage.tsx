@@ -185,7 +185,7 @@ export default function CustomItemsPage() {
   function revertToServer() {
     setItems(serverItems);
     newItem();
-    setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
+    setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
   function saveCurrentPresetAs() {
@@ -200,7 +200,7 @@ export default function CustomItemsPage() {
     const found = findPreset(name);
     if (!found) return;
     setItems(found.map(normalizeEntry));
-    setStatus(`Wczytano preset „${name}" do edycji — kliknij "Wyślij na serwer", żeby go opublikować.`);
+    setStatus(`Wczytano preset „${name}" do edycji - kliknij "Wyślij na serwer", żeby go opublikować.`);
   }
 
   function newItem() {
@@ -384,7 +384,7 @@ export default function CustomItemsPage() {
 
       <ToolbarMore>
         <div className="row">
-          <span className="muted small">Folder: {pluginsPath ? itemsDir(pluginsPath) : "—"}</span>
+          <span className="muted small">Folder: {pluginsPath ? itemsDir(pluginsPath) : "-"}</span>
           <button onClick={() => load()} disabled={!profileId || busy}>
             Wczytaj ponownie
           </button>
@@ -414,7 +414,7 @@ export default function CustomItemsPage() {
       {status && <p className="status">{status}</p>}
       {dups.size > 0 && (
         <p className="error">
-          To samo ID jest w kilku kategoriach — plugin użyje tylko pierwszego (alfabetycznie wg pliku). Zmień ID albo usuń
+          To samo ID jest w kilku kategoriach - plugin użyje tylko pierwszego (alfabetycznie wg pliku). Zmień ID albo usuń
           duplikat.
         </p>
       )}
@@ -483,7 +483,7 @@ export default function CustomItemsPage() {
             <input value={editing.id} onChange={(e) => setEditing({ ...editing, id: e.target.value })} />
           </label>
           <label>
-            Nazwa (opcjonalnie — bez tego item ma domyślną nazwę materiału)
+            Nazwa (opcjonalnie - bez tego item ma domyślną nazwę materiału)
             <MinecraftTextInput
               value={editing.name}
               onChange={(v) => setEditing({ ...editing, name: v })}
@@ -585,7 +585,7 @@ export default function CustomItemsPage() {
           </div>
 
           <details className="ci-section">
-            <summary className="ci-section-title">Zaawansowane — własny model z resource packa</summary>
+            <summary className="ci-section-title">Zaawansowane - własny model z resource packa</summary>
             <label>
               Referencja modelu (namespace:ścieżka, bez .json)
               <input

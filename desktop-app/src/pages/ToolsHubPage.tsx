@@ -57,25 +57,25 @@ const TOOL_GROUPS: ToolGroup[] = [
       {
         to: "/customitems",
         title: "Custom itemy",
-        description: "Własne przedmioty z nazwą, opisem i enchantami — do sklepu, skrzynek, questów i nagród.",
+        description: "Własne przedmioty z nazwą, opisem i enchantami - do sklepu, skrzynek, questów i nagród.",
         icon: Gem,
       },
       {
         to: "/crates",
         title: "Skrzynie (crates)",
-        description: "Twoje skrzynki: wygląd, klucze (własne albo wspólne) i wygrane — pieniądze, itemy, klucze i więcej.",
+        description: "Twoje skrzynki: wygląd, klucze (własne albo wspólne) i wygrane - pieniądze, itemy, klucze i więcej.",
         icon: Gift,
       },
       {
         to: "/evolvingtools",
         title: "Ewoluujące narzędzia",
-        description: "Poziomy, enczanty, kamienie milowe z efektami i custom staty — na wzór Kilofa Niflheim, w pełni z YAML.",
+        description: "Poziomy, enczanty, kamienie milowe z efektami i custom staty - na wzór Kilofa Niflheim, w pełni z YAML.",
         icon: Axe,
       },
       {
         to: "/generators",
         title: "Generatory (tier 2-4)",
-        description: "Nowe tiery generatorów bruku/piasku — materiał, odnowa, tabela dropów z % szansy per surowiec.",
+        description: "Nowe tiery generatorów bruku/piasku - materiał, odnowa, tabela dropów z % szansy per surowiec.",
         icon: Boxes,
       },
       {
@@ -110,7 +110,7 @@ const TOOL_GROUPS: ToolGroup[] = [
       {
         to: "/quests",
         title: "Questy",
-        description: "Pełny, klikalny podgląd i edytor menu questów — dokładnie jak w grze.",
+        description: "Pełny, klikalny podgląd i edytor menu questów - dokładnie jak w grze.",
         icon: ScrollText,
       },
       {
@@ -145,13 +145,13 @@ const TOOL_GROUPS: ToolGroup[] = [
       {
         to: "/spawn",
         title: "Spawn, warpy, obszary",
-        description: "Punkt spawnu, warpy i chronione obszary — edycja bez wychodzenia z gry.",
+        description: "Punkt spawnu, warpy i chronione obszary - edycja bez wychodzenia z gry.",
         icon: Compass,
       },
       {
         to: "/menu",
         title: "Główne Menu Serwera",
-        description: "Układ /menu — ikony, nazwy, opisy i komendy przycisków, klikalny podgląd jak w grze.",
+        description: "Układ /menu - ikony, nazwy, opisy i komendy przycisków, klikalny podgląd jak w grze.",
         icon: LayoutGrid,
       },
       {

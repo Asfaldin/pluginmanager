@@ -67,7 +67,7 @@ export default function MenuGuiPage() {
         await sftpWriteFile(pid, path, serializeMenuGuiContent(DEFAULT_MENU_GUI));
         setContent(DEFAULT_MENU_GUI);
         setServerContent(DEFAULT_MENU_GUI);
-        setStatus("menu-gui.yml nie istniało — wgrano domyślną wersję. Serwer użyje jej po /@reloadmenu albo restarcie.");
+        setStatus("menu-gui.yml nie istniało - wgrano domyślną wersję. Serwer użyje jej po /@reloadmenu albo restarcie.");
       }
       setLastUsed(LAST_USED_KEY, { profileId: pid, remotePath: path });
     } catch (e) {
@@ -211,7 +211,7 @@ export default function MenuGuiPage() {
     setContent(serverContent);
     closeEditor();
     setPickedUpSlot(null);
-    setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
+    setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
   function saveCurrentPresetAs() {
@@ -226,7 +226,7 @@ export default function MenuGuiPage() {
     const found = findPreset(name);
     if (!found) return;
     setContent(found);
-    setStatus(`Wczytano preset „${name}" do edycji — kliknij "Wyślij na serwer", żeby go opublikować.`);
+    setStatus(`Wczytano preset „${name}" do edycji - kliknij "Wyślij na serwer", żeby go opublikować.`);
   }
 
   function refetchFromServer() {
@@ -323,8 +323,8 @@ export default function MenuGuiPage() {
       {content && (
         <>
           <p className="muted small">
-            Kliknij przycisk, żeby go edytować (ikona/nazwa/opis/komenda), ikona przesunięcia w rogu — żeby przenieść na inny slot. "+"
-            na pustym polu dodaje nowy przycisk. Każdy przycisk woła dowolną komendę Bukkita po kliknięciu — to
+            Kliknij przycisk, żeby go edytować (ikona/nazwa/opis/komenda), ikona przesunięcia w rogu - żeby przenieść na inny slot. "+"
+            na pustym polu dodaje nowy przycisk. Każdy przycisk woła dowolną komendę Bukkita po kliknięciu - to
             jedyny sposób, w jaki menu łączy się z resztą pluginów (żaden na stałe wpisany w serwer, w przeciwieństwie
             do np. wysp).
           </p>
@@ -393,12 +393,12 @@ export default function MenuGuiPage() {
                     <input value={editing.komenda} onChange={(e) => setEditing({ ...editing, komenda: e.target.value })} placeholder="np. sklep zmenu" />
                   </label>
                   <p className="muted small">
-                    "zmenu" na końcu to konwencja z MenuBridge (mainplugins-core) — mówi docelowej komendzie, że
+                    "zmenu" na końcu to konwencja z MenuBridge (mainplugins-core) - mówi docelowej komendzie, że
                     otwarto ją z /menu (np. żeby wiedziała pokazać przycisk powrotu).
                   </p>
                   <div className="row">
                     <button type="button" onClick={saveEditor}>
-                      Zapisz przycisk (lokalnie — pamiętaj o "Wyślij na serwer")
+                      Zapisz przycisk (lokalnie - pamiętaj o "Wyślij na serwer")
                     </button>
                     {!editingIsNew && (
                       <button type="button" onClick={() => removeButtonAt(editing.slot)}>

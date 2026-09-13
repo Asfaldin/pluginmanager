@@ -37,7 +37,7 @@ const SCREEN_LABELS: Record<ScreenKey, string> = {
   topkaWysp: "Topka Wysp",
   ulepszeniaWyspy: "Ulepszenia",
   ulepszenieSpawnerow: "Ulepszenie Spawnerów",
-  spawnerPodmenu: "Spawner — podmenu",
+  spawnerPodmenu: "Spawner - podmenu",
   czlonkowieWyspy: "Członkowie Wyspy",
 };
 
@@ -119,7 +119,7 @@ export default function IslandsPage() {
         await sftpWriteFile(pid, gui, serializeIslandGuiContent(DEFAULT_ISLAND_GUI));
         setGuiContent(DEFAULT_ISLAND_GUI);
         setServerGuiContent(DEFAULT_ISLAND_GUI);
-        notices.push("wyspy-gui.yml nie istniało — wgrano domyślną wersję");
+        notices.push("wyspy-gui.yml nie istniało - wgrano domyślną wersję");
       }
       try {
         const cfgText = await sftpReadFile(pid, cfgPath);
@@ -130,7 +130,7 @@ export default function IslandsPage() {
         await sftpWriteFile(pid, cfgPath, serializeIslandConfig(DEFAULT_ISLAND_CONFIG));
         setConfig(DEFAULT_ISLAND_CONFIG);
         setServerConfig(DEFAULT_ISLAND_CONFIG);
-        notices.push("wyspy-config.yml nie istniało — wgrano domyślną wersję");
+        notices.push("wyspy-config.yml nie istniało - wgrano domyślną wersję");
       }
       if (notices.length > 0) setStatus(notices.join("; ") + ". Serwer użyje ich po /@reloadwyspy albo restarcie.");
     } catch (e) {
@@ -211,7 +211,7 @@ export default function IslandsPage() {
     setConfig(serverConfig);
     setEditingButton(null);
     setPickedUpSlot(null);
-    setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
+    setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
   // Local presets are a separate, opt-in safety net on top of the draft -
@@ -234,7 +234,7 @@ export default function IslandsPage() {
     if (!found) return;
     setGuiContent(found.guiContent);
     setConfig(found.config);
-    setStatus(`Wczytano preset „${name}" do edycji — kliknij "Wyślij na serwer", żeby go opublikować.`);
+    setStatus(`Wczytano preset „${name}" do edycji - kliknij "Wyślij na serwer", żeby go opublikować.`);
   }
 
   function refetchFromServer() {
@@ -385,9 +385,9 @@ export default function IslandsPage() {
           </div>
 
           <p className="muted small">
-            Kliknij przycisk, żeby go edytować (nazwa/ikona/kolor/opis), ikona przesunięcia w rogu — żeby przenieść na inny slot
+            Kliknij przycisk, żeby go edytować (nazwa/ikona/kolor/opis), ikona przesunięcia w rogu - żeby przenieść na inny slot
             (identyfikator akcji zostaje ten sam, więc obsługa kliknięcia w grze idzie razem z nim). "Akcja" pod
-            spodem to na stałe wpisane zachowanie po stronie serwera — jej nie da się zmienić z poziomu apki.
+            spodem to na stałe wpisane zachowanie po stronie serwera - jej nie da się zmienić z poziomu apki.
           </p>
 
           <ToolbarMore>
@@ -405,11 +405,11 @@ export default function IslandsPage() {
               </button>
             </div>
             <p className="muted small">
-              Preset obejmuje CAŁY układ GUI i konfigurację naraz. "Zapisz obecny jako..." tworzy lokalną kopię —
+              Preset obejmuje CAŁY układ GUI i konfigurację naraz. "Zapisz obecny jako..." tworzy lokalną kopię -
               możesz mieć kilka wersji i przełączać się między nimi. "Wczytaj do edycji" podmienia obecny szkic na
               wybrany preset (dalej trzeba kliknąć główny przycisk "Wyślij na serwer" u góry, żeby go opublikować).
               "Pobierz aktualny z serwera" wczytuje od nowa to, co faktycznie jest teraz na serwerze (przydatne,
-              jeśli ktoś zmienił plik poza aplikacją) — odrzuca niewysłane zmiany.
+              jeśli ktoś zmienił plik poza aplikacją) - odrzuca niewysłane zmiany.
             </p>
           </ToolbarMore>
 
@@ -456,7 +456,7 @@ export default function IslandsPage() {
                       value={editing.kolor ?? ""}
                       onChange={(e) => updateButton(activeScreen, editing.akcja, { kolor: e.target.value || undefined })}
                     >
-                      <option value="">(domyślny — YELLOW)</option>
+                      <option value="">(domyślny - YELLOW)</option>
                       {KOLORY.map((k) => (
                         <option key={k} value={k}>
                           {k}
@@ -474,7 +474,7 @@ export default function IslandsPage() {
                     />
                   </label>
                   <label>
-                    Ikona w stanie wyłączonym (opcjonalnie — tylko przełączniki wł/wył)
+                    Ikona w stanie wyłączonym (opcjonalnie - tylko przełączniki wł/wył)
                     <MaterialField
                       datalistId="materials"
                       iconPackDir={iconPackDir}
@@ -655,7 +655,7 @@ function IslandConfigForm({
       </div>
 
       <div className="card">
-        <h2>Teleport — bezpieczeństwo</h2>
+        <h2>Teleport - bezpieczeństwo</h2>
         <label>
           Maks. głębokość szukania gruntu w dół
           <input
@@ -757,7 +757,7 @@ function IslandConfigForm({
       </div>
 
       <div className="card">
-        <h2>Spawnery — typy ({config.spawnery.typy.length})</h2>
+        <h2>Spawnery - typy ({config.spawnery.typy.length})</h2>
         <label>
           Maksymalny poziom
           <input type="number" value={config.spawnery.maxPoziom} onChange={(e) => set("spawnery", { maxPoziom: Number(e.target.value) })} />
@@ -787,7 +787,7 @@ function IslandConfigForm({
                 <input type="number" value={t.cenaWSklepie} onChange={(e) => updateSpawnerType(i, { cenaWSklepie: Number(e.target.value) })} />
               </label>
               <p className="muted small">
-                Musi się zgadzać z buy-price w categories/spawnery.yml (Kreator sklepu) — nic ich nie synchronizuje automatycznie.
+                Musi się zgadzać z buy-price w categories/spawnery.yml (Kreator sklepu) - nic ich nie synchronizuje automatycznie.
               </p>
             </div>
           ))}
@@ -796,7 +796,7 @@ function IslandConfigForm({
 
       {(["kosztBazowyIlosc", "kosztBazowySzybkosc"] as const).map((curveKey) => (
         <div className="card" key={curveKey}>
-          <h2>{curveKey === "kosztBazowyIlosc" ? "Koszt ulepszenia — Ilość" : "Koszt ulepszenia — Szybkość"}</h2>
+          <h2>{curveKey === "kosztBazowyIlosc" ? "Koszt ulepszenia - Ilość" : "Koszt ulepszenia - Szybkość"}</h2>
           <p className="muted small">Koszt awansu Z danego poziomu NA kolejny, przed przemnożeniem przez cenę typu spawnera.</p>
           {Object.entries(config.spawnery[curveKey].poziomy).map(([level, cost]) => (
             <div key={level} className="row">

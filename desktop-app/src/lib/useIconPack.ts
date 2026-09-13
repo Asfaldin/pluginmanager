@@ -33,7 +33,7 @@ export function useIconPack(onStatus?: (msg: string) => void) {
     try {
       const result = await rpDownloadVanillaAssets("", cacheDir);
       selectIconPack(cacheDir);
-      onStatus?.(`Baza Vanilla gotowa (${result.files_extracted} plików) — ikonki materiałów działają automatycznie, w każdym edytorze.`);
+      onStatus?.(`Baza Vanilla gotowa (${result.files_extracted} plików) - ikonki materiałów działają automatycznie, w każdym edytorze.`);
     } catch (e) {
       onStatus?.(`Nie udało się pobrać bazy Vanilla: ${String(e)}`);
     }

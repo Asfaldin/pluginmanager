@@ -43,7 +43,7 @@ interface GuiTexture {
 
 // Standardowe (vanilla) wymiary teł GUI kontenerów. Jeśli coś wygląda źle po
 // wgraniu do gry, użyj "Wyczyść tło z pliku" na prawdziwej teksturze zamiast
-// generować pustą — to gwarantuje poprawne wymiary.
+// generować pustą - to gwarantuje poprawne wymiary.
 const GUI_TEXTURES: GuiTexture[] = [
   {
     key: "generic",
@@ -465,7 +465,7 @@ export default function ResourcePackPage() {
       <Link to="/tools" className="back-link">← Twoje pluginy</Link>
       <h1>Resource Pack</h1>
       <p className="muted">
-        Edytor tekstur GUI — np. usunięcie tła w menu skrzynkowym (chest GUI) używanym przez pluginy menu.
+        Edytor tekstur GUI - np. usunięcie tła w menu skrzynkowym (chest GUI) używanym przez pluginy menu.
       </p>
 
       <div className="card form">

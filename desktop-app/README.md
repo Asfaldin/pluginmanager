@@ -14,16 +14,16 @@ npm run tauri dev
 
 ## Sekcje aplikacji
 
-- **Workspace** — dwa tryby skanowania w poszukiwaniu `plugin.yml` (luzem albo spakowanego wewnątrz `.jar`):
-  - *Lokalnie* — wskazujesz folder z projektami (np. `IdeaProjects`) lub z zbudowanymi `.jar`-ami.
-  - *Serwer (SFTP)* — skanuje zdalny folder `plugins` bezpośrednio na serwerze. Przydatne, gdy `plugin.yml` powstaje
+- **Workspace** - dwa tryby skanowania w poszukiwaniu `plugin.yml` (luzem albo spakowanego wewnątrz `.jar`):
+  - *Lokalnie* - wskazujesz folder z projektami (np. `IdeaProjects`) lub z zbudowanymi `.jar`-ami.
+  - *Serwer (SFTP)* - skanuje zdalny folder `plugins` bezpośrednio na serwerze. Przydatne, gdy `plugin.yml` powstaje
     dopiero przy buildzie/wdrożeniu i lokalnie go po prostu nie ma.
-- **Serwery** — profile połączeń: SFTP (hasło lub klucz prywatny) do wysyłki plików configów oraz RCON do
+- **Serwery** - profile połączeń: SFTP (hasło lub klucz prywatny) do wysyłki plików configów oraz RCON do
   przeładowania pluginu bez restartu serwera. Hasła trzymane są w Menedżerze poświadczeń Windows (`keyring`), nie w
   plikach na dysku.
-- **Edytor configów** — przegląda zdalny folder `plugins` po SFTP, otwiera dowolny plik YAML w edytorze, zapisuje
+- **Edytor configów** - przegląda zdalny folder `plugins` po SFTP, otwiera dowolny plik YAML w edytorze, zapisuje
   zmiany z powrotem na serwer i pozwala wysłać komendę RCON (np. reload pluginu).
-- **Kreator itemów** — wizualny formularz (materiał, nazwa, lore, enchanty, custom model data, unbreakable, item
+- **Kreator itemów** - wizualny formularz (materiał, nazwa, lore, enchanty, custom model data, unbreakable, item
   flags) zapisujący definicje do pliku `items.yml` na serwerze.
 
 ## Format items.yml
@@ -77,7 +77,7 @@ Dopasuj nazwę komendy reloadu w pluginie (np. `/items reload`) i wpisz ją w po
 
 ## Backend (Rust / src-tauri)
 
-- `workspace.rs` — skanowanie lokalnych projektów po `plugin.yml`.
-- `profiles.rs` — CRUD profili serwerów; metadane w `%APPDATA%/.../server_profiles.json`, sekrety w OS keychain.
-- `sftp.rs` — połączenie SSH (russh) + sesja SFTP (russh-sftp): listowanie katalogów, odczyt/zapis plików.
-- `rcon.rs` — minimalny klient protokołu Source RCON (autoryzacja + jedna komenda na wywołanie).
+- `workspace.rs` - skanowanie lokalnych projektów po `plugin.yml`.
+- `profiles.rs` - CRUD profili serwerów; metadane w `%APPDATA%/.../server_profiles.json`, sekrety w OS keychain.
+- `sftp.rs` - połączenie SSH (russh) + sesja SFTP (russh-sftp): listowanie katalogów, odczyt/zapis plików.
+- `rcon.rs` - minimalny klient protokołu Source RCON (autoryzacja + jedna komenda na wywołanie).

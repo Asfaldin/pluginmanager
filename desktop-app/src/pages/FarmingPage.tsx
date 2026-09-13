@@ -51,7 +51,7 @@ export default function FarmingPage() {
         await sftpWriteFile(pid, path, serializeFarmingConfig(DEFAULT_FARMING_CONFIG));
         setConfig(DEFAULT_FARMING_CONFIG);
         setServerConfig(DEFAULT_FARMING_CONFIG);
-        setStatus("farming-config.yml nie istniało — wgrano domyślną wersję. Serwer użyje jej po /@reloadfarming albo restarcie.");
+        setStatus("farming-config.yml nie istniało - wgrano domyślną wersję. Serwer użyje jej po /@reloadfarming albo restarcie.");
       }
       setLastUsed(LAST_USED_KEY, { profileId: pid, remotePath: path });
     } catch (e) {
@@ -122,7 +122,7 @@ export default function FarmingPage() {
 
   function revertToServer() {
     setConfig(serverConfig);
-    setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
+    setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
   function saveCurrentPresetAs() {
@@ -137,7 +137,7 @@ export default function FarmingPage() {
     const found = findPreset(name);
     if (!found) return;
     setConfig(found);
-    setStatus(`Wczytano preset „${name}" do edycji — kliknij "Wyślij na serwer", żeby go opublikować.`);
+    setStatus(`Wczytano preset „${name}" do edycji - kliknij "Wyślij na serwer", żeby go opublikować.`);
   }
 
   function refetchFromServer() {

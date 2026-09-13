@@ -66,7 +66,7 @@ export default function RanksPage() {
         await sftpWriteFile(pid, path, serializeRanksConfig(DEFAULT_RANKS_CONFIG));
         setConfig(DEFAULT_RANKS_CONFIG);
         setServerConfig(DEFAULT_RANKS_CONFIG);
-        setStatus("ranks-config.yml nie istniało — wgrano domyślną wersję. Serwer użyje jej po /@reloadrangi albo restarcie.");
+        setStatus("ranks-config.yml nie istniało - wgrano domyślną wersję. Serwer użyje jej po /@reloadrangi albo restarcie.");
       }
       setLastUsed(LAST_USED_KEY, { profileId: pid, remotePath: path });
     } catch (e) {
@@ -144,7 +144,7 @@ export default function RanksPage() {
 
   function revertToServer() {
     setConfig(serverConfig);
-    setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
+    setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
   function saveCurrentPresetAs() {
@@ -159,7 +159,7 @@ export default function RanksPage() {
     const found = findPreset(name);
     if (!found) return;
     setConfig(found);
-    setStatus(`Wczytano preset „${name}" do edycji — kliknij "Wyślij na serwer", żeby go opublikować.`);
+    setStatus(`Wczytano preset „${name}" do edycji - kliknij "Wyślij na serwer", żeby go opublikować.`);
   }
 
   function refetchFromServer() {
