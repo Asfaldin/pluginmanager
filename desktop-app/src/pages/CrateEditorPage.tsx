@@ -85,6 +85,7 @@ export default function CrateEditorPage() {
   const [customIds, setCustomIds] = useState<string[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const autoLoadedRef = useRef(false);
   const { iconPackDir, allMaterials } = useIconPack(setStatus);
 
@@ -94,6 +95,8 @@ export default function CrateEditorPage() {
   const crateIds = file.crates.map((c) => c.id);
   const keyIds = file.keys.map((k) => k.id);
   const crate = view?.kind === "crate" ? (file.crates.find((c) => c.id === view.id) ?? null) : null;
+  // Pytanie „na pewno usunąć?” znika, gdy przejdziesz do innej skrzynki/wygranej/klucza.
+  useEffect(() => setConfirmDelete(false), [view]);
 
   async function load(pid: string, path: string) {
     if (!pid || !path) return;
@@ -298,18 +301,6 @@ export default function CrateEditorPage() {
             Postawiony blok wygląda jak przedmiot skrzynki (np. ENDER_CHEST)
           </label>
         </Fold>
-        <div className="row ci-section">
-          <button
-            type="button"
-            onClick={() => {
-              if (!window.confirm(`Usunąć skrzynkę ${c.id}? (Na serwerze zniknie po „Wyślij na serwer”.)`)) return;
-              setFile({ ...file, crates: file.crates.filter((x) => x.id !== c.id) });
-              setView(null);
-            }}
-          >
-            Usuń skrzynkę
-          </button>
-        </div>
       </>
     );
   }
@@ -359,17 +350,6 @@ export default function CrateEditorPage() {
             keyIds={keyIds}
           />
         </Fold>
-        <div className="row ci-section">
-          <button
-            type="button"
-            onClick={() => {
-              updateCrate(c.id, { prizes: c.prizes.filter((_, xi) => xi !== i) });
-              setView({ kind: "crate", id: c.id, prize: "settings" });
-            }}
-          >
-            Usuń wygraną
-          </button>
-        </div>
       </>
     );
   }
@@ -393,24 +373,53 @@ export default function CrateEditorPage() {
         <p className="muted small">
           Otwiera: {used.map((c) => c.id).join(", ") || "żadnej skrzynki (ustaw w ustawieniach skrzynki)"}
         </p>
-        <div className="row ci-section">
-          <button
-            type="button"
-            disabled={used.length > 0}
-            title={used.length > 0 ? "Najpierw odepnij ten klucz od skrzynek" : undefined}
-            onClick={() => {
-              setFile({ ...file, keys: file.keys.filter((x) => x.id !== k.id) });
-              setView({ kind: "keys", key: null });
-            }}
-          >
-            Usuń klucz
-          </button>
-        </div>
       </>
     );
   }
 
   const selectedKey = view?.kind === "keys" && view.key ? file.keys.find((k) => k.id === view.key) : undefined;
+
+  // Co usuwa przycisk „Usuń” w dolnym pasku - zależy od tego, co jest otwarte po prawej.
+  function deleteAction(): { label: string; question: string; blocked?: string; run: () => void } | null {
+    if (crate && view?.kind === "crate" && view.prize === "settings") {
+      const c = crate;
+      return {
+        label: "Usuń skrzynkę",
+        question: `Na pewno usunąć skrzynkę ${c.id}?`,
+        run: () => {
+          setFile({ ...file, crates: file.crates.filter((x) => x.id !== c.id) });
+          setView(null);
+        },
+      };
+    }
+    if (crate && view?.kind === "crate" && typeof view.prize === "number" && crate.prizes[view.prize]) {
+      const c = crate;
+      const i = view.prize;
+      return {
+        label: "Usuń wygraną",
+        question: `Na pewno usunąć wygraną ${i + 1}?`,
+        run: () => {
+          updateCrate(c.id, { prizes: c.prizes.filter((_, xi) => xi !== i) });
+          setView({ kind: "crate", id: c.id, prize: "settings" });
+        },
+      };
+    }
+    if (selectedKey) {
+      const k = selectedKey;
+      const used = file.crates.some((c) => c.keys.includes(k.id));
+      return {
+        label: "Usuń klucz",
+        question: `Na pewno usunąć klucz ${k.id}?`,
+        blocked: used ? "Najpierw odepnij ten klucz od skrzynek" : undefined,
+        run: () => {
+          setFile({ ...file, keys: file.keys.filter((x) => x.id !== k.id) });
+          setView({ kind: "keys", key: null });
+        },
+      };
+    }
+    return null;
+  }
+  const del = deleteAction();
 
   return (
     <div className="page">
@@ -565,16 +574,47 @@ export default function CrateEditorPage() {
           {crate && view?.kind === "crate" && typeof view.prize === "number" && crate.prizes[view.prize] && renderPrize(crate, view.prize)}
           {selectedKey && renderKey(selectedKey)}
           {(view || unsaved) && (
-            <div className="row ci-section">
-              <button className="ci-publish" type="button" onClick={save} disabled={!unsaved}>
-                <Save size={14} strokeWidth={1.75} /> Zapisz
-              </button>
-              <button type="button" onClick={() => setFile(saved)} disabled={!unsaved}>
-                Cofnij niezapisane
-              </button>
-              {unsaved && <span className="muted small">masz niezapisane zmiany</span>}
+            <div className="ci-actions">
+              {confirmDelete && del ? (
+                <>
+                  <span className="ci-actions-question">{del.question}</span>
+                  <button
+                    type="button"
+                    className="ci-danger"
+                    onClick={() => {
+                      del.run();
+                      setConfirmDelete(false);
+                    }}
+                  >
+                    Tak, usuń
+                  </button>
+                  <button type="button" onClick={() => setConfirmDelete(false)}>
+                    Anuluj
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="ci-publish" type="button" onClick={save} disabled={!unsaved}>
+                    <Save size={16} strokeWidth={1.75} /> Zapisz
+                  </button>
+                  <button type="button" onClick={() => setFile(saved)} disabled={!unsaved}>
+                    Cofnij niezapisane
+                  </button>
+                  {del && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(true)}
+                      disabled={!!del.blocked}
+                      title={del.blocked}
+                    >
+                      {del.label}
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           )}
+          {unsaved && !confirmDelete && <p className="muted small">masz niezapisane zmiany</p>}
         </section>
       </div>
     </div>

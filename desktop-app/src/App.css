@@ -2174,6 +2174,33 @@ button:disabled:hover {
   padding: 0 0.75rem 0.75rem;
 }
 
+/* Dolny pasek w prawym panelu: Zapisz / Cofnij / Usuń obok siebie, trochę większe. */
+.ci-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.8rem;
+  margin-top: 1rem;
+}
+
+.ci-actions button {
+  font-size: 0.95rem;
+  padding: 0.55rem 1rem;
+}
+
+.ci-actions-question {
+  font-weight: 600;
+}
+
+.ci-danger {
+  background: #c0392b;
+  border-color: #c0392b;
+  color: #fff;
+  font-weight: 600;
+}
+
 .ci-publish:not(:disabled) {
   background: var(--accent);
   color: var(--accent-ink);
