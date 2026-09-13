@@ -2126,6 +2126,54 @@ button:disabled:hover {
   margin-bottom: 0.4rem;
 }
 
+/* Sekcje zwijane strzałką w prawym panelu (Skrzynki). */
+.ci-fold {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 0.6rem;
+}
+
+.ci-fold > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.75rem;
+  user-select: none;
+}
+
+.ci-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ci-fold > summary::before {
+  content: "▸";
+  color: var(--text-muted);
+  transition: transform 0.15s;
+}
+
+.ci-fold[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.ci-fold > summary:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-radius: 8px;
+}
+
+.ci-fold-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  flex: 1;
+}
+
+.ci-fold-body {
+  padding: 0 0.75rem 0.75rem;
+}
+
 .ci-publish:not(:disabled) {
   background: var(--accent);
   color: var(--accent-ink);

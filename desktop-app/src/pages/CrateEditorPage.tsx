@@ -1,5 +1,5 @@
 import { Save } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import ItemRefPicker from "../components/ItemRefPicker";
 import MaterialIcon from "../components/MaterialIcon";
@@ -58,6 +58,19 @@ function LoreEditor({ value, onChange }: { value: string[]; onChange: (l: string
         + Dodaj linijkę
       </button>
     </div>
+  );
+}
+
+/** Sekcja zwijana strzałką - żeby prawy panel nie pokazywał wszystkiego naraz. */
+function Fold({ title, hint, open, children }: { title: string; hint?: string; open?: boolean; children: ReactNode }) {
+  return (
+    <details className="ci-fold" open={open}>
+      <summary>
+        <span className="ci-fold-title">{title}</span>
+        {hint && <span className="muted small">{hint}</span>}
+      </summary>
+      <div className="ci-fold-body">{children}</div>
+    </details>
   );
 }
 
@@ -202,18 +215,18 @@ export default function CrateEditorPage() {
     return (
       <>
         <h2>Skrzynka: {c.id}</h2>
-        <label>
-          Nazwa
-          <MinecraftTextInput value={c.name} onChange={(v) => updateCrate(c.id, { name: v })} placeholder="&6&lNazwa skrzynki" />
-        </label>
-        <div className="ci-section-title">Wygląd (przedmiot)</div>
-        <ItemRefPicker value={c.item} onChange={(r) => updateCrate(c.id, { item: r })} materials={allMaterials} customIds={customIds} />
-        <div className="ci-section">
-          <div className="ci-section-title">Opis</div>
+        <Fold title="Nazwa i wygląd" open>
+          <label>
+            Nazwa
+            <MinecraftTextInput value={c.name} onChange={(v) => updateCrate(c.id, { name: v })} placeholder="&6&lNazwa skrzynki" />
+          </label>
+          <div className="ci-section-title">Wygląd (przedmiot)</div>
+          <ItemRefPicker value={c.item} onChange={(r) => updateCrate(c.id, { item: r })} materials={allMaterials} customIds={customIds} />
+        </Fold>
+        <Fold title="Opis" hint={`${c.lore.length} linijek`}>
           <LoreEditor value={c.lore} onChange={(l) => updateCrate(c.id, { lore: l })} />
-        </div>
-        <div className="ci-section">
-          <div className="ci-section-title">Otwierają ją klucze</div>
+        </Fold>
+        <Fold title="Klucze, które ją otwierają" hint={c.keys.join(", ") || "brak!"}>
           {file.keys.map((k) => (
             <label key={k.id} className="checkbox">
               <input
@@ -226,9 +239,8 @@ export default function CrateEditorPage() {
               <MinecraftTextPreview text={k.name} emptyLabel={k.id} /> <span className="muted small">({k.id})</span>
             </label>
           ))}
-        </div>
-        <div className="ci-section">
-          <div className="ci-section-title">Napis nad skrzynką postawioną w świecie</div>
+        </Fold>
+        <Fold title="Napis nad postawioną skrzynką" hint={c.hologramEnabled ? "włączony" : "wyłączony"}>
           <p className="muted small">
             Skrzynkę stawiasz w grze: patrzysz na blok i wpisujesz /@crate place {c.id}
           </p>
@@ -260,8 +272,10 @@ export default function CrateEditorPage() {
               )}
             </>
           )}
+        </Fold>
+        <Fold title="Postawione skrzynki — wspólne dla wszystkich">
           <label>
-            Wysokość napisu nad blokiem (wspólna dla wszystkich skrzynek)
+            Wysokość napisu nad blokiem
             <input
               type="number"
               min={0}
@@ -282,9 +296,9 @@ export default function CrateEditorPage() {
               checked={file.settings.placedBlockFromItem}
               onChange={(e) => setFile({ ...file, settings: { ...file.settings, placedBlockFromItem: e.target.checked } })}
             />
-            Postawiony blok wygląda jak przedmiot skrzynki (np. ENDER_CHEST) — wspólne dla wszystkich skrzynek
+            Postawiony blok wygląda jak przedmiot skrzynki (np. ENDER_CHEST)
           </label>
-        </div>
+        </Fold>
         <div className="row ci-section">
           <button
             type="button"
@@ -312,28 +326,31 @@ export default function CrateEditorPage() {
           <MinecraftTextPreview text={p.name} />
           <div className="ci-tip-gray">Szansa: {chancePercent(c, p).toFixed(1)}%</div>
         </div>
-        <label>
-          Nazwa (w animacji i podglądzie)
-          <MinecraftTextInput value={p.name} onChange={(v) => setPrize({ name: v })} placeholder="&bNazwa wygranej" />
-        </label>
-        <div className="ci-section-title">Ikona</div>
-        <ItemRefPicker
-          value={p.icon}
-          onChange={(r) => setPrize({ icon: r })}
-          materials={allMaterials}
-          customIds={customIds}
-          showAmount
-        />
-        <label>
-          Waga (im więcej, tym częściej)
-          <input type="number" min={1} value={p.weight} onChange={(e) => setPrize({ weight: Math.max(1, Number(e.target.value)) })} />
-        </label>
-        <label className="checkbox">
-          <input type="checkbox" checked={p.announce} onChange={(e) => setPrize({ announce: e.target.checked })} />
-          Ogłoś na czacie, gdy ktoś to wylosuje
-        </label>
-        <div className="ci-section">
-          <div className="ci-section-title">Co gracz dostaje</div>
+        <Fold title="Nazwa i ikona" open>
+          <label>
+            Nazwa (w animacji i podglądzie)
+            <MinecraftTextInput value={p.name} onChange={(v) => setPrize({ name: v })} placeholder="&bNazwa wygranej" />
+          </label>
+          <div className="ci-section-title">Ikona</div>
+          <ItemRefPicker
+            value={p.icon}
+            onChange={(r) => setPrize({ icon: r })}
+            materials={allMaterials}
+            customIds={customIds}
+            showAmount
+          />
+        </Fold>
+        <Fold title="Szansa i ogłoszenie" hint={`waga ${p.weight}${p.announce ? ", ogłoszenie" : ""}`}>
+          <label>
+            Waga (im więcej, tym częściej)
+            <input type="number" min={1} value={p.weight} onChange={(e) => setPrize({ weight: Math.max(1, Number(e.target.value)) })} />
+          </label>
+          <label className="checkbox">
+            <input type="checkbox" checked={p.announce} onChange={(e) => setPrize({ announce: e.target.checked })} />
+            Ogłoś na czacie, gdy ktoś to wylosuje
+          </label>
+        </Fold>
+        <Fold title="Co gracz dostaje" hint={`${p.rewards.length} nagród`} open>
           <RewardEditor
             value={p.rewards}
             onChange={(l) => setPrize({ rewards: l })}
@@ -342,7 +359,7 @@ export default function CrateEditorPage() {
             crateIds={crateIds}
             keyIds={keyIds}
           />
-        </div>
+        </Fold>
         <div className="row ci-section">
           <button
             type="button"
@@ -363,16 +380,17 @@ export default function CrateEditorPage() {
     return (
       <>
         <h2>Klucz: {k.id}</h2>
-        <label>
-          Nazwa
-          <MinecraftTextInput value={k.name} onChange={(v) => updateKey(k.id, { name: v })} placeholder="&e&lNazwa klucza" />
-        </label>
-        <div className="ci-section-title">Wygląd (przedmiot)</div>
-        <ItemRefPicker value={k.item} onChange={(r) => updateKey(k.id, { item: r })} materials={allMaterials} customIds={customIds} />
-        <div className="ci-section">
-          <div className="ci-section-title">Opis</div>
+        <Fold title="Nazwa i wygląd" open>
+          <label>
+            Nazwa
+            <MinecraftTextInput value={k.name} onChange={(v) => updateKey(k.id, { name: v })} placeholder="&e&lNazwa klucza" />
+          </label>
+          <div className="ci-section-title">Wygląd (przedmiot)</div>
+          <ItemRefPicker value={k.item} onChange={(r) => updateKey(k.id, { item: r })} materials={allMaterials} customIds={customIds} />
+        </Fold>
+        <Fold title="Opis" hint={`${k.lore.length} linijek`}>
           <LoreEditor value={k.lore} onChange={(l) => updateKey(k.id, { lore: l })} />
-        </div>
+        </Fold>
         <p className="muted small">
           Otwiera: {used.map((c) => c.id).join(", ") || "żadnej skrzynki (ustaw w ustawieniach skrzynki)"}
         </p>
