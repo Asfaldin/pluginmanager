@@ -397,20 +397,6 @@ export default function CrateEditorPage() {
         <Fold title="Opis przedmiotu w ekwipunku">
           <LoreEditor value={c.lore} onChange={(l) => updateCrate(c.id, { lore: l })} />
         </Fold>
-        <Fold title="Klucze, które ją otwierają">
-          {file.keys.map((k) => (
-            <label key={k.id} className="checkbox">
-              <input
-                type="checkbox"
-                checked={c.keys.includes(k.id)}
-                onChange={(e) =>
-                  updateCrate(c.id, { keys: e.target.checked ? [...c.keys, k.id] : c.keys.filter((x) => x !== k.id) })
-                }
-              />
-              <MinecraftTextPreview text={k.name} emptyLabel={k.id} /> <span className="muted small">({k.id})</span>
-            </label>
-          ))}
-        </Fold>
         <Fold title="Napis nad postawioną skrzynką">
           <p className="muted small">
             Skrzynkę stawiasz w grze: patrzysz na blok i wpisujesz /@crate place {c.id}
@@ -443,6 +429,20 @@ export default function CrateEditorPage() {
               )}
             </>
           )}
+        </Fold>
+        <Fold title="Klucze, które ją otwierają">
+          {file.keys.map((k) => (
+            <label key={k.id} className="checkbox">
+              <input
+                type="checkbox"
+                checked={c.keys.includes(k.id)}
+                onChange={(e) =>
+                  updateCrate(c.id, { keys: e.target.checked ? [...c.keys, k.id] : c.keys.filter((x) => x !== k.id) })
+                }
+              />
+              <MinecraftTextPreview text={k.name} emptyLabel={k.id} /> <span className="muted small">({k.id})</span>
+            </label>
+          ))}
         </Fold>
       </>
     );
