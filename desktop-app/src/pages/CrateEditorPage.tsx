@@ -1,4 +1,4 @@
-import { Save } from "lucide-react";
+import { Save, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import ItemRefPicker from "../components/ItemRefPicker";
@@ -86,6 +86,7 @@ export default function CrateEditorPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [trashConfirm, setTrashConfirm] = useState<string | null>(null);
   const autoLoadedRef = useRef(false);
   const { iconPackDir, allMaterials } = useIconPack(setStatus);
 
@@ -461,20 +462,47 @@ export default function CrateEditorPage() {
 
       <div className="ci-layout">
         <aside className="card ci-cats">
-          <div className="ci-section-title">Skrzynki</div>
-          {file.crates.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              className={`ci-cat${view?.kind === "crate" && view.id === c.id ? " active" : ""}`}
-              onClick={() => setView({ kind: "crate", id: c.id, prize: "settings" })}
-            >
-              <span className="ci-item-name">
-                <MinecraftTextPreview text={c.name} emptyLabel={c.id} />
-              </span>
-              <span className="ci-count">{c.prizes.length}</span>
-            </button>
-          ))}
+          <div className="ci-cats-head">
+            <span className="ci-section-title">Skrzynki</span>
+            <span className="muted small">ilość wygranych</span>
+          </div>
+          {file.crates.map((c) =>
+            trashConfirm === c.id ? (
+              <div key={c.id} className="ci-cat-row ci-cat-confirm">
+                <span>Usunąć {c.id}?</span>
+                <button
+                  type="button"
+                  className="ci-danger"
+                  onClick={() => {
+                    setFile({ ...file, crates: file.crates.filter((x) => x.id !== c.id) });
+                    if (view?.kind === "crate" && view.id === c.id) setView(null);
+                    setTrashConfirm(null);
+                  }}
+                >
+                  Tak
+                </button>
+                <button type="button" onClick={() => setTrashConfirm(null)}>
+                  Nie
+                </button>
+              </div>
+            ) : (
+              <div key={c.id} className="ci-cat-row">
+                <button
+                  type="button"
+                  className={`ci-cat${view?.kind === "crate" && view.id === c.id ? " active" : ""}`}
+                  onClick={() => setView({ kind: "crate", id: c.id, prize: "settings" })}
+                >
+                  <span className="ci-item-name">
+                    <MinecraftTextPreview text={c.name} emptyLabel={c.id} />
+                  </span>
+                  <span className="ci-count">{c.prizes.length}</span>
+                </button>
+                <button type="button" className="ci-trash" title={`Usuń skrzynkę ${c.id}`} onClick={() => setTrashConfirm(c.id)}>
+                  <Trash2 size={14} strokeWidth={1.75} />
+                </button>
+              </div>
+            )
+          )}
           <button type="button" onClick={newCrate} disabled={!profileId}>
             + Nowa skrzynka
           </button>

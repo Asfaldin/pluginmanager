@@ -2015,6 +2015,57 @@ button:disabled:hover {
   color: var(--accent-strong);
 }
 
+.ci-cats-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-right: 2.2rem;
+}
+
+.ci-cat-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.ci-cat-row .ci-cat {
+  flex: 1;
+  min-width: 0;
+}
+
+.ci-trash {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  padding: 0.3rem 0.45rem;
+  display: flex;
+  align-items: center;
+}
+
+.ci-trash:hover {
+  color: #e74c3c;
+  border-color: #e74c3c;
+}
+
+.ci-cat-confirm {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #e74c3c;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.ci-cat-confirm span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ci-cat-confirm button {
+  padding: 0.2rem 0.6rem;
+}
+
 .ci-cat .ci-count {
   color: var(--text-muted);
   font-size: 0.8rem;
