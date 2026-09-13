@@ -460,7 +460,7 @@ export default function CrateEditorPage() {
       </div>
       {status && <p className="status">{status}</p>}
 
-      <div className="ci-layout">
+      <div className="ci-layout ci-layout-crates">
         <aside className="card ci-cats">
           <div className="ci-cats-head">
             <span className="ci-section-title">Skrzynki</span>

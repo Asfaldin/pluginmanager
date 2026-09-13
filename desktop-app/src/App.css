@@ -2296,3 +2296,14 @@ button:disabled:hover {
     grid-column: 1 / -1;
   }
 }
+
+/* Skrzynki: szersza lista skrzynek (nazwa + liczba + kosz), węższa lista wygranych. */
+.ci-layout.ci-layout-crates {
+  grid-template-columns: 290px minmax(0, 0.75fr) minmax(0, 1.25fr);
+}
+
+@media (max-width: 1100px) {
+  .ci-layout.ci-layout-crates {
+    grid-template-columns: 270px minmax(0, 1fr);
+  }
+}
