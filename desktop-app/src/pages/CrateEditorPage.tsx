@@ -629,7 +629,7 @@ export default function CrateEditorPage() {
       </Link>
       <h1>Skrzynki</h1>
       <p className="muted">
-        Twoje skrzynki: wygląd, klucze, które je otwierają, i co można wygrać. Jedna wygrana może dać kilka rzeczy naraz —
+        Twoje skrzynki: wygląd, klucze, które je otwierają, i co można wygrać. Jedna wygrana może dać kilka rzeczy naraz -
         pieniądze, itemy, inne skrzynki albo klucze.
       </p>
 
