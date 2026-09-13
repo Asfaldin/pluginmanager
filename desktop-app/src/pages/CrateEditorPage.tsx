@@ -11,6 +11,7 @@ import {
   addCrate,
   chancePercent,
   DEFAULT_HOLOGRAM_HEIGHT,
+  defaultHologram,
   emptyPrize,
   parseCratesYaml,
   serializeCratesYaml,
@@ -21,6 +22,7 @@ import {
   type KeyDef,
   type Prize,
 } from "../lib/cratesYaml";
+import { readSetting } from "../lib/coreSettings";
 import { loadItemCatalog } from "../lib/itemCatalogRemote";
 import { useIconPack } from "../lib/useIconPack";
 import { useDirtyTracking } from "../state/DirtyContext";
@@ -62,8 +64,11 @@ function LoreEditor({ value, onChange }: { value: string[]; onChange: (l: string
 export default function CrateEditorPage() {
   const { profiles, loading: profilesLoading, activeProfileId: profileId, setActiveProfileId: setProfileId } = useProfiles();
   const [pluginsPath, setPluginsPath] = useState("");
+  // file = to, co widać i edytujesz; saved = zapisane w aplikacji („Zapisz”); serverFile = stan na serwerze.
   const [file, setFile] = useState<CratesFile>(EMPTY);
+  const [saved, setSaved] = useState<CratesFile>(EMPTY);
   const [serverFile, setServerFile] = useState<CratesFile>(EMPTY);
+  const [language, setLanguage] = useState("en");
   const [view, setView] = useState<View | null>(null);
   const [customIds, setCustomIds] = useState<string[]>([]);
   const [status, setStatus] = useState<string | null>(null);
@@ -71,8 +76,9 @@ export default function CrateEditorPage() {
   const autoLoadedRef = useRef(false);
   const { iconPackDir, allMaterials } = useIconPack(setStatus);
 
-  const dirty = useMemo(() => serializeCratesYaml(file) !== serializeCratesYaml(serverFile), [file, serverFile]);
-  useDirtyTracking(dirty);
+  const unsaved = useMemo(() => serializeCratesYaml(file) !== serializeCratesYaml(saved), [file, saved]);
+  const notSent = useMemo(() => serializeCratesYaml(saved) !== serializeCratesYaml(serverFile), [saved, serverFile]);
+  useDirtyTracking(unsaved || notSent);
   const crateIds = file.crates.map((c) => c.id);
   const keyIds = file.keys.map((k) => k.id);
   const crate = view?.kind === "crate" ? (file.crates.find((c) => c.id === view.id) ?? null) : null;
@@ -84,10 +90,12 @@ export default function CrateEditorPage() {
     try {
       const parsed = parseCratesYaml(await sftpReadFile(pid, cratesPath(path)));
       setFile(parsed);
+      setSaved(parsed);
       setServerFile(parsed);
       setView(parsed.crates[0] ? { kind: "crate", id: parsed.crates[0].id, prize: "settings" } : null);
     } catch (e) {
       setFile(EMPTY);
+      setSaved(EMPTY);
       setServerFile(EMPTY);
       setView(null);
       setStatus(`Nie udało się wczytać crates.yml (${String(e)}). Czy na serwerze jest nowa wersja pluginu Skrzynek?`);
@@ -97,6 +105,15 @@ export default function CrateEditorPage() {
     loadItemCatalog(pid, path)
       .then((c) => setCustomIds(c.items.map((it) => it.id)))
       .catch(() => setCustomIds([]));
+    // Język serwera (core) - żeby domyślny napis nad skrzynką był taki, jak w grze.
+    sftpReadFile(pid, `${path.replace(/\/+$/, "")}/MainpluginsCore/config.yml`)
+      .then((t) => setLanguage(readSetting(t, "language") ?? "en"))
+      .catch(() => setLanguage("en"));
+  }
+
+  function save() {
+    setSaved(file);
+    setStatus("Zapisano w aplikacji. Kliknij „Wyślij na serwer” u góry, żeby zmiany trafiły na serwer.");
   }
 
   function selectProfile(id: string) {
@@ -148,15 +165,21 @@ export default function CrateEditorPage() {
 
   async function publish() {
     if (!profileId || !pluginsPath) return;
-    const warnings = validateCrates(file);
+    let toSend = saved;
+    if (unsaved) {
+      if (!window.confirm("Masz niezapisane zmiany. Zapisać je i wysłać razem?")) return;
+      toSend = file;
+      setSaved(file);
+    }
+    const warnings = validateCrates(toSend);
     if (warnings.length && !window.confirm(`Uwaga:\n- ${warnings.join("\n- ")}\n\nPlugin pominie te elementy. Wysłać mimo to?`)) {
       return;
     }
     setBusy(true);
     setStatus(null);
     try {
-      await sftpWriteFile(profileId, cratesPath(pluginsPath), serializeCratesYaml(file));
-      setServerFile(file);
+      await sftpWriteFile(profileId, cratesPath(pluginsPath), serializeCratesYaml(toSend));
+      setServerFile(toSend);
       let msg = "Wysłano na serwer.";
       try {
         const r = await rconSendCommand(profileId, "@crate reload");
@@ -207,10 +230,36 @@ export default function CrateEditorPage() {
         <div className="ci-section">
           <div className="ci-section-title">Napis nad skrzynką postawioną w świecie</div>
           <p className="muted small">
-            Puste = nazwa skrzynki + podpowiedź „Prawy klik z kluczem • Lewy klik: nagrody”. Skrzynkę stawiasz w grze:
-            patrzysz na blok i wpisujesz /@crate place {c.id}
+            Skrzynkę stawiasz w grze: patrzysz na blok i wpisujesz /@crate place {c.id}
           </p>
-          <LoreEditor value={c.hologram} onChange={(l) => updateCrate(c.id, { hologram: l })} />
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={c.hologramEnabled}
+              onChange={(e) => updateCrate(c.id, { hologramEnabled: e.target.checked })}
+            />
+            Pokaż napis nad skrzynką
+          </label>
+          {c.hologramEnabled && (
+            <>
+              <div className="ci-tooltip">
+                {(c.hologram.length ? c.hologram : defaultHologram(c, language)).map((line, i) => (
+                  <div key={i}>
+                    <MinecraftTextPreview text={line} emptyLabel=" " />
+                  </div>
+                ))}
+              </div>
+              <LoreEditor
+                value={c.hologram.length ? c.hologram : defaultHologram(c, language)}
+                onChange={(l) => updateCrate(c.id, { hologram: l })}
+              />
+              {c.hologram.length > 0 && (
+                <button type="button" onClick={() => updateCrate(c.id, { hologram: [] })}>
+                  Przywróć domyślny napis
+                </button>
+              )}
+            </>
+          )}
           <label>
             Wysokość napisu nad blokiem (wspólna dla wszystkich skrzynek)
             <input
@@ -367,11 +416,18 @@ export default function CrateEditorPage() {
           ))}
         </select>
         <span style={{ flex: 1 }} />
-        {dirty && <span className="muted small">masz niewysłane zmiany</span>}
-        <button type="button" onClick={() => setFile(serverFile)} disabled={!dirty}>
+        {notSent && !unsaved && <span className="muted small">zapisane, jeszcze niewysłane</span>}
+        <button
+          type="button"
+          onClick={() => {
+            setFile(serverFile);
+            setSaved(serverFile);
+          }}
+          disabled={!unsaved && !notSent}
+        >
           ↶ Cofnij do stanu z serwera
         </button>
-        <button className="ci-publish" onClick={publish} disabled={!profileId || !dirty || busy}>
+        <button className="ci-publish" onClick={publish} disabled={!profileId || (!unsaved && !notSent) || busy}>
           <Save size={14} strokeWidth={1.75} /> Wyślij na serwer
         </button>
       </div>
@@ -491,6 +547,17 @@ export default function CrateEditorPage() {
           {crate && view?.kind === "crate" && view.prize === "settings" && renderCrateSettings(crate)}
           {crate && view?.kind === "crate" && typeof view.prize === "number" && crate.prizes[view.prize] && renderPrize(crate, view.prize)}
           {selectedKey && renderKey(selectedKey)}
+          {(view || unsaved) && (
+            <div className="row ci-section">
+              <button className="ci-publish" type="button" onClick={save} disabled={!unsaved}>
+                <Save size={14} strokeWidth={1.75} /> Zapisz
+              </button>
+              <button type="button" onClick={() => setFile(saved)} disabled={!unsaved}>
+                Cofnij niezapisane
+              </button>
+              {unsaved && <span className="muted small">masz niezapisane zmiany</span>}
+            </div>
+          )}
         </section>
       </div>
     </div>

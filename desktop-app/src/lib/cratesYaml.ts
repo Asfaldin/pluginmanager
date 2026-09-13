@@ -33,6 +33,19 @@ export interface CrateDef {
   prizes: Prize[];
   /** Napis nad postawioną skrzynką (puste = nazwa + podpowiedź z pliku językowego pluginu). */
   hologram: string[];
+  /** false = brak napisu nad tą skrzynką (hologram-enabled). */
+  hologramEnabled: boolean;
+}
+
+// Ta sama podpowiedź co placed.hint w lang/en.yml i lang/pl.yml pluginu Skrzynek.
+const HOLOGRAM_HINT: Record<string, string> = {
+  pl: "&7Prawy klik z kluczem &8• &7Lewy klik: nagrody",
+  en: "&7Right-click with a key &8• &7Left-click: rewards",
+};
+
+/** Napis, który plugin pokazuje, gdy skrzynka nie ma własnego (nazwa + podpowiedź w języku serwera). */
+export function defaultHologram(c: CrateDef, language: string): string[] {
+  return [c.name, HOLOGRAM_HINT[language] ?? HOLOGRAM_HINT.en];
 }
 
 export interface CratesSettings {
@@ -92,6 +105,7 @@ export function parseCratesYaml(text: string): CratesFile {
       rewards: parseRewards(p?.rewards),
     })),
     hologram: lore(v?.hologram),
+    hologramEnabled: v?.["hologram-enabled"] !== false,
   }));
   const h = raw?.settings?.["hologram-height"];
   const settings: CratesSettings = {
@@ -118,6 +132,7 @@ export function serializeCratesYaml(f: CratesFile): string {
       ...(c.lore.length ? { lore: c.lore } : {}),
       keys: c.keys,
       ...(c.hologram.length ? { hologram: c.hologram } : {}),
+      ...(c.hologramEnabled ? {} : { "hologram-enabled": false }),
       prizes: c.prizes.map((p) => ({
         name: p.name,
         icon: refOut(p.icon),
@@ -177,6 +192,7 @@ export function addCrate(f: CratesFile, id: string): CratesFile {
     keys: [keyId],
     prizes: [emptyPrize()],
     hologram: [],
+    hologramEnabled: true,
   };
   return { ...f, keys, crates: [...f.crates, crate] };
 }
