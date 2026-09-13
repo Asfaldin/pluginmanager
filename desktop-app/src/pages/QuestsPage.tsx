@@ -17,6 +17,7 @@ import { useIconPack } from "../lib/useIconPack";
 import { useLocalPresets } from "../lib/useLocalPresets";
 import type { QuestCategory, QuestEntry, QuestsContent, Requirement, RewardEntry } from "../lib/types";
 import { useProfiles } from "../state/ProfilesContext";
+import { showPrompt } from "../components/PromptModal";
 
 const LAST_USED_KEY = "quests";
 const QUEST_SLOTS_PER_PAGE = 29;
@@ -249,9 +250,9 @@ export default function QuestsPage() {
   // saving one never touches the server. Loading one only replaces the local
   // draft; it still has to go through "Wyślij na serwer" to go live - handy
   // if something got overwritten on the server and you want back what you had.
-  function saveCurrentPresetAs() {
+  async function saveCurrentPresetAs() {
     if (!profileId) return;
-    const name = window.prompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
+    const name = await showPrompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
     if (!name) return;
     savePresetAs(profileId, name, content);
     setStatus(`Zapisano preset lokalnie jako „${name}" (nie wysłano na serwer).`);

@@ -3,10 +3,12 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { shopCatalog, shopCheckoutUrl, shopMyLicenses } from "../lib/api";
 import { FREE_PLUGINS } from "../lib/freePlugins";
+import { ownsPackage, ownsPluginId, packagePluginsField } from "../lib/licenses";
 import { PLUGIN_ART } from "../lib/pluginArt";
 import { PLUGIN_BANNERS } from "../lib/pluginBanners";
 import { PLUGIN_FEATURES } from "../lib/pluginFeatures";
 import { PACKAGE_ICON, PLUGIN_ICONS } from "../lib/pluginIcons";
+import { useAuth } from "../state/AuthContext";
 import type { Catalog, LicenseRecord } from "../lib/types";
 
 /** Ikona nagłówka - kwadrat po lewej obok tytułu, w stylu strony projektu na Modrinth
@@ -63,26 +65,12 @@ function formatPrice(price: number | null, suffix = ""): string {
   return `${price} zł${suffix}`;
 }
 
-/** Czy KTÓRAKOLWIEK aktywna licencja obejmuje ten plugin - ta sama logika co
-    licenseGrants w license-server/src/db.js (plugin="*", albo lista po przecinku). */
-function ownsPluginId(licenses: LicenseRecord[], id: string): boolean {
-  return licenses.some(
-    (l) => l.status === "active" && (l.plugin === "*" || l.plugin.split(",").map((s) => s.trim()).includes(id))
-  );
-}
-
-/** Dla pakietu - dokładne dopasowanie stringa (tak jak go zapisuje resolveVariant przy
-    zakupie: "*" albo lista id po przecinku) - pakiet nie jest sam w sobie "pluginem",
-    więc ownsPluginId by tu nie zadziałało. */
-function ownsPackage(licenses: LicenseRecord[], pluginsField: string): boolean {
-  return licenses.some((l) => l.status === "active" && (l.plugin === "*" || l.plugin === pluginsField));
-}
-
 /** Dedykowana strona jednego pluginu/pakietu w Sklepie, w układzie inspirowanym stroną
     projektu na Modrinth: nagłówek (ikona + tytuł + tagi) na górze, potem dwie kolumny -
     szeroka z opisem/cechami po lewej, wąski panel z ceną/przyciskiem "Kup" i szczegółami
     po prawej. To samo źródło danych (katalog + moje licencje) co ShopPage. */
 export default function PluginDetailPage() {
+  const { customer } = useAuth();
   const { kind, id } = useParams<{ kind: Kind; id: string }>();
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [licenses, setLicenses] = useState<LicenseRecord[]>([]);
@@ -90,19 +78,26 @@ export default function PluginDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [buyingVariant, setBuyingVariant] = useState<string | null>(null);
 
+  // Katalog jest publiczny i musi się załadować niezależnie od tego, czy ktoś jest
+  // zalogowany - brak konta blokuje tylko "moje licencje" (patrz ShopPage.tsx, ten sam
+  // wzorzec), nie całą stronę pluginu.
   useEffect(() => {
     setLoading(true);
     setError(null);
-    Promise.all([shopCatalog(), shopMyLicenses()])
-      .then(([cat, myLicenses]) => {
-        setCatalog(cat);
-        setLicenses(myLicenses);
-      })
+    shopCatalog()
+      .then(setCatalog)
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false));
+    shopMyLicenses()
+      .then(setLicenses)
+      .catch(() => setLicenses([]));
   }, []);
 
   async function buy(variantId: string | null) {
+    if (!customer) {
+      setError("Zaloguj się najpierw, żeby kupić.");
+      return;
+    }
     setBuyingVariant(variantId);
     setError(null);
     try {
@@ -230,7 +225,7 @@ export default function PluginDetailPage() {
   const pkg = catalog?.packages.find((p) => p.id === id);
   if (!pkg) return <NotFound backLink={backLink} />;
   const art = PLUGIN_ART[pkg.id];
-  const pluginsField = pkg.plugins === "*" ? "*" : pkg.plugins.join(",");
+  const pluginsField = packagePluginsField(pkg.plugins);
   const owned = ownsPackage(licenses, pluginsField);
   const containedPlugins = pkg.plugins === "*" ? null : catalog?.individualPlugins.filter((p) => (pkg.plugins as string[]).includes(p.id)) ?? [];
 

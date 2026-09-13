@@ -11,6 +11,7 @@ import {
   shopMyLicenses,
   type EmbeddedJar,
 } from "../lib/api";
+import { setHasDeployed } from "../lib/appSettings";
 import { FREE_PLUGIN_IDS } from "../lib/freePlugins";
 import { MAINPLUGINS_PROJECT_DIR_KEY as PROJECT_DIR_KEY } from "../lib/paths";
 import { PLUGIN_ICONS, PLUGIN_LABELS } from "../lib/pluginIcons";
@@ -92,6 +93,7 @@ export default function DeployPage() {
     }
     setBusy(false);
     if (ok > 0) {
+      setHasDeployed();
       setStatus(
         `Wysłano ${ok}/${ids.length} plugin(ów) do folderu plugins/ na serwerze. Zrestartuj serwer (albo /reload), żeby je załadował.`
       );
@@ -143,6 +145,7 @@ export default function DeployPage() {
       for (const jar of toUpload) {
         await sftpUploadLocalFile(profileId, jar.path, `${profile.remote_plugins_path.replace(/\/+$/, "")}/${jar.name}`);
       }
+      setHasDeployed();
       setStatus(`Wysłano ${toUpload.length} plik(ów) z dist/ na serwer. Zrestartuj serwer, żeby zaczęły działać.`);
     } catch (e) {
       setStatus(String(e));

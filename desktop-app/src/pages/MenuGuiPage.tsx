@@ -16,6 +16,7 @@ import { useIconPack } from "../lib/useIconPack";
 import { useLocalPresets } from "../lib/useLocalPresets";
 import { useProfiles } from "../state/ProfilesContext";
 import type { MenuButton, MenuGuiContent } from "../lib/types";
+import { showPrompt } from "../components/PromptModal";
 
 const LAST_USED_KEY = "menu";
 
@@ -214,9 +215,9 @@ export default function MenuGuiPage() {
     setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
-  function saveCurrentPresetAs() {
+  async function saveCurrentPresetAs() {
     if (!content || !profileId) return;
-    const name = window.prompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
+    const name = await showPrompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
     if (!name) return;
     savePresetAs(profileId, name, content);
     setStatus(`Zapisano preset lokalnie jako „${name}" (nie wysłano na serwer).`);

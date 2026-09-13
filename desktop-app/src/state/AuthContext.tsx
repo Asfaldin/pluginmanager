@@ -2,10 +2,11 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { shopLogin, shopLogout, shopMe, shopRegister } from "../lib/api";
 import type { CustomerInfo } from "../lib/types";
 
-// Logowanie jest bramką na WEJŚCIU do całej appki (patrz App.tsx) - RSMCMANAGER to
-// teraz produkt, nie darmowe narzędzie, więc nic poza ekranem logowania nie jest
-// dostępne bez konta. Osobny panel admina (dawna zakładka "Licencje") świadomie
-// usunięty z appki - operator wystawia klucze przez curl (patrz
+// Logowanie NIE jest już bramką na wejściu do appki (patrz App.tsx) - appka działa
+// bez konta (edycja configów, Wdrożenie, Texturepack Creator itd. to lokalne/SFTP
+// operacje). Konto jest potrzebne tylko do Sklepu i loguje się w środku, w Ustawieniach
+// → Konto (patrz SettingsPage.tsx). Osobny panel admina (dawna zakładka "Licencje")
+// świadomie usunięty z appki - operator wystawia klucze przez curl (patrz
 // Mainplugins/license-server/README.md), appka jest wyłącznie dla klienta.
 
 interface AuthContextValue {

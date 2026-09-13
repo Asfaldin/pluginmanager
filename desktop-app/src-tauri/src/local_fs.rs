@@ -55,6 +55,18 @@ pub fn write_bytes(root: &str, path: &str, bytes: &[u8]) -> Result<(), String> {
     std::fs::write(&file, bytes).map_err(|e| format!("{}: {e}", file.display()))
 }
 
+/// Odczyt binarny - w odróżnieniu od read_file (String, zakłada UTF-8) bezpieczny dla
+/// dowolnych plików, np. schematów .nbt/.schem, które nie są tekstem.
+pub fn read_bytes(root: &str, path: &str) -> Result<Vec<u8>, String> {
+    let file = resolve(root, path)?;
+    std::fs::read(&file).map_err(|e| format!("{}: {e}", file.display()))
+}
+
+pub fn delete_file(root: &str, path: &str) -> Result<(), String> {
+    let file = resolve(root, path)?;
+    std::fs::remove_file(&file).map_err(|e| format!("{}: {e}", file.display()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -65,6 +77,18 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("pm-local-fs-{}-{nanos}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         dir.to_string_lossy().replace('\\', "/")
+    }
+
+    #[test]
+    fn read_bytes_roundtrips_non_utf8_content_and_delete_removes_the_file() {
+        let root = temp_root();
+        let path = format!("{root}/schematics/wyspa.nbt");
+        let binary = [0u8, 159, 146, 150, 255, 0, 1, 2];
+        write_bytes(&root, &path, &binary).unwrap();
+        assert_eq!(read_bytes(&root, &path).unwrap(), binary.to_vec());
+
+        delete_file(&root, &path).unwrap();
+        assert!(read_bytes(&root, &path).is_err());
     }
 
     #[test]

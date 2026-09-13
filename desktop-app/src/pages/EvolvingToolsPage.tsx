@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import MinecraftTextInput from "../components/MinecraftTextInput";
 import PresetBar from "../components/PresetBar";
 import ToolbarMore from "../components/ToolbarMore";
+import { showPrompt } from "../components/PromptModal";
 import {
   listTexturePacks,
   rconSendCommand,
@@ -943,9 +944,9 @@ export default function EvolvingToolsPage() {
     setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
-  function saveCurrentPresetAs() {
+  async function saveCurrentPresetAs() {
     if (!profileId) return;
-    const name = window.prompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
+    const name = await showPrompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
     if (!name) return;
     savePresetAs(profileId, name, items);
     setStatus(`Zapisano preset lokalnie jako „${name}" (nie wysłano na serwer).`);
@@ -1063,8 +1064,8 @@ export default function EvolvingToolsPage() {
     }
   }
 
-  function addMilestone() {
-    const poziom = Number(window.prompt("Poziom kamienia milowego (np. 10):", "10"));
+  async function addMilestone() {
+    const poziom = Number(await showPrompt("Poziom kamienia milowego (np. 10):", "10"));
     if (!poziom || poziom < 1) return;
     if (editing.kamienieMilowe.some((m) => m.poziom === poziom)) {
       setStatus(`Kamień milowy na poziomie ${poziom} już istnieje.`);

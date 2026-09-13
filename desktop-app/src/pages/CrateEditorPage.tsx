@@ -31,6 +31,7 @@ import { loadItemCatalog } from "../lib/itemCatalogRemote";
 import { useIconPack } from "../lib/useIconPack";
 import { useDirtyTracking } from "../state/DirtyContext";
 import { useProfiles } from "../state/ProfilesContext";
+import { showPrompt } from "../components/PromptModal";
 
 const EMPTY: CratesFile = {
   settings: { hologramHeight: DEFAULT_HOLOGRAM_HEIGHT, placedBlockFromItem: true },
@@ -293,8 +294,8 @@ export default function CrateEditorPage() {
     setFile({ ...file, keys: file.keys.map((k) => (k.id === id ? { ...k, ...patch } : k)) });
   }
 
-  function newCrate() {
-    const name = window.prompt("Nazwa nowej skrzynki (może mieć spacje, np. Letnia Skrzynka):")?.trim();
+  async function newCrate() {
+    const name = (await showPrompt("Nazwa nowej skrzynki (może mieć spacje, np. Letnia Skrzynka):"))?.trim();
     if (!name) return;
     const id = idFromName(name, crateIds);
     setFile(addCrate(file, id, name));
@@ -302,8 +303,8 @@ export default function CrateEditorPage() {
     setStatus(`Dodano skrzynkę „${name}”. W komendach jej ID to: ${id} (np. /@crate give <gracz> ${id}).`);
   }
 
-  function newKey() {
-    const name = window.prompt("Nazwa nowego klucza (może mieć spacje, np. Klucz VIP):")?.trim();
+  async function newKey() {
+    const name = (await showPrompt("Nazwa nowego klucza (może mieć spacje, np. Klucz VIP):"))?.trim();
     if (!name) return;
     const id = idFromName(name, keyIds);
     setFile({ ...file, keys: [...file.keys, { id, name: `&e&l${name}`, lore: [], item: { item: "TRIPWIRE_HOOK" } }] });

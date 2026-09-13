@@ -10,6 +10,7 @@ import { getLastUsed, setLastUsed } from "../lib/lastUsed";
 import { useLocalPresets } from "../lib/useLocalPresets";
 import { useProfiles } from "../state/ProfilesContext";
 import type { NamedWarp, SpawnArea, WorldPoint } from "../lib/types";
+import { showPrompt } from "../components/PromptModal";
 
 interface SpawnPreset {
   spawnPoint: WorldPoint;
@@ -255,9 +256,9 @@ export default function SpawnWarpsPage() {
   // saving one never touches the server. Loading one only replaces the local
   // draft; it still has to go through "Wyślij na serwer" to go live - handy
   // if something got overwritten on the server and you want back what you had.
-  function saveCurrentPresetAs() {
+  async function saveCurrentPresetAs() {
     if (!profileId) return;
-    const name = window.prompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
+    const name = await showPrompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
     if (!name) return;
     savePresetAs(profileId, name, { spawnPoint, warps, areas });
     setStatus(`Zapisano preset lokalnie jako „${name}" (nie wysłano na serwer).`);

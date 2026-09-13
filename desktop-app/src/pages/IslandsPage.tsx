@@ -17,6 +17,7 @@ import { useIconPack } from "../lib/useIconPack";
 import { useLocalPresets } from "../lib/useLocalPresets";
 import { useProfiles } from "../state/ProfilesContext";
 import type { IslandButton, IslandConfig, IslandGuiContent, SpawnerType } from "../lib/types";
+import { showPrompt } from "../components/PromptModal";
 
 const LAST_USED_KEY = "islands";
 
@@ -221,9 +222,9 @@ export default function IslandsPage() {
   // draft; it still has to go through "Wyślij na serwer" to go live -
   // exactly what you want if something got overwritten on the server and you
   // need back what you had.
-  function saveCurrentPresetAs() {
+  async function saveCurrentPresetAs() {
     if (!guiContent || !config || !profileId) return;
-    const name = window.prompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
+    const name = await showPrompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
     if (!name) return;
     savePresetAs(profileId, name, { guiContent, config });
     setStatus(`Zapisano preset lokalnie jako „${name}" (nie wysłano na serwer).`);

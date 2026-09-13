@@ -1,8 +1,9 @@
 import { HashRouter, Route, Routes } from "react-router-dom";
 import CloseGuard from "./components/CloseGuard";
+import PromptHost from "./components/PromptModal";
 import HomeRedirect from "./components/HomeRedirect";
 import Layout from "./components/Layout";
-import LoginScreen from "./components/LoginScreen";
+import AccountPage from "./pages/AccountPage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
 import ConfigEditorPage from "./pages/ConfigEditorPage";
 import ChatFilterPage from "./pages/ChatFilterPage";
@@ -23,6 +24,7 @@ import QuestsPage from "./pages/QuestsPage";
 import RanksPage from "./pages/RanksPage";
 import RedstoneItemsPage from "./pages/RedstoneItemsPage";
 import ResourcePackPage from "./pages/ResourcePackPage";
+import SchematicsPage from "./pages/SchematicsPage";
 import ServersPage from "./pages/ServersPage";
 import SettingsPage from "./pages/SettingsPage";
 import PluginDetailPage from "./pages/PluginDetailPage";
@@ -36,12 +38,16 @@ import { ProfilesProvider } from "./state/ProfilesContext";
 import { ThemeProvider } from "./state/ThemeContext";
 import "./App.css";
 
-// Bramka logowania na wejściu do CAŁEJ appki - poniżej tego punktu nic (Narzędzia,
-// Serwery, Sklep, itd.) nie jest osiągalne bez zalogowania. Dawna zakładka "Licencje"
-// (panel admina) celowo usunięta z appki - to narzędzie operatora, nie klienta, patrz
-// Mainplugins/license-server/README.md (wystawianie kluczy przez curl).
+// Appka jest usable BEZ logowania - edycja configów, Wdrożenie (darmowe pluginy),
+// Texturepack Creator, Schematics itd. to lokalne/SFTP operacje niezwiązane z kontem.
+// Logowanie jest potrzebne tylko do Sklepu (kupowanie, "Moje licencje") i odbywa się
+// w środku appki, na osobnej stronie /account (patrz AccountPage.tsx, link w pasku
+// bocznym) - NIE w Ustawieniach i NIE na osobnym ekranie blokującym wszystko, dawna
+// bramka na wejściu (Gate) celowo usunięta.
+// Dawna zakładka "Licencje" (panel admina) też nie wraca - to narzędzie operatora,
+// nie klienta, patrz Mainplugins/license-server/README.md (wystawianie kluczy przez curl).
 function Gate() {
-  const { customer, loading } = useAuth();
+  const { loading } = useAuth();
 
   if (loading) {
     return (
@@ -51,18 +57,16 @@ function Gate() {
     );
   }
 
-  if (!customer) {
-    return <LoginScreen />;
-  }
-
   return (
     <DirtyProvider>
       <CloseGuard />
+      <PromptHost />
       <ProfilesProvider>
         <HashRouter>
           <Routes>
             <Route path="/" element={<Layout />}>
               <Route index element={<HomeRedirect />} />
+              <Route path="account" element={<AccountPage />} />
               <Route path="servers" element={<ServersPage />} />
               <Route path="shop" element={<ShopPage />} />
               <Route path="shop/:kind/:id" element={<PluginDetailPage />} />
@@ -71,6 +75,7 @@ function Gate() {
               <Route path="items" element={<ItemBuilderPage />} />
               <Route path="announcements" element={<AnnouncementsPage />} />
               <Route path="resourcepack" element={<ResourcePackPage />} />
+              <Route path="schematics" element={<SchematicsPage />} />
               <Route path="tools" element={<ToolsHubPage />} />
               <Route path="crates" element={<CrateEditorPage />} />
               <Route path="spawn" element={<SpawnWarpsPage />} />

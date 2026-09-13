@@ -23,6 +23,8 @@ pub fn run() {
             sftp::sftp_read_file,
             sftp::sftp_write_file,
             sftp::sftp_upload_local_file,
+            sftp::sftp_download_file,
+            sftp::sftp_delete_file,
             sftp::sftp_upload_embedded_jar,
             embedded_jars::list_embedded_jars,
             rcon::rcon_send_command,

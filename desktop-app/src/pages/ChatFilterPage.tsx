@@ -11,6 +11,7 @@ import { getLastUsed, setLastUsed } from "../lib/lastUsed";
 import { useLocalPresets } from "../lib/useLocalPresets";
 import { useProfiles } from "../state/ProfilesContext";
 import type { ChatFilterConfig, ChatRank } from "../lib/types";
+import { showPrompt } from "../components/PromptModal";
 
 const LAST_USED_KEY = "chatfilter";
 const ALL_RANKS: ChatRank[] = ["GRACZ", "VIP", "ADMIN"];
@@ -154,9 +155,9 @@ export default function ChatFilterPage() {
     setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
-  function saveCurrentPresetAs() {
+  async function saveCurrentPresetAs() {
     if (!config || !profileId) return;
-    const name = window.prompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
+    const name = await showPrompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
     if (!name) return;
     savePresetAs(profileId, name, config);
     setStatus(`Zapisano preset lokalnie jako „${name}" (nie wysłano na serwer).`);
@@ -188,9 +189,9 @@ export default function ChatFilterPage() {
     }
   }
 
-  function addKoncowka() {
+  async function addKoncowka() {
     if (!config) return;
-    const value = window.prompt("Nowa końcówka domeny (bez kropki), np. pl", "");
+    const value = await showPrompt("Nowa końcówka domeny (bez kropki), np. pl", "");
     if (!value || !value.trim()) return;
     set("antyReklama", { koncowkiDomen: [...config.antyReklama.koncowkiDomen, value.trim().toLowerCase()] });
   }

@@ -1,6 +1,7 @@
 import { Save } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { showPrompt } from "../components/PromptModal";
 import { sftpReadFile, sftpWriteFile } from "../lib/api";
 import {
   parseCommandsYml,
@@ -122,8 +123,8 @@ export default function CoreSettingsPage() {
     setCommands(commands.map((r, ri) => (ri === i ? { ...r, ...patch } : r)));
   }
 
-  function addRow() {
-    const command = window.prompt("Oryginalna nazwa komendy (np. sklep albo @reloadsklep):");
+  async function addRow() {
+    const command = await showPrompt("Oryginalna nazwa komendy (np. sklep albo @reloadsklep):");
     if (!command?.trim()) return;
     setCommands([...commands, { command: command.trim().toLowerCase(), name: "", aliases: [], enabled: true }]);
   }

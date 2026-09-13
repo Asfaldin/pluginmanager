@@ -79,7 +79,9 @@ body {
   flex-shrink: 0;
   background: var(--surface);
   border-right: 1px solid var(--border);
-  padding: 1rem 0;
+  /* Bez paddingu na dole - .sidebar-account ma już własny (0.75rem), inaczej te dwa się
+     sumowały i dół paska miał wyraźnie więcej luzu niż góra (patrz rozmowa). */
+  padding: 1rem 0 0;
   display: flex;
   flex-direction: column;
   overflow-y: visible;
@@ -128,6 +130,50 @@ body {
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
+}
+
+/* Status konta - na dole obok "Ustawienia" (patrz Layout.tsx), żeby logowanie (teraz
+   wbudowane w Ustawienia, patrz App.tsx) było widoczne bez klikania nigdzie. Kropka -
+   szara/nieaktywna gdy niezalogowany, fioletowa (accent) po zalogowaniu - ten sam kod
+   koloru co reszta UI. */
+/* Element to <button> (otwiera AccountModal), nie <a>/NavLink jak reszta sidebara -
+   stąd pełny reset domyślnego wyglądu przycisku (patrz globalne "button" wyżej w pliku),
+   żeby wyglądał tak samo jak sąsiedni link "Ustawienia". */
+.sidebar-account-status {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.6rem 1.25rem;
+  background: none;
+  border: none;
+  border-radius: 0;
+  font-size: inherit;
+  font-weight: 400;
+  text-align: left;
+  color: var(--text-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sidebar-account-status:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.sidebar-account-status-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar.collapsed .sidebar-account-status {
+  justify-content: center;
+  padding: 0.6rem 0;
+}
+
+.sidebar.collapsed .sidebar-account-status-text {
+  display: none;
 }
 
 /* Wybór aktywnego serwera GLOBALNIE dla całej appki - każda podstrona z edytorem
@@ -185,7 +231,6 @@ body {
    wygląda jak osobny, doklejony prostokąt zamiast pełnej belki na całą szerokość
    paska, tak jak reszta pozycji menu (te dostają swój odstęp z .nav-link, nie stąd). */
 .sidebar-account {
-  margin-top: auto;
   padding: 0.75rem 0;
   border-top: 1px solid var(--border);
   display: flex;
@@ -197,6 +242,15 @@ body {
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+/* Wrapper obu dolnych grup ("Ustawienia serwera"/"Serwery" + Konto/Ustawienia) - JEDEN
+   margin-top: auto na całości dociska je razem do samego dołu paska (gdyby każda grupa
+   miała własny auto-margines, flex rozdzieliłby wolne miejsce po równo między nie i
+   pierwsza grupa wisiałaby na środku). Linia (border-top) zostaje tylko na
+   .sidebar-account wewnątrz, więc obie grupy są nadal wizualnie rozdzielone. */
+.sidebar-bottom-group {
+  margin-top: auto;
 }
 
 .nav-link {
@@ -569,6 +623,84 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 1rem 1.1rem;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s;
+}
+
+.stat-tile:hover {
+  border-color: var(--accent);
+}
+
+/* Checklista "Pierwsze kroki" na Dashboardzie - znika sama, gdy wszystkie kroki zrobione
+   (patrz showOnboarding w DashboardPage.tsx). Pionowy tor: kropka (szara/zielona) +
+   łącząca ją z następnym krokiem linia, która robi się zielona TYLKO gdy oba kroki,
+   które łączy, są zrobione - stąd lineDone = step.done && next.done w komponencie,
+   nie samo step.done (inaczej ostatnia zielona kropka miałaby zieloną linię do
+   jeszcze nieskończonego kroku). */
+.onboarding-checklist {
+  margin-bottom: 1.25rem;
+}
+
+.onboarding-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.7rem;
+}
+
+.onboarding-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 10px;
+  flex-shrink: 0;
+}
+
+.onboarding-dot {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--text-muted);
+  margin-top: 0.6rem;
+}
+
+.onboarding-dot.done {
+  background: var(--success);
+}
+
+.onboarding-line {
+  width: 2px;
+  flex: 1;
+  min-height: 12px;
+  background: var(--border-strong);
+}
+
+.onboarding-line.done {
+  background: var(--success);
+}
+
+.onboarding-row-content {
+  padding: 0.4rem 0;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.onboarding-row-content:hover {
+  color: var(--accent);
+}
+
+div.onboarding-row-content {
+  cursor: default;
+}
+
+div.onboarding-row-content:hover {
+  color: var(--text);
+}
+
+.onboarding-row-content.done {
+  color: var(--text-muted);
+  text-decoration: line-through;
 }
 
 .stat-tile-icon {
@@ -851,6 +983,47 @@ body {
 
 .plugin-card-title-link:hover .card-title {
   color: var(--accent);
+}
+
+/* Mała ikona pluginu obok tytułu - fallback na kartach bez wpisu w PLUGIN_ART (dziś
+   pustym), żeby karta nie była gołym tekstem. Mniejsza wersja .plugin-detail-icon. */
+.plugin-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--radius);
+  background: var(--surface-hover);
+  color: var(--accent);
+}
+
+/* Karta pluginu/pakietu, który klient już posiada - subtelna fioletowa ramka zamiast
+   zwykłej szarej, żeby dało się to wyłapać wzrokiem przy przewijaniu siatki. */
+.plugin-card-owned {
+  border-color: var(--accent);
+}
+
+/* Wyróżniony pakiet ("Polecane") - grubsza, kolorowa ramka + wstążka w rogu, klasyczny
+   akcent na środkowym cenowo pakiecie (patrz featuredPackageId w ShopPage.tsx). */
+.plugin-card-featured {
+  position: relative;
+  border: 2px solid var(--accent);
+}
+
+.plugin-card-featured-ribbon {
+  position: absolute;
+  top: -0.6rem;
+  left: 1rem;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
 }
 
 /* Nagłówek strony pluginu w stylu strony projektu na Modrinth - kwadratowa ikona po
@@ -1986,6 +2159,22 @@ button:disabled:hover {
 
 .modal.modal-wide {
   width: min(820px, 92vw);
+}
+
+/* Przycisk zamknięcia nachodzący na róg karty w środku - żeby uniknąć karty w karcie
+   (patrz AccountModal.tsx), zamiast być wewnątrz .card jest tu, na wspólnym .modal. */
+.modal-close {
+  position: absolute;
+  top: -0.6rem;
+  right: -0.6rem;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ---- Custom itemy: kategorie | lista | edycja ---- */

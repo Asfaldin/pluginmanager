@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import MinecraftTextInput from "../components/MinecraftTextInput";
 import PresetBar from "../components/PresetBar";
 import ToolbarMore from "../components/ToolbarMore";
+import { showPrompt } from "../components/PromptModal";
 import {
   listTexturePacks,
   rconSendCommand,
@@ -194,9 +195,9 @@ export default function RedstoneItemsPage() {
     setStatus("Przywrócono stan z serwera - lokalne zmiany odrzucone.");
   }
 
-  function saveCurrentPresetAs() {
+  async function saveCurrentPresetAs() {
     if (!profileId) return;
-    const name = window.prompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
+    const name = await showPrompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
     if (!name) return;
     savePresetAs(profileId, name, items);
     setStatus(`Zapisano preset lokalnie jako „${name}" (nie wysłano na serwer).`);
