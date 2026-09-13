@@ -2037,14 +2037,27 @@ button:disabled:hover {
   color: var(--accent-strong);
 }
 
+/* Wąsko: komenda + „Kopiuj” w jednej linii, opis pod spodem. Szeroko (np. okienko Komendy): jeden rząd. */
+.ci-protip {
+  container-type: inline-size;
+}
+
 .ci-protip-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "cmd btn"
+    "what what";
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  column-gap: 0.5rem;
+  row-gap: 0.15rem;
 }
 
 .ci-protip-row code {
+  grid-area: cmd;
+  justify-self: start;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -2053,13 +2066,22 @@ button:disabled:hover {
 }
 
 .ci-protip-row span {
-  flex: 1;
-  min-width: 10rem;
+  grid-area: what;
+  min-width: 0;
 }
 
 .ci-protip-row button {
+  grid-area: btn;
   padding: 0.15rem 0.6rem;
   font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+@container (min-width: 620px) {
+  .ci-protip-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "cmd what btn";
+  }
 }
 
 /* Liczba wygranych przy skrzynce - plakietka z prezentem zamiast nagłówka kolumny. */
