@@ -1,6 +1,5 @@
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import PixelEditor from "../components/PixelEditor";
 import TextureBrowser from "../components/TextureBrowser";
 import {
@@ -462,10 +461,10 @@ export default function ResourcePackPage() {
 
   return (
     <div className="page">
-      <Link to="/tools" className="back-link">← Twoje pluginy</Link>
-      <h1>Resource Pack</h1>
+      <h1>Texturepack Creator</h1>
       <p className="muted">
-        Edytor tekstur GUI — np. usunięcie tła w menu skrzynkowym (chest GUI) używanym przez pluginy menu.
+        Buduj resource packi na bazie oficjalnych tekstur Minecrafta (pobranych i zweryfikowanych z API Mojang) —
+        edytuj, dodawaj własne tekstury, usuwaj tła GUI, eksportuj .zip i wysyłaj prosto na serwer.
       </p>
 
       <div className="card form">

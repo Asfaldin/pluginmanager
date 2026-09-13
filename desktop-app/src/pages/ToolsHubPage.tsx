@@ -11,12 +11,10 @@ import {
   LayoutGrid,
   Megaphone,
   MessageSquare,
-  Palette,
   Palmtree,
   PawPrint,
   Rocket,
   ScrollText,
-  Settings,
   Skull,
   Sprout,
   Tv,
@@ -131,12 +129,6 @@ const TOOL_GROUPS: ToolGroup[] = [
     title: "Serwer i społeczność",
     tools: [
       {
-        to: "/core",
-        title: "Ustawienia serwera",
-        description: "Język serwera (PL/EN), czyje pieniądze (nasze albo Vault) i nazwy komend dla graczy.",
-        icon: Settings,
-      },
-      {
         to: "/announcements",
         title: "Announcer",
         description: "Cykliczne ogłoszenia na czacie - kolory, interwały, kolejność.",
@@ -177,12 +169,6 @@ const TOOL_GROUPS: ToolGroup[] = [
   {
     title: "Zasoby i wdrożenie",
     tools: [
-      {
-        to: "/resourcepack",
-        title: "Texture Pack",
-        description: "Edytor resource packa: własne tekstury, usuwanie tła GUI, baza Vanilla.",
-        icon: Palette,
-      },
       {
         to: "/config",
         title: "Edytor configów",

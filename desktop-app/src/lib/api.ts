@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { setHasConfigured } from "./appSettings";
 import type {
   Catalog,
   CustomerInfo,
@@ -41,8 +42,12 @@ export function sftpReadFile(profileId: string, path: string): Promise<string> {
   return invoke("sftp_read_file", { profileId, path });
 }
 
-export function sftpWriteFile(profileId: string, path: string, contents: string): Promise<void> {
-  return invoke("sftp_write_file", { profileId, path, contents });
+export async function sftpWriteFile(profileId: string, path: string, contents: string): Promise<void> {
+  await invoke("sftp_write_file", { profileId, path, contents });
+  // Wspólny punkt dla "Wyślij na serwer" ze wszystkich edytorów configów - stąd
+  // checklista "Pierwsze kroki" na Dashboardzie wie, że ktoś skonfigurował coś
+  // niezależnie od tego, w którym edytorze to zrobił.
+  setHasConfigured();
 }
 
 export function rconSendCommand(profileId: string, command: string): Promise<string> {
@@ -51,6 +56,15 @@ export function rconSendCommand(profileId: string, command: string): Promise<str
 
 export function sftpUploadLocalFile(profileId: string, localPath: string, remotePath: string): Promise<void> {
   return invoke("sftp_upload_local_file", { profileId, localPath, remotePath });
+}
+
+/** Pobiera plik z serwera na dysk lokalny - binarnie (schematy .nbt/.schem i inne pliki niebędące configiem). */
+export function sftpDownloadFile(profileId: string, remotePath: string, localPath: string): Promise<void> {
+  return invoke("sftp_download_file", { profileId, remotePath, localPath });
+}
+
+export function sftpDeleteFile(profileId: string, remotePath: string): Promise<void> {
+  return invoke("sftp_delete_file", { profileId, remotePath });
 }
 
 /** Wgrywa wbudowany w appkę jar pluginu (patrz embedded_jars.rs) prosto na serwer przez SFTP - zwraca zdalną ścieżkę. */

@@ -224,3 +224,38 @@ pub async fn sftp_upload_local_file(
     file.shutdown().await.map_err(|e| e.to_string())?;
     Ok(())
 }
+
+/// Pobiera plik z serwera na dysk lokalny - binarnie (w odróżnieniu od sftp_read_file,
+/// które zakłada tekst UTF-8). Do schematów .nbt/.schem oraz innych plików niebędących
+/// configami YAML.
+#[tauri::command]
+pub async fn sftp_download_file(
+    app: AppHandle,
+    profile_id: String,
+    remote_path: String,
+    local_path: String,
+) -> Result<(), String> {
+    use tokio::io::AsyncReadExt;
+
+    let profile = resolve_profile(&app, &profile_id)?;
+    let bytes = if let Some(root) = profile.local_root() {
+        local_fs::read_bytes(root, &remote_path)?
+    } else {
+        let sftp = connect_sftp(&profile).await?;
+        let mut file = sftp.open(&remote_path).await.map_err(|e| e.to_string())?;
+        let mut bytes = Vec::new();
+        file.read_to_end(&mut bytes).await.map_err(|e| e.to_string())?;
+        bytes
+    };
+    tokio::fs::write(&local_path, &bytes).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn sftp_delete_file(app: AppHandle, profile_id: String, remote_path: String) -> Result<(), String> {
+    let profile = resolve_profile(&app, &profile_id)?;
+    if let Some(root) = profile.local_root() {
+        return local_fs::delete_file(root, &remote_path);
+    }
+    let sftp = connect_sftp(&profile).await?;
+    sftp.remove_file(&remote_path).await.map_err(|e| e.to_string())
+}
