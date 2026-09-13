@@ -16,6 +16,7 @@ import {
   idFromName,
   parseCratesYaml,
   serializeCratesYaml,
+  setChancePercent,
   validateCrates,
   type CrateDef,
   type CratesFile,
@@ -150,6 +151,47 @@ function CrateCommandsModal({ file, onClose }: { file: CratesFile; onClose: () =
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function formatPercent(v: number): string {
+  return String(Math.round(v * 100) / 100).replace(".", ",");
+}
+
+/**
+ * Pole na procenty: wpisujesz spokojnie (także „0,5”), a zmiana wchodzi po Enterze
+ * albo kliknięciu obok - inaczej przeliczanie pozostałych wygranych skakałoby przy każdej cyfrze.
+ */
+function PercentInput({ value, disabled, onCommit }: { value: number; disabled?: boolean; onCommit: (pct: number) => void }) {
+  const [text, setText] = useState(formatPercent(value));
+  const [editing, setEditing] = useState(false);
+  useEffect(() => {
+    if (!editing) setText(formatPercent(value));
+  }, [value, editing]);
+
+  function commit() {
+    setEditing(false);
+    const n = Number(text.replace(",", ".").replace("%", "").trim());
+    if (Number.isFinite(n) && n > 0) onCommit(n);
+    else setText(formatPercent(value));
+  }
+
+  return (
+    <div className="row" style={{ alignItems: "center" }}>
+      <input
+        inputMode="decimal"
+        value={text}
+        disabled={disabled}
+        onFocus={() => setEditing(true)}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        }}
+        style={{ width: "7rem" }}
+      />
+      <span>%</span>
     </div>
   );
 }
@@ -432,9 +474,18 @@ export default function CrateEditorPage() {
         </Fold>
         <Fold title="Szansa i ogłoszenie">
           <label>
-            Waga (im więcej, tym częściej)
-            <input type="number" min={1} value={p.weight} onChange={(e) => setPrize({ weight: Math.max(1, Number(e.target.value)) })} />
+            Szansa (%)
+            <PercentInput
+              value={chancePercent(c, p)}
+              disabled={c.prizes.length <= 1}
+              onCommit={(pct) => updateCrate(c.id, { prizes: setChancePercent(c.prizes, i, pct) })}
+            />
           </label>
+          <p className="muted small">
+            {c.prizes.length <= 1
+              ? "To jedyna wygrana w tej skrzynce, więc zawsze ma 100%."
+              : "Pozostałe wygrane dopasują się same, żeby razem było 100%."}
+          </p>
           <label className="checkbox">
             <input type="checkbox" checked={p.announce} onChange={(e) => setPrize({ announce: e.target.checked })} />
             Ogłoś na czacie, gdy ktoś to wylosuje

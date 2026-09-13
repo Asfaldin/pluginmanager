@@ -6,6 +6,7 @@ import {
   idFromName,
   parseCratesYaml,
   serializeCratesYaml,
+  setChancePercent,
   validateCrates,
 } from "./cratesYaml";
 
@@ -63,6 +64,30 @@ describe("cratesYaml", () => {
   it("round-trips without losing data", () => {
     const f = parseCratesYaml(YML);
     expect(parseCratesYaml(serializeCratesYaml(f))).toEqual(f);
+  });
+
+  it("sets one prize's chance in percent and scales the others to keep 100%", () => {
+    const c = parseCratesYaml(YML).crates[0]; // wagi 20 i 5 = 80% / 20%
+    const prizes = setChancePercent(c.prizes, 1, 50);
+    const after = { ...c, prizes };
+    expect(chancePercent(after, prizes[1])).toBeCloseTo(50, 1);
+    expect(chancePercent(after, prizes[0])).toBeCloseTo(50, 1);
+    expect(prizes.every((p) => Number.isInteger(p.weight) && p.weight >= 1)).toBe(true);
+  });
+
+  it("keeps proportions between the other prizes", () => {
+    const base = parseCratesYaml(YML).crates[0];
+    const c = { ...base, prizes: [...base.prizes, { ...base.prizes[0], weight: 15 }] }; // 20 / 5 / 15
+    const prizes = setChancePercent(c.prizes, 1, 60);
+    const after = { ...c, prizes };
+    expect(chancePercent(after, prizes[1])).toBeCloseTo(60, 1);
+    expect(chancePercent(after, prizes[0]) / chancePercent(after, prizes[2])).toBeCloseTo(20 / 15, 1);
+  });
+
+  it("single prize is always 100%", () => {
+    const base = parseCratesYaml(YML).crates[0];
+    const prizes = setChancePercent([base.prizes[0]], 0, 30);
+    expect(chancePercent({ ...base, prizes }, prizes[0])).toBe(100);
   });
 
   it("computes chances", () => {

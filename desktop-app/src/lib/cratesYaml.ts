@@ -154,6 +154,27 @@ export function chancePercent(c: CrateDef, p: Prize): number {
   return total > 0 ? (Math.max(0, p.weight) * 100) / total : 0;
 }
 
+// Wagi liczone tak, że 10000 = 100% - szansę da się ustawić z dokładnością do 0,01%.
+const WEIGHT_SCALE = 100;
+
+/**
+ * Ustawia szansę wygranej `index` w procentach. Pozostałe dzielą resztę do 100% w tych samych
+ * proporcjach co wcześniej. Plugin dalej dostaje wagi (liczby całkowite >= 1).
+ */
+export function setChancePercent(prizes: Prize[], index: number, percent: number): Prize[] {
+  if (prizes.length <= 1) return prizes.map((p) => ({ ...p, weight: 100 * WEIGHT_SCALE }));
+  const minPct = 1 / WEIGHT_SCALE;
+  const others = prizes.filter((_, i) => i !== index);
+  const pct = Math.min(100 - minPct * others.length, Math.max(minPct, percent));
+  const othersTotal = others.reduce((s, p) => s + Math.max(0, p.weight), 0);
+  const rest = (100 - pct) * WEIGHT_SCALE;
+  return prizes.map((p, i) => {
+    if (i === index) return { ...p, weight: Math.max(1, Math.round(pct * WEIGHT_SCALE)) };
+    const share = othersTotal > 0 ? Math.max(0, p.weight) / othersTotal : 1 / others.length;
+    return { ...p, weight: Math.max(1, Math.round(share * rest)) };
+  });
+}
+
 /** Ostrzeżenia przed wysłaniem - to, co plugin i tak by pominął. */
 export function validateCrates(f: CratesFile): string[] {
   const w: string[] = [];
