@@ -62,12 +62,11 @@ function LoreEditor({ value, onChange }: { value: string[]; onChange: (l: string
 }
 
 /** Sekcja zwijana strzałką - żeby prawy panel nie pokazywał wszystkiego naraz. */
-function Fold({ title, hint, open, children }: { title: string; hint?: string; open?: boolean; children: ReactNode }) {
+function Fold({ title, open, children }: { title: string; open?: boolean; children: ReactNode }) {
   return (
     <details className="ci-fold" open={open}>
       <summary>
         <span className="ci-fold-title">{title}</span>
-        {hint && <span className="muted small">{hint}</span>}
       </summary>
       <div className="ci-fold-body">{children}</div>
     </details>
@@ -223,10 +222,10 @@ export default function CrateEditorPage() {
           <div className="ci-section-title">Wygląd (przedmiot)</div>
           <ItemRefPicker value={c.item} onChange={(r) => updateCrate(c.id, { item: r })} materials={allMaterials} customIds={customIds} />
         </Fold>
-        <Fold title="Opis" hint={`${c.lore.length} linijek`}>
+        <Fold title="Opis">
           <LoreEditor value={c.lore} onChange={(l) => updateCrate(c.id, { lore: l })} />
         </Fold>
-        <Fold title="Klucze, które ją otwierają" hint={c.keys.join(", ") || "brak!"}>
+        <Fold title="Klucze, które ją otwierają">
           {file.keys.map((k) => (
             <label key={k.id} className="checkbox">
               <input
@@ -240,7 +239,7 @@ export default function CrateEditorPage() {
             </label>
           ))}
         </Fold>
-        <Fold title="Napis nad postawioną skrzynką" hint={c.hologramEnabled ? "włączony" : "wyłączony"}>
+        <Fold title="Napis nad postawioną skrzynką">
           <p className="muted small">
             Skrzynkę stawiasz w grze: patrzysz na blok i wpisujesz /@crate place {c.id}
           </p>
@@ -340,7 +339,7 @@ export default function CrateEditorPage() {
             showAmount
           />
         </Fold>
-        <Fold title="Szansa i ogłoszenie" hint={`waga ${p.weight}${p.announce ? ", ogłoszenie" : ""}`}>
+        <Fold title="Szansa i ogłoszenie">
           <label>
             Waga (im więcej, tym częściej)
             <input type="number" min={1} value={p.weight} onChange={(e) => setPrize({ weight: Math.max(1, Number(e.target.value)) })} />
@@ -350,7 +349,7 @@ export default function CrateEditorPage() {
             Ogłoś na czacie, gdy ktoś to wylosuje
           </label>
         </Fold>
-        <Fold title="Co gracz dostaje" hint={`${p.rewards.length} nagród`} open>
+        <Fold title="Co gracz dostaje" open>
           <RewardEditor
             value={p.rewards}
             onChange={(l) => setPrize({ rewards: l })}
@@ -388,7 +387,7 @@ export default function CrateEditorPage() {
           <div className="ci-section-title">Wygląd (przedmiot)</div>
           <ItemRefPicker value={k.item} onChange={(r) => updateKey(k.id, { item: r })} materials={allMaterials} customIds={customIds} />
         </Fold>
-        <Fold title="Opis" hint={`${k.lore.length} linijek`}>
+        <Fold title="Opis">
           <LoreEditor value={k.lore} onChange={(l) => updateKey(k.id, { lore: l })} />
         </Fold>
         <p className="muted small">
