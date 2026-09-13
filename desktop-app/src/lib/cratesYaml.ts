@@ -199,6 +199,23 @@ export function emptyPrize(): Prize {
   };
 }
 
+/** Usuwa skrzynkę razem z jej własnym kluczem „<id>_key” - chyba że ten klucz otwiera jeszcze inną skrzynkę. */
+export function removeCrate(f: CratesFile, id: string): CratesFile {
+  const crates = f.crates.filter((c) => c.id !== id);
+  const ownKey = `${id}_key`;
+  const stillUsed = crates.some((c) => c.keys.includes(ownKey));
+  return { ...f, crates, keys: stillUsed ? f.keys : f.keys.filter((k) => k.id !== ownKey) };
+}
+
+/** Usuwa klucz i odpina go od wszystkich skrzynek. */
+export function removeKey(f: CratesFile, id: string): CratesFile {
+  return {
+    ...f,
+    keys: f.keys.filter((k) => k.id !== id),
+    crates: f.crates.map((c) => (c.keys.includes(id) ? { ...c, keys: c.keys.filter((k) => k !== id) } : c)),
+  };
+}
+
 /**
  * ID do komend (np. /@crate give gracz letnia_skrzynka) z nazwy wpisanej przez człowieka:
  * bez kolorów (&6), polskich liter i spacji; zajęte -> _2, _3...

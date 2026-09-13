@@ -5,6 +5,8 @@ import {
   defaultHologram,
   idFromName,
   parseCratesYaml,
+  removeCrate,
+  removeKey,
   serializeCratesYaml,
   setChancePercent,
   validateCrates,
@@ -108,6 +110,26 @@ describe("cratesYaml", () => {
     const c = f.crates.find((x) => x.id === "letnia")!;
     expect(c.name).toBe("&6&lLetnia Skrzynka");
     expect(f.keys.find((k) => k.id === "letnia_key")!.name).toBe("&e&lLetnia Skrzynka Key");
+  });
+
+  it("removing a crate also removes its own key when nothing else uses it", () => {
+    let f = addCrate(parseCratesYaml(YML), "spring");
+    f = removeCrate(f, "spring");
+    expect(f.crates.some((c) => c.id === "spring")).toBe(false);
+    expect(f.keys.some((k) => k.id === "spring_key")).toBe(false);
+  });
+
+  it("removing a crate keeps its key when another crate still uses it", () => {
+    let f = addCrate(parseCratesYaml(YML), "spring");
+    f = { ...f, crates: f.crates.map((c) => (c.id === "basic" ? { ...c, keys: [...c.keys, "spring_key"] } : c)) };
+    f = removeCrate(f, "spring");
+    expect(f.keys.some((k) => k.id === "spring_key")).toBe(true);
+  });
+
+  it("removing a key unpins it from crates", () => {
+    const f = removeKey(parseCratesYaml(YML), "basic_key");
+    expect(f.keys).toEqual([]);
+    expect(f.crates[0].keys).toEqual([]);
   });
 
   it("adds a crate with its own key", () => {

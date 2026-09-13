@@ -2082,9 +2082,11 @@ button:disabled:hover {
   gap: 0.25rem;
 }
 
-.ci-cat-row .ci-cat {
+.ci-cat-row .ci-cat,
+.ci-cat-row .ci-item {
   flex: 1;
   min-width: 0;
+  width: auto;
 }
 
 .ci-trash {
@@ -2111,9 +2113,7 @@ button:disabled:hover {
 .ci-cat-confirm span {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .ci-cat-confirm button {

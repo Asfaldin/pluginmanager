@@ -15,6 +15,8 @@ import {
   emptyPrize,
   idFromName,
   parseCratesYaml,
+  removeCrate,
+  removeKey,
   serializeCratesYaml,
   setChancePercent,
   validateCrates,
@@ -537,43 +539,83 @@ export default function CrateEditorPage() {
 
   const selectedKey = view?.kind === "keys" && view.key ? file.keys.find((k) => k.id === view.key) : undefined;
 
+  // ---- Usuwanie (kosze na listach i przycisk „Usuń” na dole) ----
+
+  function crateQuestion(id: string): string {
+    const ownKey = `${id}_key`;
+    const keyGoesToo = file.keys.some((k) => k.id === ownKey) && !file.crates.some((c) => c.id !== id && c.keys.includes(ownKey));
+    return `Usunąć skrzynkę ${id}${keyGoesToo ? ` (i jej klucz ${ownKey})` : ""}?`;
+  }
+
+  function keyQuestion(id: string): string {
+    const used = file.crates.filter((c) => c.keys.includes(id)).map((c) => c.id);
+    return `Usunąć klucz ${id}?${used.length ? ` Zostanie odpięty od: ${used.join(", ")}.` : ""}`;
+  }
+
+  function doRemoveCrate(id: string) {
+    const next = removeCrate(file, id);
+    setFile(next);
+    if (view?.kind === "crate" && view.id === id) setView(null);
+    if (view?.kind === "keys" && view.key && !next.keys.some((k) => k.id === view.key)) setView({ kind: "keys", key: null });
+  }
+
+  function doRemovePrize(c: CrateDef, i: number) {
+    updateCrate(c.id, { prizes: c.prizes.filter((_, xi) => xi !== i) });
+    if (view?.kind === "crate" && typeof view.prize === "number") {
+      if (view.prize === i) setView({ kind: "crate", id: c.id, prize: "settings" });
+      else if (view.prize > i) setView({ kind: "crate", id: c.id, prize: view.prize - 1 });
+    }
+  }
+
+  function doRemoveKey(id: string) {
+    setFile(removeKey(file, id));
+    if (view?.kind === "keys" && view.key === id) setView({ kind: "keys", key: null });
+  }
+
+  /** Rząd „Usunąć …? Tak / Nie” w miejscu elementu listy. */
+  function confirmRow(question: string, onYes: () => void) {
+    return (
+      <div className="ci-cat-row ci-cat-confirm">
+        <span title={question}>{question}</span>
+        <button
+          type="button"
+          className="ci-danger"
+          onClick={() => {
+            onYes();
+            setTrashConfirm(null);
+          }}
+        >
+          Tak
+        </button>
+        <button type="button" onClick={() => setTrashConfirm(null)}>
+          Nie
+        </button>
+      </div>
+    );
+  }
+
+  function trashButton(id: string, title: string) {
+    return (
+      <button type="button" className="ci-trash" title={title} onClick={() => setTrashConfirm(id)}>
+        <Trash2 size={14} strokeWidth={1.75} />
+      </button>
+    );
+  }
+
   // Co usuwa przycisk „Usuń” w dolnym pasku - zależy od tego, co jest otwarte po prawej.
-  function deleteAction(): { label: string; question: string; blocked?: string; run: () => void } | null {
+  function deleteAction(): { label: string; question: string; run: () => void } | null {
     if (crate && view?.kind === "crate" && view.prize === "settings") {
       const c = crate;
-      return {
-        label: "Usuń skrzynkę",
-        question: `Na pewno usunąć skrzynkę ${c.id}?`,
-        run: () => {
-          setFile({ ...file, crates: file.crates.filter((x) => x.id !== c.id) });
-          setView(null);
-        },
-      };
+      return { label: "Usuń skrzynkę", question: crateQuestion(c.id), run: () => doRemoveCrate(c.id) };
     }
     if (crate && view?.kind === "crate" && typeof view.prize === "number" && crate.prizes[view.prize]) {
       const c = crate;
       const i = view.prize;
-      return {
-        label: "Usuń wygraną",
-        question: `Na pewno usunąć wygraną ${i + 1}?`,
-        run: () => {
-          updateCrate(c.id, { prizes: c.prizes.filter((_, xi) => xi !== i) });
-          setView({ kind: "crate", id: c.id, prize: "settings" });
-        },
-      };
+      return { label: "Usuń wygraną", question: `Na pewno usunąć wygraną ${i + 1}?`, run: () => doRemovePrize(c, i) };
     }
     if (selectedKey) {
       const k = selectedKey;
-      const used = file.crates.some((c) => c.keys.includes(k.id));
-      return {
-        label: "Usuń klucz",
-        question: `Na pewno usunąć klucz ${k.id}?`,
-        blocked: used ? "Najpierw odepnij ten klucz od skrzynek" : undefined,
-        run: () => {
-          setFile({ ...file, keys: file.keys.filter((x) => x.id !== k.id) });
-          setView({ kind: "keys", key: null });
-        },
-      };
+      return { label: "Usuń klucz", question: keyQuestion(k.id), run: () => doRemoveKey(k.id) };
     }
     return null;
   }
@@ -625,24 +667,8 @@ export default function CrateEditorPage() {
         <aside className="card ci-cats">
           <div className="ci-section-title">Skrzynki</div>
           {file.crates.map((c) =>
-            trashConfirm === c.id ? (
-              <div key={c.id} className="ci-cat-row ci-cat-confirm">
-                <span>Usunąć {c.id}?</span>
-                <button
-                  type="button"
-                  className="ci-danger"
-                  onClick={() => {
-                    setFile({ ...file, crates: file.crates.filter((x) => x.id !== c.id) });
-                    if (view?.kind === "crate" && view.id === c.id) setView(null);
-                    setTrashConfirm(null);
-                  }}
-                >
-                  Tak
-                </button>
-                <button type="button" onClick={() => setTrashConfirm(null)}>
-                  Nie
-                </button>
-              </div>
+            trashConfirm === `crate:${c.id}` ? (
+              <div key={c.id}>{confirmRow(crateQuestion(c.id), () => doRemoveCrate(c.id))}</div>
             ) : (
               <div key={c.id} className="ci-cat-row">
                 <button
@@ -657,9 +683,7 @@ export default function CrateEditorPage() {
                     <Gift size={12} strokeWidth={2} /> {c.prizes.length}
                   </span>
                 </button>
-                <button type="button" className="ci-trash" title={`Usuń skrzynkę ${c.id}`} onClick={() => setTrashConfirm(c.id)}>
-                  <Trash2 size={14} strokeWidth={1.75} />
-                </button>
+                {trashButton(`crate:${c.id}`, `Usuń skrzynkę ${c.id}`)}
               </div>
             )
           )}
@@ -694,26 +718,32 @@ export default function CrateEditorPage() {
                 </span>
               </button>
               <div className="ci-group">Wygrane ({crate.prizes.length})</div>
-              {crate.prizes.map((p, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  className={`ci-item${view.prize === i ? " active" : ""}`}
-                  onClick={() => setView({ ...view, prize: i })}
-                >
-                  {iconOf(p.icon)}
-                  <span className="ci-item-text">
-                    <span className="ci-item-name">
-                      <MinecraftTextPreview text={p.name} />
-                    </span>
-                    <span className="ci-badges">
-                      <span className="ci-badge">{chancePercent(crate, p).toFixed(1)}%</span>
-                      {p.announce && <span className="ci-badge">ogłoszenie</span>}
-                      {p.rewards.length === 0 && <span className="ci-badge warn">brak nagród</span>}
-                    </span>
-                  </span>
-                </button>
-              ))}
+              {crate.prizes.map((p, i) =>
+                trashConfirm === `prize:${crate.id}:${i}` ? (
+                  <div key={i}>{confirmRow(`Usunąć wygraną ${i + 1}?`, () => doRemovePrize(crate, i))}</div>
+                ) : (
+                  <div key={i} className="ci-cat-row">
+                    <button
+                      type="button"
+                      className={`ci-item${view.prize === i ? " active" : ""}`}
+                      onClick={() => setView({ ...view, prize: i })}
+                    >
+                      {iconOf(p.icon)}
+                      <span className="ci-item-text">
+                        <span className="ci-item-name">
+                          <MinecraftTextPreview text={p.name} />
+                        </span>
+                        <span className="ci-badges">
+                          <span className="ci-badge">{chancePercent(crate, p).toFixed(1)}%</span>
+                          {p.announce && <span className="ci-badge">ogłoszenie</span>}
+                          {p.rewards.length === 0 && <span className="ci-badge warn">brak nagród</span>}
+                        </span>
+                      </span>
+                    </button>
+                    {trashButton(`prize:${crate.id}:${i}`, `Usuń wygraną ${i + 1}`)}
+                  </div>
+                )
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -727,28 +757,34 @@ export default function CrateEditorPage() {
           )}
           {view?.kind === "keys" && (
             <>
-              {file.keys.map((k) => (
-                <button
-                  key={k.id}
-                  type="button"
-                  className={`ci-item${view.key === k.id ? " active" : ""}`}
-                  onClick={() => setView({ kind: "keys", key: k.id })}
-                >
-                  {iconOf(k.item)}
-                  <span className="ci-item-text">
-                    <span className="ci-item-name">
-                      <MinecraftTextPreview text={k.name} emptyLabel={k.id} />
-                    </span>
-                    <span className="muted small">
-                      otwiera:{" "}
-                      {file.crates
-                        .filter((c) => c.keys.includes(k.id))
-                        .map((c) => c.id)
-                        .join(", ") || "nic"}
-                    </span>
-                  </span>
-                </button>
-              ))}
+              {file.keys.map((k) =>
+                trashConfirm === `key:${k.id}` ? (
+                  <div key={k.id}>{confirmRow(keyQuestion(k.id), () => doRemoveKey(k.id))}</div>
+                ) : (
+                  <div key={k.id} className="ci-cat-row">
+                    <button
+                      type="button"
+                      className={`ci-item${view.key === k.id ? " active" : ""}`}
+                      onClick={() => setView({ kind: "keys", key: k.id })}
+                    >
+                      {iconOf(k.item)}
+                      <span className="ci-item-text">
+                        <span className="ci-item-name">
+                          <MinecraftTextPreview text={k.name} emptyLabel={k.id} />
+                        </span>
+                        <span className="muted small">
+                          otwiera:{" "}
+                          {file.crates
+                            .filter((c) => c.keys.includes(k.id))
+                            .map((c) => c.id)
+                            .join(", ") || "nic"}
+                        </span>
+                      </span>
+                    </button>
+                    {trashButton(`key:${k.id}`, `Usuń klucz ${k.id}`)}
+                  </div>
+                )
+              )}
               <button type="button" onClick={newKey} disabled={!profileId}>
                 + Nowy klucz
               </button>
@@ -792,8 +828,6 @@ export default function CrateEditorPage() {
                     <button
                       type="button"
                       onClick={() => setConfirmDelete(true)}
-                      disabled={!!del.blocked}
-                      title={del.blocked}
                     >
                       {del.label}
                     </button>
