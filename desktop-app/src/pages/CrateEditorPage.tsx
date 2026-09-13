@@ -13,6 +13,7 @@ import {
   DEFAULT_HOLOGRAM_HEIGHT,
   defaultHologram,
   emptyPrize,
+  idFromName,
   parseCratesYaml,
   serializeCratesYaml,
   validateCrates,
@@ -155,28 +156,22 @@ export default function CrateEditorPage() {
     setFile({ ...file, keys: file.keys.map((k) => (k.id === id ? { ...k, ...patch } : k)) });
   }
 
-  function askId(question: string, taken: string[]): string | null {
-    const id = window.prompt(question)?.trim().toLowerCase();
-    if (!id) return null;
-    if (!/^[a-z0-9_-]+$/.test(id) || taken.includes(id)) {
-      setStatus("Niepoprawne albo zajęte ID (tylko małe litery, cyfry, _ i -).");
-      return null;
-    }
-    return id;
-  }
-
   function newCrate() {
-    const id = askId("ID nowej skrzynki (małe litery, bez spacji, np. spring):", crateIds);
-    if (!id) return;
-    setFile(addCrate(file, id));
+    const name = window.prompt("Nazwa nowej skrzynki (może mieć spacje, np. Letnia Skrzynka):")?.trim();
+    if (!name) return;
+    const id = idFromName(name, crateIds);
+    setFile(addCrate(file, id, name));
     setView({ kind: "crate", id, prize: "settings" });
+    setStatus(`Dodano skrzynkę „${name}”. W komendach jej ID to: ${id} (np. /@crate give <gracz> ${id}).`);
   }
 
   function newKey() {
-    const id = askId("ID nowego klucza (np. vip_key):", keyIds);
-    if (!id) return;
-    setFile({ ...file, keys: [...file.keys, { id, name: `&e&l${id}`, lore: [], item: { item: "TRIPWIRE_HOOK" } }] });
+    const name = window.prompt("Nazwa nowego klucza (może mieć spacje, np. Klucz VIP):")?.trim();
+    if (!name) return;
+    const id = idFromName(name, keyIds);
+    setFile({ ...file, keys: [...file.keys, { id, name: `&e&l${name}`, lore: [], item: { item: "TRIPWIRE_HOOK" } }] });
     setView({ kind: "keys", key: id });
+    setStatus(`Dodano klucz „${name}”. W komendach jego ID to: ${id} (np. /@crate key <gracz> ${id}).`);
   }
 
   async function publish() {
@@ -217,7 +212,12 @@ export default function CrateEditorPage() {
   function renderCrateSettings(c: CrateDef) {
     return (
       <>
-        <h2>Skrzynka: {c.id}</h2>
+        <h2>
+          <MinecraftTextPreview text={c.name} emptyLabel={c.id} />{" "}
+          <span className="muted small" title="ID używane w komendach, np. /@crate give <gracz> <id>">
+            ID: {c.id}
+          </span>
+        </h2>
         <Fold title="Nazwa i wygląd" open>
           <label>
             Nazwa
@@ -359,7 +359,12 @@ export default function CrateEditorPage() {
     const used = file.crates.filter((c) => c.keys.includes(k.id));
     return (
       <>
-        <h2>Klucz: {k.id}</h2>
+        <h2>
+          <MinecraftTextPreview text={k.name} emptyLabel={k.id} />{" "}
+          <span className="muted small" title="ID używane w komendach, np. /@crate key <gracz> <id>">
+            ID: {k.id}
+          </span>
+        </h2>
         <Fold title="Nazwa i wygląd" open>
           <label>
             Nazwa

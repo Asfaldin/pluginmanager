@@ -178,15 +178,36 @@ export function emptyPrize(): Prize {
   };
 }
 
+/**
+ * ID do komend (np. /@crate give gracz letnia_skrzynka) z nazwy wpisanej przez człowieka:
+ * bez kolorów (&6), polskich liter i spacji; zajęte -> _2, _3...
+ */
+export function idFromName(name: string, taken: string[]): string {
+  const base =
+    name
+      .replace(/&[0-9a-fk-or]/gi, "")
+      .replace(/ł/g, "l")
+      .replace(/Ł/g, "L")
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "crate";
+  if (!taken.includes(base)) return base;
+  let n = 2;
+  while (taken.includes(`${base}_${n}`)) n++;
+  return `${base}_${n}`;
+}
+
 /** Nowa skrzynka zawsze z własnym kluczem "<id>_key" (domyślnie każda skrzynka ma swój klucz). */
-export function addCrate(f: CratesFile, id: string): CratesFile {
+export function addCrate(f: CratesFile, id: string, displayName: string = id): CratesFile {
   const keyId = `${id}_key`;
   const keys = f.keys.some((k) => k.id === keyId)
     ? f.keys
-    : [...f.keys, { id: keyId, name: `&e&l${id} key`, lore: [], item: { item: "TRIPWIRE_HOOK" } }];
+    : [...f.keys, { id: keyId, name: `&e&l${displayName} Key`, lore: [], item: { item: "TRIPWIRE_HOOK" } }];
   const crate: CrateDef = {
     id,
-    name: `&6&l${id}`,
+    name: `&6&l${displayName}`,
     lore: ["&7Right-click with a key to open.", "&7Left-click to see the rewards."],
     item: { item: "CHEST" },
     keys: [keyId],

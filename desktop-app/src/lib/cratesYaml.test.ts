@@ -3,6 +3,7 @@ import {
   addCrate,
   chancePercent,
   defaultHologram,
+  idFromName,
   parseCratesYaml,
   serializeCratesYaml,
   validateCrates,
@@ -68,6 +69,20 @@ describe("cratesYaml", () => {
     const c = parseCratesYaml(YML).crates[0];
     expect(chancePercent(c, c.prizes[0])).toBeCloseTo(80);
     expect(chancePercent(c, c.prizes[1])).toBeCloseTo(20);
+  });
+
+  it("makes a command id from a name with spaces and Polish letters", () => {
+    expect(idFromName("Letnia Skrzynka", [])).toBe("letnia_skrzynka");
+    expect(idFromName("&6&lŻółta  Ćma!", [])).toBe("zolta_cma");
+    expect(idFromName("Letnia Skrzynka", ["letnia_skrzynka"])).toBe("letnia_skrzynka_2");
+    expect(idFromName("!!!", [])).toBe("crate");
+  });
+
+  it("adds a crate with a display name and its own key", () => {
+    const f = addCrate(parseCratesYaml(YML), "letnia", "Letnia Skrzynka");
+    const c = f.crates.find((x) => x.id === "letnia")!;
+    expect(c.name).toBe("&6&lLetnia Skrzynka");
+    expect(f.keys.find((k) => k.id === "letnia_key")!.name).toBe("&e&lLetnia Skrzynka Key");
   });
 
   it("adds a crate with its own key", () => {
