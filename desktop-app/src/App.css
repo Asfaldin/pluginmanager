@@ -2015,11 +2015,18 @@ button:disabled:hover {
   color: var(--accent-strong);
 }
 
-.ci-cats-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding-right: 2.2rem;
+/* Liczba wygranych przy skrzynce - plakietka z prezentem zamiast nagłówka kolumny. */
+.ci-prize-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  flex-shrink: 0;
 }
 
 .ci-cat-row {

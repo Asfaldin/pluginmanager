@@ -1,4 +1,4 @@
-import { Save, Trash2 } from "lucide-react";
+import { Gift, Save, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import ItemRefPicker from "../components/ItemRefPicker";
@@ -462,10 +462,7 @@ export default function CrateEditorPage() {
 
       <div className="ci-layout ci-layout-crates">
         <aside className="card ci-cats">
-          <div className="ci-cats-head">
-            <span className="ci-section-title">Skrzynki</span>
-            <span className="muted small">ilość wygranych</span>
-          </div>
+          <div className="ci-section-title">Skrzynki</div>
           {file.crates.map((c) =>
             trashConfirm === c.id ? (
               <div key={c.id} className="ci-cat-row ci-cat-confirm">
@@ -495,7 +492,9 @@ export default function CrateEditorPage() {
                   <span className="ci-item-name">
                     <MinecraftTextPreview text={c.name} emptyLabel={c.id} />
                   </span>
-                  <span className="ci-count">{c.prizes.length}</span>
+                  <span className="ci-prize-count" title={`${c.prizes.length} wygranych w tej skrzynce`}>
+                    <Gift size={12} strokeWidth={2} /> {c.prizes.length}
+                  </span>
                 </button>
                 <button type="button" className="ci-trash" title={`Usuń skrzynkę ${c.id}`} onClick={() => setTrashConfirm(c.id)}>
                   <Trash2 size={14} strokeWidth={1.75} />
