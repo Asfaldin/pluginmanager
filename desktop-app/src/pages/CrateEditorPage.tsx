@@ -359,6 +359,7 @@ export default function CrateEditorPage() {
           commands={[
             { cmd: `/@crate give <gracz> ${c.id} 1`, what: "daje graczowi skrzynkę" },
             { cmd: `/@crate place ${c.id}`, what: "blok, na który patrzysz, staje się tą skrzynką" },
+            { cmd: "/@crate remove", what: "patrzysz na postawioną skrzynkę — wraca do zwykłego bloku" },
           ]}
         />
         <Fold title="Nazwa i wygląd" open>
