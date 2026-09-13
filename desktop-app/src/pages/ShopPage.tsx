@@ -4,7 +4,10 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { shopCatalog, shopCheckoutUrl, shopMyLicenses } from "../lib/api";
 import { FREE_PLUGINS } from "../lib/freePlugins";
+import { ownsPackage, ownsPluginId, packagePluginsField } from "../lib/licenses";
 import { PLUGIN_ART } from "../lib/pluginArt";
+import { PACKAGE_ICON, PLUGIN_ICONS } from "../lib/pluginIcons";
+import { useAuth } from "../state/AuthContext";
 import type { Catalog, CatalogPlugin, LicenseRecord } from "../lib/types";
 
 type SortMode = "name" | "price-asc" | "price-desc";
@@ -15,9 +18,11 @@ function formatPrice(price: number | null, suffix = ""): string {
 }
 
 /** Karta pluginu/pakietu - z ilustracją na górze, jeśli jest zdefiniowana w PLUGIN_ART,
-    inaczej zwykła karta tekstowa. Tytuł (i zdjęcie, gdy jest) to link do dedykowanej
-    strony (patrz PluginDetailPage.tsx) - reszta karty (opis, cena, przyciski) zostaje
-    bez zmian, żeby "Kup" dalej działało od razu z karty. */
+    inaczej ikona (PLUGIN_ICONS/PACKAGE_ICON) obok tytułu - PLUGIN_ART jest dziś puste,
+    więc bez tego karty byłyby gołym tekstem. Tytuł (i zdjęcie, gdy jest) to link do
+    dedykowanej strony (patrz PluginDetailPage.tsx). `owned` dokłada plakietkę i
+    wyróżnia ramkę - klient od razu widzi, co już ma, bez zgadywania. `featured`
+    to wizualny akcent na jednym pakiecie ("Polecane"). */
 function PluginCard({
   id,
   label,
@@ -26,6 +31,9 @@ function PluginCard({
   actions,
   detailTo,
   large,
+  isPackage,
+  owned,
+  featured,
 }: {
   id: string;
   label: string;
@@ -35,32 +43,58 @@ function PluginCard({
   detailTo: string;
   /** Pakiety w wyróżnionym rzędzie na górze - trochę większa, spokojniejsza karta niż w gęstej siatce pojedynczych pluginów. */
   large?: boolean;
+  isPackage?: boolean;
+  owned?: boolean;
+  featured?: boolean;
 }) {
   const art = PLUGIN_ART[id];
+  const Icon = isPackage ? PACKAGE_ICON : PLUGIN_ICONS[id];
+  const classNames = [
+    "card",
+    "plugin-card",
+    art && "has-art",
+    !art && large && "plugin-card-large",
+    owned && "plugin-card-owned",
+    featured && "plugin-card-featured",
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
-    <div className={art ? "card plugin-card has-art" : large ? "card plugin-card plugin-card-large" : "card plugin-card"}>
+    <div className={classNames}>
+      {featured && <div className="plugin-card-featured-ribbon">Polecane</div>}
       {art && (
         <Link to={detailTo}>
           <img src={art} alt="" className="plugin-card-art" />
         </Link>
       )}
       <div className={art ? "plugin-card-body" : undefined}>
-        <div className="row" style={{ justifyContent: "space-between", margin: 0 }}>
+        <div className="row" style={{ justifyContent: "space-between", margin: 0, alignItems: "flex-start" }}>
           <Link to={detailTo} className="plugin-card-title-link">
-            <div className="card-title">{label}</div>
+            <div className="row" style={{ margin: 0, gap: "0.6rem" }}>
+              {!art && Icon && (
+                <span className="plugin-card-icon">
+                  <Icon size={20} strokeWidth={1.5} />
+                </span>
+              )}
+              <div className="card-title">{label}</div>
+            </div>
           </Link>
           {price}
         </div>
         {description && <div className="muted small">{description}</div>}
+        {owned && <span className="badge badge-on">posiadasz</span>}
         {actions && <div className="row">{actions}</div>}
       </div>
     </div>
   );
 }
 
-// Logowanie jest już zdjęte z tej strony (patrz App.tsx/Gate) - jeśli to się renderuje,
-// użytkownik jest zalogowany. Ta strona tylko przegląda katalog i "moje licencje".
+// Appka nie wymaga logowania na wejściu (patrz App.tsx) - Sklep więc musi sam obsłużyć
+// stan "niezalogowany": katalog jest publiczny i ładuje się zawsze, ale "moje licencje"
+// i "Kup" wymagają konta (patrz /account), więc te dwie rzeczy mają osobną
+// obsługę błędu zamiast wywalać całą stronę.
 export default function ShopPage() {
+  const { customer } = useAuth();
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [licenses, setLicenses] = useState<LicenseRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -79,17 +113,23 @@ export default function ShopPage() {
     setLoading(true);
     setError(null);
     try {
-      const [cat, myLicenses] = await Promise.all([shopCatalog(), shopMyLicenses()]);
-      setCatalog(cat);
-      setLicenses(myLicenses);
+      setCatalog(await shopCatalog());
     } catch (e) {
       setError(String(e));
     } finally {
       setLoading(false);
     }
+    // Osobno - brak konta nie może zablokować widoku katalogu, tylko sekcję "moje licencje".
+    shopMyLicenses()
+      .then(setLicenses)
+      .catch(() => setLicenses([]));
   }
 
   async function buy(variantId: string | null) {
+    if (!customer) {
+      setError("Zaloguj się najpierw, żeby kupić.");
+      return;
+    }
     setBuyingVariant(variantId);
     setError(null);
     try {
@@ -119,6 +159,18 @@ export default function ShopPage() {
     return sorted;
   }, [catalog, activeCategory, sortMode, search]);
 
+  const activeLicenses = licenses.filter((l) => l.status === "active");
+
+  // Środkowy cenowo pakiet ("Pro" w typowej drabince Starter/Pro/Ultimate) jest tym, na
+  // który klasycznie podbija się uwagę - stąd "Polecane" na nim, wyliczone z danych
+  // (po cenie), nie z zaszytego na sztywno id, żeby nie rozjechać się z katalogiem.
+  const featuredPackageId = useMemo(() => {
+    const pkgs = catalog?.packages ?? [];
+    if (pkgs.length < 3) return null;
+    const sorted = [...pkgs].sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+    return sorted[Math.floor(sorted.length / 2)].id;
+  }, [catalog]);
+
   return (
     <div className="page">
       <div className="shop-hero">
@@ -144,36 +196,68 @@ export default function ShopPage() {
       {error && <p className="error">{error}</p>}
       {loading && <p className="muted">Ładowanie...</p>}
 
-      <h2>Pakiety</h2>
+      <h2>Moje licencje</h2>
+      {!customer && (
+        <p className="muted">
+          <Link to="/account">Zaloguj się</Link>, żeby zobaczyć swoje licencje i kupować.
+        </p>
+      )}
+      {customer && !loading && activeLicenses.length === 0 && <p className="muted">Nie masz jeszcze żadnej licencji.</p>}
+      {activeLicenses.length > 0 && (
+        <div className="card-grid">
+          {activeLicenses.map((l) => (
+            <div key={l.key} className="card">
+              <div className="card-title">{l.plugin === "*" ? "Wszystko (Ultimate)" : l.plugin}</div>
+              <div className="muted small">
+                Klucz: <code>{l.key}</code>
+              </div>
+              <div className="muted small">{l.billingType === "subscription" ? "Subskrypcja" : "Zakup jednorazowy"}</div>
+              <div className="row">
+                <span className="badge badge-on">aktywna</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <h2 style={{ marginTop: "2rem" }}>Pakiety</h2>
       <div className="shop-packages-row">
-        {catalog?.packages.map((pkg) => (
-          <PluginCard
-            key={pkg.id}
-            id={pkg.id}
-            label={pkg.label}
-            description={pkg.description}
-            detailTo={`/shop/package/${pkg.id}`}
-            large
-            price={<span className="card-title">{formatPrice(pkg.price)}</span>}
-            actions={
-              <div style={{ width: "100%" }}>
-                <div className="muted small" style={{ marginBottom: "0.5rem" }}>
-                  Zawiera: {pkg.plugins === "*" ? "wszystkie pluginy (obecne i przyszłe)" : pkg.plugins.map(pluginLabel).join(", ")}
-                </div>
-                <div className="row">
-                  <button disabled={buyingVariant === pkg.variantId} onClick={() => buy(pkg.variantId)}>
-                    Kup
-                  </button>
-                  {pkg.subscriptionPrice != null && (
-                    <button disabled={buyingVariant === pkg.subscriptionVariantId} onClick={() => buy(pkg.subscriptionVariantId)}>
-                      Subskrybuj ({formatPrice(pkg.subscriptionPrice, "/mies.")})
-                    </button>
+        {catalog?.packages.map((pkg) => {
+          const owned = ownsPackage(licenses, packagePluginsField(pkg.plugins));
+          return (
+            <PluginCard
+              key={pkg.id}
+              id={pkg.id}
+              label={pkg.label}
+              description={pkg.description}
+              detailTo={`/shop/package/${pkg.id}`}
+              large
+              isPackage
+              owned={owned}
+              featured={!owned && pkg.id === featuredPackageId}
+              price={<span className="card-title">{formatPrice(pkg.price)}</span>}
+              actions={
+                <div style={{ width: "100%" }}>
+                  <div className="muted small" style={{ marginBottom: "0.5rem" }}>
+                    Zawiera: {pkg.plugins === "*" ? "wszystkie pluginy (obecne i przyszłe)" : pkg.plugins.map(pluginLabel).join(", ")}
+                  </div>
+                  {!owned && (
+                    <div className="row">
+                      <button disabled={buyingVariant === pkg.variantId} onClick={() => buy(pkg.variantId)}>
+                        Kup
+                      </button>
+                      {pkg.subscriptionPrice != null && (
+                        <button disabled={buyingVariant === pkg.subscriptionVariantId} onClick={() => buy(pkg.subscriptionVariantId)}>
+                          Subskrybuj ({formatPrice(pkg.subscriptionPrice, "/mies.")})
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
-              </div>
-            }
-          />
-        ))}
+              }
+            />
+          );
+        })}
       </div>
 
       <div className="row" style={{ justifyContent: "space-between", marginTop: "2rem" }}>
@@ -197,21 +281,27 @@ export default function ShopPage() {
         ))}
       </div>
       <div className="card-grid">
-        {visiblePlugins.map((p) => (
-          <PluginCard
-            key={p.id}
-            id={p.id}
-            label={p.label}
-            description={p.description}
-            detailTo={`/shop/plugin/${p.id}`}
-            price={<span className="card-title">{formatPrice(p.price)}</span>}
-            actions={
-              <button disabled={buyingVariant === p.variantId} onClick={() => buy(p.variantId)}>
-                Kup
-              </button>
-            }
-          />
-        ))}
+        {visiblePlugins.map((p) => {
+          const owned = ownsPluginId(licenses, p.id);
+          return (
+            <PluginCard
+              key={p.id}
+              id={p.id}
+              label={p.label}
+              description={p.description}
+              detailTo={`/shop/plugin/${p.id}`}
+              owned={owned}
+              price={<span className="card-title">{formatPrice(p.price)}</span>}
+              actions={
+                !owned && (
+                  <button disabled={buyingVariant === p.variantId} onClick={() => buy(p.variantId)}>
+                    Kup
+                  </button>
+                )
+              }
+            />
+          );
+        })}
         {!loading && visiblePlugins.length === 0 && <p className="muted">Brak wyników dla tego wyszukiwania/kategorii.</p>}
       </div>
 
@@ -226,23 +316,6 @@ export default function ShopPage() {
             detailTo={`/shop/free/${p.id}`}
             actions={<span className="badge badge-on">dołączony za darmo</span>}
           />
-        ))}
-      </div>
-
-      <h2 style={{ marginTop: "1.5rem" }}>Moje licencje</h2>
-      {!loading && licenses.length === 0 && <p className="muted">Nie masz jeszcze żadnej licencji.</p>}
-      <div className="card-grid">
-        {licenses.map((l) => (
-          <div key={l.key} className="card">
-            <div className="card-title">{l.plugin === "*" ? "Wszystko (Ultimate)" : l.plugin}</div>
-            <div className="muted small">Klucz: <code>{l.key}</code></div>
-            <div className="muted small">{l.billingType === "subscription" ? "Subskrypcja" : "Zakup jednorazowy"}</div>
-            <div className="row">
-              <span className={l.status === "active" ? "badge badge-on" : "badge"}>
-                {l.status === "active" ? "aktywna" : "nieaktywna"}
-              </span>
-            </div>
-          </div>
         ))}
       </div>
     </div>
