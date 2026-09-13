@@ -22,6 +22,7 @@ import {
   type Prize,
 } from "../lib/cratesYaml";
 import { loadItemCatalog } from "../lib/itemCatalogRemote";
+import { ALL_ITEMS } from "../lib/minecraftItems";
 import { useIconPack } from "../lib/useIconPack";
 import { useDirtyTracking } from "../state/DirtyContext";
 import { useProfiles } from "../state/ProfilesContext";
@@ -65,7 +66,9 @@ export default function CrateEditorPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const autoLoadedRef = useRef(false);
-  const { iconPackDir, allMaterials } = useIconPack(setStatus);
+  const { iconPackDir } = useIconPack(setStatus);
+  // Pełna lista przedmiotów z Paper API (lista z tekstur nie miała np. enderchesta).
+  const allMaterials = ALL_ITEMS;
 
   const dirty = useMemo(() => serializeCratesYaml(file) !== serializeCratesYaml(serverFile), [file, serverFile]);
   useDirtyTracking(dirty);
