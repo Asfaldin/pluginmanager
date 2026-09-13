@@ -1376,7 +1376,7 @@ public class CustomItemManager implements CustomItemService, Listener {
 
 - [ ] **Step 5: Split `custom-items.yml` into three resource files**
 
-Create `mainplugins-core/src/main/resources/items/examples.yml` with this header, followed by the `PRZYKLADOWY_AMULET` entry and the commented-out `MOJ_CUSTOM_MIECZ` example copied **unchanged** from the old file (old lines 43–60, under the same `items:` key):
+Create `mainplugins-core/src/main/resources/items/examples.yml` with this header, followed by the `PRZYKLADOWY_AMULET` entry and the commented-out `MOJ_CUSTOM_MIECZ` example copied **unchanged** from the old file (old lines 43-60, under the same `items:` key):
 
 ```yaml
 # ==========================================================================
@@ -1404,9 +1404,9 @@ Create `mainplugins-core/src/main/resources/items/examples.yml` with this header
 items:
 ```
 
-Create `items/quests.yml`: first line `# Quest rewards and generator items (mainplugins-quests).`, then `items:`. Under it, copy **unchanged** the old entries `TROFEUM_GLOWA_POCZATKUJACEGO`, `TROFEUM_GLOWA_GORNIKA`, `TROFEUM_GLOWA_WOJOWNIKA_NETHERU`, `TROFEUM_GLOWA_SMOKA`, `TROFEUM_GLOWA_RYBAKA_OTCHLANI`, `GENERATOR_KRUCHY_T1`, `GENERATOR_KRUCHY_PRZEWODNIK`, `GENERATOR_BRUK_T1`, including the old comment block above the trophies (old lines 62–69).
+Create `items/quests.yml`: first line `# Quest rewards and generator items (mainplugins-quests).`, then `items:`. Under it, copy **unchanged** the old entries `TROFEUM_GLOWA_POCZATKUJACEGO`, `TROFEUM_GLOWA_GORNIKA`, `TROFEUM_GLOWA_WOJOWNIKA_NETHERU`, `TROFEUM_GLOWA_SMOKA`, `TROFEUM_GLOWA_RYBAKA_OTCHLANI`, `GENERATOR_KRUCHY_T1`, `GENERATOR_KRUCHY_PRZEWODNIK`, `GENERATOR_BRUK_T1`, including the old comment block above the trophies (old lines 62-69).
 
-Create `items/fishing.yml`: first line `# Fishing items (mainplugins-fishing): recipes, fish species, minigame bar layers.`, then `items:`. Under it, copy **unchanged** the old entries `FISHING_RECIPE_NIEBIANSKA`, `FISHING_RECIPE_KOSMICZNA`, every `FISH_*` entry and every `LOWIENIE_*` entry, including their old comment blocks (old lines 145–158, 203–210, 390–391, 401–408).
+Create `items/fishing.yml`: first line `# Fishing items (mainplugins-fishing): recipes, fish species, minigame bar layers.`, then `items:`. Under it, copy **unchanged** the old entries `FISHING_RECIPE_NIEBIANSKA`, `FISHING_RECIPE_KOSMICZNA`, every `FISH_*` entry and every `LOWIENIE_*` entry, including their old comment blocks (old lines 145-158, 203-210, 390-391, 401-408).
 
 Then delete the old file:
 
@@ -2024,7 +2024,7 @@ cd "D:\folder z mc"; git add mainplugins-core/src/main/java/elo/mainplugins/core
 - Modify: `mainplugins-core/src/main/resources/plugin.yml`
 
 **Interfaces:**
-- Consumes: `RewardParser`, `RewardGiver`, `RewardSink` (Tasks 6–7); `EconomyService.dodajGrosze(UUID,long)`; `CustomItemService.create(String,int,Player)` (Task 5); `LangService.send(...)` (Task 3)
+- Consumes: `RewardParser`, `RewardGiver`, `RewardSink` (Tasks 6-7); `EconomyService.dodajGrosze(UUID,long)`; `CustomItemService.create(String,int,Player)` (Task 5); `LangService.send(...)` (Task 3)
 - Produces: `RewardManager implements RewardService, Listener`, `CoreAPI.getRewardService()` (throws when missing), command `/@rewardtest <player>`
 
 - [ ] **Step 1: Create `BukkitRewardSink`**
@@ -2312,6 +2312,6 @@ Needs the local Paper server (spec §3). Run it together with the user, and only
 
 ## What comes after this plan
 
-- **Plan 2 – compatibility (spec C + English commands from E):** Vault provider + `economy: own | vault`, PlaceholderAPI expansion + placeholders in lang texts, permission node per command, disabling/renaming/aliasing commands in config, English default command names.
-- **Plan 3 – app:** shared reward editor, item editor + item picker (new `items/` folder), app language switch PL/EN, lang text editor, knowledge of installed plugins (spec D).
+- **Plan 2 - compatibility (spec C + English commands from E):** Vault provider + `economy: own | vault`, PlaceholderAPI expansion + placeholders in lang texts, permission node per command, disabling/renaming/aliasing commands in config, English default command names.
+- **Plan 3 - app:** shared reward editor, item editor + item picker (new `items/` folder), app language switch PL/EN, lang text editor, knowledge of installed plugins (spec D).
 - **Pilot plugin plan (Crates):** first plugin moved fully onto `LangService` / item catalog / `RewardService`, including the `key` reward type.

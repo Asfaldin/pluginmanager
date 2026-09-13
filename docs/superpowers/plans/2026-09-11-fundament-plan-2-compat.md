@@ -11,7 +11,7 @@
 
 **Tech Stack:** Java 25, Paper API 26.2 (`26.2.build.112-stable`), PlaceholderAPI 2.11.6 (provided), VaultAPI 1.7.1 via JitPack (provided), JUnit 5.
 
-**Spec:** `C:\Users\Zgredek\pluginmanager\docs\superpowers\specs\2026-09-11-fundament-design.md` (part C, and the "English commands" point of part E), plus the "Etap 2 – ustalenia" section at its end.
+**Spec:** `C:\Users\Zgredek\pluginmanager\docs\superpowers\specs\2026-09-11-fundament-design.md` (part C, and the "English commands" point of part E), plus the "Etap 2 - ustalenia" section at its end.
 
 ## Global Constraints
 
@@ -541,7 +541,7 @@ cd "D:\folder z mc"; git add mainplugins-core/src/main/java/elo/mainplugins/core
 **Interfaces:**
 - Produces:
   - `BalanceBackend`: `double balance(UUID)`, `boolean withdraw(UUID, double)`, `boolean deposit(UUID, double)`
-  - `VaultBackedEconomy implements EconomyService`, built with `new VaultBackedEconomy(BalanceBackend)`. Everything goes through grosze. `getTop` returns an empty list and `getPozycjaWRankingu` returns `-1`: the ranking is unavailable in this mode (spec, "Etap 2 – ustalenia").
+  - `VaultBackedEconomy implements EconomyService`, built with `new VaultBackedEconomy(BalanceBackend)`. Everything goes through grosze. `getTop` returns an empty list and `getPozycjaWRankingu` returns `-1`: the ranking is unavailable in this mode (spec, "Etap 2 - ustalenia").
 
 - [ ] **Step 1: Write the failing test**
 

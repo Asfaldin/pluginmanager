@@ -415,7 +415,7 @@ export default function IslandsPage() {
 
           <div className="row">
             <label>
-              Rozmiar (9–54)
+              Rozmiar (9-54)
               <input
                 type="number"
                 min={9}
@@ -531,7 +531,7 @@ export default function IslandsPage() {
           {activeScreen === "czlonkowieWyspy" && (
             <p className="muted small">
               Slot właściciela: {guiContent.czlonkowieWyspy.slotWlasciciela}, sloty członków:{" "}
-              {guiContent.czlonkowieWyspy.pierwszySlotCzlonka}–{guiContent.czlonkowieWyspy.ostatniSlotCzlonka}
+              {guiContent.czlonkowieWyspy.pierwszySlotCzlonka}-{guiContent.czlonkowieWyspy.ostatniSlotCzlonka}
             </p>
           )}
         </>

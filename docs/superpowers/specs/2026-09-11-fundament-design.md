@@ -5,9 +5,9 @@ Data: 2026-09-11 · Status: zatwierdzony
 ## 1. Cel
 
 Klient kupujący nasze pluginy ma móc:
-- **ustawić wszystko w aplikacji** – napisy, ceny, itemy, menu, nagrody. Nic nie jest wpisane na sztywno w kodzie Javy;
+- **ustawić wszystko w aplikacji** - napisy, ceny, itemy, menu, nagrody. Nic nie jest wpisane na sztywno w kodzie Javy;
 - **zacząć od pustego** i zbudować własną zawartość;
-- **kupić dowolny zestaw pluginów** – każdy działa sam, mając tylko core;
+- **kupić dowolny zestaw pluginów** - każdy działa sam, mając tylko core;
 - **łączyć je z popularnymi pluginami** (Vault, PlaceholderAPI, LuckPerms, EssentialsX);
 - **grać po angielsku albo po polsku** (angielski jest główny).
 
@@ -15,7 +15,7 @@ Poza zakresem: tworzenie w aplikacji zupełnie nowych pluginów od zera.
 
 ## 2. Kolejność prac
 
-1. **Fundament w core** – ten dokument, części A–E.
+1. **Fundament w core** - ten dokument, części A-E.
 2. **Jeden plugin próbny, przerobiony od początku do końca**: Java, configi, edytor w aplikacji. Proponowany: Skrzynki (Crates). Ostateczny wybór zapada przy planie.
 3. **Reszta pluginów po kolei**, jeden na raz. Przy każdym robimy naraz: katalog itemów, wspólne nagrody, pliki językowe i komendy.
 
@@ -25,7 +25,7 @@ Stare formaty configów **nie są wspierane**, bo nie ma jeszcze klientów. Domy
 
 ---
 
-## Część A – Wspólne nagrody
+## Część A - Wspólne nagrody
 
 **Po ludzku:** jeden sposób zapisu nagród we wszystkich pluginach. Dziś są trzy różne.
 
@@ -58,8 +58,8 @@ rewards:
 | `command` | komenda z konsoli, `{player}` = nick | nic |
 
 Wspólne pola:
-- `silent: true` – bez wiadomości na czacie;
-- `fallback:` – lista nagród zastępczych, gdy brakuje wymaganego pluginu.
+- `silent: true` - bez wiadomości na czacie;
+- `fallback:` - lista nagród zastępczych, gdy brakuje wymaganego pluginu.
 
 **Zasady:**
 - Brakuje pluginu i jest `fallback` → gracz dostaje nagrodę zastępczą. Brakuje pluginu i nie ma `fallback` → nagroda jest pomijana, a w logu pojawia się ostrzeżenie. Serwer nigdy nie pada.
@@ -69,7 +69,7 @@ Wspólne pola:
 
 **Technicznie (core):**
 - `RewardService` w `CoreAPI` (zawsze obecny, tak jak `CustomItemService`):
-  - `List<Reward> parse(ConfigurationSection/List, String source)` – czyta i sprawdza config, a błędy loguje razem ze źródłem (plik + ścieżka);
+  - `List<Reward> parse(ConfigurationSection/List, String source)` - czyta i sprawdza config, a błędy loguje razem ze źródłem (plik + ścieżka);
   - `void give(Player, List<Reward>)`.
 - `Reward` = zamknięty zestaw typów (sealed interface) odpowiadający tabeli wyżej.
 - Obecne trzy modele usuwamy przy przerabianiu danego pluginu.
@@ -78,7 +78,7 @@ Wspólne pola:
 
 ---
 
-## Część B – Wspólne itemy
+## Część B - Wspólne itemy
 
 **Po ludzku:** jeden katalog itemów dla wszystkich pluginów. Każdy item ma ukryte „imię” i po nim pluginy go rozpoznają.
 
@@ -90,7 +90,7 @@ Wspólne pola:
 - **Wszędzie ten sam zapis itemu:** `item: MATERIAL` albo `custom: id` (tak samo jak w nagrodach). Dotyczy to sklepu, skrzynek, questów, rynku i ikon menu.
 - **Rozpoznawanie po imieniu:** `CustomItemService` dostaje `String idOf(ItemStack)` (null, gdy to nie nasz item). Mechaniki sprawdzają id, a nie materiał.
 - **Wygląd należy do katalogu, działanie do pluginu.** Plugin, który potrzebuje itemu (np. generator), przy starcie dopisuje **domyślny wpis** do swojego pliku w `items/`, jeśli wpisu brakuje. Dzięki temu „pusty start” nic nie psuje.
-- **Itemy ze stanem** (ewoluujące narzędzia, Kilof Niflheim) – plugin rejestruje w core swojego „dostawcę” dla swoich id. `create(id, amount, player)` najpierw pyta katalog, potem dostawców. Dzięki temu `custom: KILOF_ODKRYWCY` działa tak samo jak każdy inny item. To uogólnia dzisiejszy wyjątek w questach (`ToolsService.stworzEwoluujaceNarzedzie`). **Uwaga:** plugin narzędzi jest wciąż mocno zmieniany, więc w fundamencie powstaje tylko mechanizm dostawców w core. Podpięcie narzędzi robimy później, gdy ich projekt się ustabilizuje.
+- **Itemy ze stanem** (ewoluujące narzędzia, Kilof Niflheim) - plugin rejestruje w core swojego „dostawcę” dla swoich id. `create(id, amount, player)` najpierw pyta katalog, potem dostawców. Dzięki temu `custom: KILOF_ODKRYWCY` działa tak samo jak każdy inny item. To uogólnia dzisiejszy wyjątek w questach (`ToolsService.stworzEwoluujaceNarzedzie`). **Uwaga:** plugin narzędzi jest wciąż mocno zmieniany, więc w fundamencie powstaje tylko mechanizm dostawców w core. Podpięcie narzędzi robimy później, gdy ich projekt się ustabilizuje.
 - **Brak itemu o danym id:** pozycja jest pomijana, a w logu jest ostrzeżenie. Aplikacja sprawdza to przed wysłaniem configu na serwer.
 
 **Aplikacja:** „Edytor itemów” (katalog z podglądem) oraz jeden komponent „Wybierak itemu” (zwykły / z katalogu) używany w każdym edytorze.
@@ -99,7 +99,7 @@ Wspólne pola:
 
 ---
 
-## Część C – Współpraca z popularnymi pluginami
+## Część C - Współpraca z popularnymi pluginami
 
 **Po ludzku:** nasze pluginy dogadują się z tymi, które klient już ma. Żaden z tych pluginów nie jest wymagany.
 
@@ -113,7 +113,7 @@ Wspólne pola:
 
 ---
 
-## Część D – Dowolny zestaw pluginów
+## Część D - Dowolny zestaw pluginów
 
 **Po ludzku:** klient może kupić tylko jeden plugin i ten działa sam.
 
@@ -124,7 +124,7 @@ Wspólne pola:
 
 ---
 
-## Część E – Języki (angielski i polski)
+## Część E - Języki (angielski i polski)
 
 **Po ludzku:** klient wybiera język serwera, a każdy napis może zmienić po swojemu.
 
@@ -154,7 +154,7 @@ Wspólne pola:
 - zgodności wstecz ze starymi formatami configów;
 - tworzenia nowych pluginów w aplikacji.
 
-## Etap 2 – ustalenia (2026-09-11)
+## Etap 2 - ustalenia (2026-09-11)
 
 - **Tryb `economy: vault`** (pieniądze innego pluginu): ranking najbogatszych w nim nie działa, bo Vault go nie udostępnia. Lista w TAB-ie jest wtedy pusta. W trybie `own` (domyślnym) wszystko działa jak dziś.
 - **Angielskie nazwy komend graczy** są domyślne, a polskie zostają jako aliasy. Lista jest w `commands.yml` core: `/pay`, `/balance`, `/shop`, `/sell`, `/sellall`, `/market`, `/quests`, `/achievements`, `/tpa`, `/tpaccept`, `/tpdeny`, `/home`, `/commands`, `/mute`, `/rod`, `/fishtop`, `/fishmenu`, `/fishbar`, `/boss`, `/dungeon`. `/is`, `/spawn`, `/warp`, `/menu`, `/discord` bez zmian. Komendy adminów (`@…`) zmieniamy przy przerabianiu każdego pluginu.

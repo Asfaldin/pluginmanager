@@ -997,7 +997,7 @@ export default function ItemBuilderPage() {
             {layoutEditMode && (
               <>
                 <label>
-                  Rozmiar (9–54)
+                  Rozmiar (9-54)
                   <input
                     type="number"
                     min={9}

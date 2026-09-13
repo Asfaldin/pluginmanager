@@ -331,7 +331,7 @@ export default function MenuGuiPage() {
 
           <div className="row">
             <label>
-              Rozmiar (9–54)
+              Rozmiar (9-54)
               <input
                 type="number"
                 min={9}

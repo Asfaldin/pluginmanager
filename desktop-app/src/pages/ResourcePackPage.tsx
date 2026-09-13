@@ -48,7 +48,7 @@ const GUI_TEXTURES: GuiTexture[] = [
   {
     key: "generic",
     relPath: "assets/minecraft/textures/gui/container/generic_54.png",
-    label: "Skrzynka / uniwersalne menu (9–54 sloty)",
+    label: "Skrzynka / uniwersalne menu (9-54 sloty)",
     defaultWidth: 176,
     defaultHeight: 222,
   },

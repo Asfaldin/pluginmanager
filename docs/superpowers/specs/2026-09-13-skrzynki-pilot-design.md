@@ -63,7 +63,7 @@ crates:
 - **LPM** skrzynką w ręce: okno podglądu (do 54 pozycji) - ikona każdej wygranej + w opisie „Szansa: X%” (1 miejsce po przecinku). Kliknięcia w oknie zablokowane.
 - **Ogłoszenie** (`announce: true`): `ServerAnnounceEvent("crate-legendary", gracz, {reward, crate})` dla Announcera; bez Announcera - wbudowany broadcast z pliku językowego.
 - Przedmioty rozpoznawane po tagach PDC: `crate-id` (tekst) na skrzynce, `key-id` (tekst) na kluczu.
-- **Stare przedmioty** w ekwipunkach (tag tieru 1–3 / stary tag klucza) → traktowane jak `basic`/`abyss`/`darkstar` / `universal_key` (jeśli istnieją).
+- **Stare przedmioty** w ekwipunkach (tag tieru 1-3 / stary tag klucza) → traktowane jak `basic`/`abyss`/`darkstar` / `universal_key` (jeśli istnieją).
 
 ## 4. Zgodność z innymi pluginami
 

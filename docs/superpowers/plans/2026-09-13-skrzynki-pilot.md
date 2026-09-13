@@ -800,7 +800,7 @@ cd "D:\folder z mc"; git add mainplugins-crates/src/main/resources mainplugins-c
 - Delete: `Nagroda.java`
 
 **Interfaces:**
-- Consumes: A1–A3; `CoreAPI.getLangService()`, `getRewardService()`, `getCustomItemService()`, `LicenseService`; `RewardService.parse`, `give`, `registerType`; `RewardHandler`; `ServerAnnounceEvent(String, Player, Map<String,String>)`
+- Consumes: A1-A3; `CoreAPI.getLangService()`, `getRewardService()`, `getCustomItemService()`, `LicenseService`; `RewardService.parse`, `give`, `registerType`; `RewardHandler`; `ServerAnnounceEvent(String, Player, Map<String,String>)`
 - Produces:
   - `CrateService`: `ItemStack createCrate(String id, int amount)`, `ItemStack createKey(String id, int amount)`, `Set<String> crateIds()`, `Set<String> keyIds()`; the old `stworzSkrzynke(int)` and `stworzKlucz()` stay.
   - reward types `crate` and `key`.
