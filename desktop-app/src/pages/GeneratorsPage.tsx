@@ -8,7 +8,7 @@ import PresetBar from "../components/PresetBar";
 import ToolbarMore from "../components/ToolbarMore";
 import { rconSendCommand, sftpReadFile, sftpWriteFile } from "../lib/api";
 import { getLastUsed, setLastUsed } from "../lib/lastUsed";
-import { COMMON_MATERIALS } from "../lib/minecraftData";
+import { ALL_ITEMS } from "../lib/minecraftItems";
 import { DEFAULT_GENERATORS_YAML } from "../lib/toolsDefaults";
 import { useLocalPresets } from "../lib/useLocalPresets";
 import { useProfiles } from "../state/ProfilesContext";
@@ -464,7 +464,7 @@ export default function GeneratorsPage() {
               onChange={(e) => setEditing({ ...editing, materialGeneratora: e.target.value })}
             />
             <datalist id="materials">
-              {COMMON_MATERIALS.map((m) => (
+              {ALL_ITEMS.map((m) => (
                 <option key={m} value={m} />
               ))}
             </datalist>

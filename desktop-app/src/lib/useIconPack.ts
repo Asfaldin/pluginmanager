@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { listTexturePacks, rpDownloadVanillaAssets, rpListAllTextures } from "./api";
-import { getIconPackDir, getVanillaCacheDir, materialsFromTextureList, setIconPackDir } from "./materialIcons";
-import { COMMON_MATERIALS } from "./minecraftData";
+import { getIconPackDir, getVanillaCacheDir, setIconPackDir } from "./materialIcons";
+import { ALL_ITEMS } from "./minecraftItems";
 import type { TexturePackProject } from "./types";
 
 /**
@@ -12,7 +12,9 @@ import type { TexturePackProject } from "./types";
  */
 export function useIconPack(onStatus?: (msg: string) => void) {
   const [iconPackDir, setIconPackDirState] = useState(getIconPackDir());
-  const [allMaterials, setAllMaterials] = useState<string[]>(COMMON_MATERIALS);
+  // Podpowiedzi materiałów = pełna lista przedmiotów z Paper API. Wcześniej brana z nazw
+  // plików tekstur - brakowało np. enderchesta, a były kawałki tekstur typu "oak_log_top".
+  const allMaterials = ALL_ITEMS;
   const [packProjects, setPackProjects] = useState<TexturePackProject[]>([]);
 
   useEffect(() => {
@@ -20,19 +22,6 @@ export function useIconPack(onStatus?: (msg: string) => void) {
       .then(setPackProjects)
       .catch(() => {});
   }, []);
-
-  useEffect(() => {
-    if (!iconPackDir) {
-      setAllMaterials(COMMON_MATERIALS);
-      return;
-    }
-    rpListAllTextures(iconPackDir)
-      .then((textures) => {
-        const derived = materialsFromTextureList(textures);
-        setAllMaterials(derived.length > 0 ? derived : COMMON_MATERIALS);
-      })
-      .catch(() => setAllMaterials(COMMON_MATERIALS));
-  }, [iconPackDir]);
 
   function selectIconPack(dir: string) {
     setIconPackDirState(dir);

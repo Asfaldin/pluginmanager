@@ -24,19 +24,6 @@ export function setIconPackDir(path: string): void {
   localStorage.setItem(ICON_PACK_KEY, path);
 }
 
-const TEXTURE_PATH_RE = /\/textures\/(item|block)\//;
-
-/** Derives Bukkit-style material names (e.g. DIAMOND_SWORD) from a resource pack's item/block texture filenames. */
-export function materialsFromTextureList(allTextures: string[]): string[] {
-  const names = new Set<string>();
-  for (const path of allTextures) {
-    if (!TEXTURE_PATH_RE.test(path)) continue;
-    const file = path.split("/").pop();
-    if (!file?.endsWith(".png")) continue;
-    names.add(file.slice(0, -4).toUpperCase());
-  }
-  return [...names].sort();
-}
 
 // A handful of vanilla materials whose Bukkit enum name doesn't match their
 // actual texture filename at all (historical naming, not a pattern) -

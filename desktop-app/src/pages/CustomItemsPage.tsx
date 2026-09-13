@@ -11,7 +11,8 @@ import { rconSendCommand, rpMakeTransparent, rpTextureStatus, rpWriteTextFile } 
 import { categoryLabel, changedFiles, DEFAULT_FILE, duplicateIds, normalizeEntry } from "../lib/itemCatalog";
 import { itemsDir, loadItemCatalog, saveItemFiles } from "../lib/itemCatalogRemote";
 import { getLastUsed, setLastUsed } from "../lib/lastUsed";
-import { COMMON_ENCHANTMENTS, COMMON_MATERIALS } from "../lib/minecraftData";
+import { COMMON_ENCHANTMENTS } from "../lib/minecraftData";
+import { ALL_ITEMS } from "../lib/minecraftItems";
 import { useIconPack } from "../lib/useIconPack";
 import { useLocalPresets } from "../lib/useLocalPresets";
 import { useProfiles } from "../state/ProfilesContext";
@@ -497,7 +498,7 @@ export default function CustomItemsPage() {
               onChange={(e) => setEditing({ ...editing, material: e.target.value })}
             />
             <datalist id="materials">
-              {COMMON_MATERIALS.map((m) => (
+              {ALL_ITEMS.map((m) => (
                 <option key={m} value={m} />
               ))}
             </datalist>

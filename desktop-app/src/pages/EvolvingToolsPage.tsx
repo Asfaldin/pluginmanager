@@ -16,7 +16,8 @@ import {
   sftpWriteFile,
 } from "../lib/api";
 import { getLastUsed, setLastUsed } from "../lib/lastUsed";
-import { COMMON_ENCHANTMENTS, COMMON_MATERIALS } from "../lib/minecraftData";
+import { COMMON_ENCHANTMENTS } from "../lib/minecraftData";
+import { ALL_ITEMS } from "../lib/minecraftItems";
 import { DEFAULT_TOOLS_YAML } from "../lib/toolsDefaults";
 import { useLocalPresets } from "../lib/useLocalPresets";
 import { useProfiles } from "../state/ProfilesContext";
@@ -1171,7 +1172,7 @@ export default function EvolvingToolsPage() {
             Materiał (stały, nie zmienia się z poziomem)
             <input list="materials" value={editing.material} onChange={(e) => setEditing({ ...editing, material: e.target.value })} />
             <datalist id="materials">
-              {COMMON_MATERIALS.map((m) => (
+              {ALL_ITEMS.map((m) => (
                 <option key={m} value={m} />
               ))}
             </datalist>

@@ -16,7 +16,7 @@ import {
   sftpWriteFile,
 } from "../lib/api";
 import { getLastUsed, setLastUsed } from "../lib/lastUsed";
-import { COMMON_MATERIALS } from "../lib/minecraftData";
+import { ALL_ITEMS } from "../lib/minecraftItems";
 import { useLocalPresets } from "../lib/useLocalPresets";
 import { useProfiles } from "../state/ProfilesContext";
 import type { RedstoneItemEntry, RedstoneItemKind, TexturePackProject } from "../lib/types";
@@ -422,7 +422,7 @@ export default function RedstoneItemsPage() {
               onChange={(e) => setEditing({ ...editing, material: e.target.value })}
             />
             <datalist id="materials">
-              {COMMON_MATERIALS.map((m) => (
+              {ALL_ITEMS.map((m) => (
                 <option key={m} value={m} />
               ))}
             </datalist>
