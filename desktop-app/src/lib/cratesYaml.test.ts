@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { addCrate, chancePercent, parseCratesYaml, serializeCratesYaml, validateCrates } from "./cratesYaml";
 
-const YML = `keys:
+const YML = `settings:
+  hologram-height: 1.2
+keys:
   basic_key:
     name: "&eKey"
     item: { item: TRIPWIRE_HOOK }
@@ -11,6 +13,7 @@ crates:
     name: "&6Mystery"
     item: { custom: MY_CHEST }
     keys: [basic_key]
+    hologram: ["&6Mystery", "&7Click me"]
     prizes:
       - name: "&bDiamonds"
         icon: { item: DIAMOND, amount: 4 }
@@ -33,6 +36,14 @@ describe("cratesYaml", () => {
     expect(c.prizes[0].icon).toEqual({ item: "DIAMOND", amount: 4 });
     expect(c.prizes[1].announce).toBe(true);
     expect(c.prizes[1].rewards.map((r) => r.type)).toEqual(["money", "key"]);
+    expect(c.hologram).toEqual(["&6Mystery", "&7Click me"]);
+    expect(f.settings.hologramHeight).toBe(1.2);
+  });
+
+  it("defaults hologram settings when missing", () => {
+    const f = parseCratesYaml("crates: {}\n");
+    expect(f.settings.hologramHeight).toBe(0.6);
+    expect(serializeCratesYaml(f)).toContain("hologram-height: 0.6");
   });
 
   it("round-trips without losing data", () => {
@@ -56,7 +67,7 @@ describe("cratesYaml", () => {
   it("warns about crates without prizes, keys or rewards", () => {
     const f = parseCratesYaml(YML);
     f.crates[0].prizes[0].rewards = [];
-    f.crates.push({ id: "empty", name: "E", lore: [], item: { item: "CHEST" }, keys: [], prizes: [] });
+    f.crates.push({ id: "empty", name: "E", lore: [], item: { item: "CHEST" }, keys: [], prizes: [], hologram: [] });
     const w = validateCrates(f);
     expect(w.length).toBe(3);
   });

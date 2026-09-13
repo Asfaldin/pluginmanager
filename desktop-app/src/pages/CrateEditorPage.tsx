@@ -10,6 +10,7 @@ import { rconSendCommand, sftpReadFile, sftpWriteFile } from "../lib/api";
 import {
   addCrate,
   chancePercent,
+  DEFAULT_HOLOGRAM_HEIGHT,
   emptyPrize,
   parseCratesYaml,
   serializeCratesYaml,
@@ -25,7 +26,7 @@ import { useIconPack } from "../lib/useIconPack";
 import { useDirtyTracking } from "../state/DirtyContext";
 import { useProfiles } from "../state/ProfilesContext";
 
-const EMPTY: CratesFile = { keys: [], crates: [] };
+const EMPTY: CratesFile = { settings: { hologramHeight: DEFAULT_HOLOGRAM_HEIGHT }, keys: [], crates: [] };
 type View = { kind: "crate"; id: string; prize: number | "settings" } | { kind: "keys"; key: string | null };
 
 function cratesPath(pluginsPath: string): string {
@@ -198,6 +199,27 @@ export default function CrateEditorPage() {
               <MinecraftTextPreview text={k.name} emptyLabel={k.id} /> <span className="muted small">({k.id})</span>
             </label>
           ))}
+        </div>
+        <div className="ci-section">
+          <div className="ci-section-title">Napis nad skrzynką postawioną w świecie</div>
+          <p className="muted small">
+            Puste = nazwa skrzynki + podpowiedź „Prawy klik z kluczem • Lewy klik: nagrody”. Skrzynkę stawiasz w grze:
+            patrzysz na blok i wpisujesz /@crate place {c.id}
+          </p>
+          <LoreEditor value={c.hologram} onChange={(l) => updateCrate(c.id, { hologram: l })} />
+          <label>
+            Wysokość napisu nad blokiem (wspólna dla wszystkich skrzynek)
+            <input
+              type="number"
+              min={0}
+              max={5}
+              step={0.1}
+              value={file.settings.hologramHeight}
+              onChange={(e) =>
+                setFile({ ...file, settings: { hologramHeight: Math.min(5, Math.max(0, Number(e.target.value))) } })
+              }
+            />
+          </label>
         </div>
         <div className="row ci-section">
           <button

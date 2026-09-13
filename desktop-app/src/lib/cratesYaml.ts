@@ -31,12 +31,22 @@ export interface CrateDef {
   item: ItemRef;
   keys: string[];
   prizes: Prize[];
+  /** Napis nad postawioną skrzynką (puste = nazwa + podpowiedź z pliku językowego pluginu). */
+  hologram: string[];
+}
+
+export interface CratesSettings {
+  /** Ile bloków nad postawioną skrzynką wisi napis (settings.hologram-height). */
+  hologramHeight: number;
 }
 
 export interface CratesFile {
+  settings: CratesSettings;
   keys: KeyDef[];
   crates: CrateDef[];
 }
+
+export const DEFAULT_HOLOGRAM_HEIGHT = 0.6;
 
 const HEADER =
   "# Skrzynki - zarządzane przez aplikację (komentarze nie są zachowywane). Po zmianach: /@crate reload.\n";
@@ -79,8 +89,10 @@ export function parseCratesYaml(text: string): CratesFile {
       announce: p?.announce === true,
       rewards: parseRewards(p?.rewards),
     })),
+    hologram: lore(v?.hologram),
   }));
-  return { keys, crates };
+  const h = raw?.settings?.["hologram-height"];
+  return { settings: { hologramHeight: typeof h === "number" ? h : DEFAULT_HOLOGRAM_HEIGHT }, keys, crates };
 }
 
 function refOut(r: ItemRef): Record<string, unknown> {
@@ -99,6 +111,7 @@ export function serializeCratesYaml(f: CratesFile): string {
       item: refOut(c.item),
       ...(c.lore.length ? { lore: c.lore } : {}),
       keys: c.keys,
+      ...(c.hologram.length ? { hologram: c.hologram } : {}),
       prizes: c.prizes.map((p) => ({
         name: p.name,
         icon: refOut(p.icon),
@@ -108,7 +121,8 @@ export function serializeCratesYaml(f: CratesFile): string {
       })),
     };
   }
-  return HEADER + yaml.dump({ keys, crates }, { lineWidth: -1, noRefs: true });
+  const settings = { "hologram-height": f.settings.hologramHeight };
+  return HEADER + yaml.dump({ settings, keys, crates }, { lineWidth: -1, noRefs: true });
 }
 
 export function chancePercent(c: CrateDef, p: Prize): number {
@@ -153,6 +167,7 @@ export function addCrate(f: CratesFile, id: string): CratesFile {
     item: { item: "CHEST" },
     keys: [keyId],
     prizes: [emptyPrize()],
+    hologram: [],
   };
-  return { keys, crates: [...f.crates, crate] };
+  return { ...f, keys, crates: [...f.crates, crate] };
 }
