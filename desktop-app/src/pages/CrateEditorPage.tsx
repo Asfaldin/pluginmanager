@@ -72,7 +72,14 @@ function CopyRow({ cmd, what }: { cmd: string; what: ReactNode }) {
       <button
         type="button"
         onClick={() => {
-          navigator.clipboard?.writeText(cmd).then(() => setCopied(true)).catch(() => {});
+          navigator.clipboard
+            ?.writeText(cmd)
+            .then(() => {
+              setCopied(true);
+              // Po chwili wraca do „Kopiuj”, żeby dało się skopiować jeszcze raz.
+              setTimeout(() => setCopied(false), 1500);
+            })
+            .catch(() => {});
         }}
       >
         {copied ? "Skopiowano" : "Kopiuj"}
