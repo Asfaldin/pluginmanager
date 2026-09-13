@@ -77,7 +77,7 @@ function CopyRow({ cmd, what }: { cmd: string; what: ReactNode }) {
             .then(() => {
               setCopied(true);
               // Po chwili wraca do „Kopiuj”, żeby dało się skopiować jeszcze raz.
-              setTimeout(() => setCopied(false), 1500);
+              setTimeout(() => setCopied(false), 500);
             })
             .catch(() => {});
         }}
