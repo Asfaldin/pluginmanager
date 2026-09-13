@@ -62,6 +62,30 @@ function LoreEditor({ value, onChange }: { value: string[]; onChange: (l: string
   );
 }
 
+/** Pro tip z gotowymi komendami (klik „Kopiuj” = do schowka, do wklejenia w grze/konsoli). */
+function CommandTip({ commands }: { commands: { cmd: string; what: string }[] }) {
+  const [copied, setCopied] = useState<string | null>(null);
+  return (
+    <div className="ci-protip">
+      <div className="ci-protip-title">💡 Pro tip</div>
+      {commands.map(({ cmd, what }) => (
+        <div key={cmd} className="ci-protip-row">
+          <code>{cmd}</code>
+          <span className="muted small">{what}</span>
+          <button
+            type="button"
+            onClick={() => {
+              navigator.clipboard?.writeText(cmd).then(() => setCopied(cmd)).catch(() => {});
+            }}
+          >
+            {copied === cmd ? "Skopiowano" : "Kopiuj"}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Sekcja zwijana strzałką - żeby prawy panel nie pokazywał wszystkiego naraz. */
 function Fold({ title, open, children }: { title: string; open?: boolean; children: ReactNode }) {
   return (
@@ -218,6 +242,12 @@ export default function CrateEditorPage() {
             ID: {c.id}
           </span>
         </h2>
+        <CommandTip
+          commands={[
+            { cmd: `/@crate give <gracz> ${c.id} 1`, what: "daje graczowi skrzynkę" },
+            { cmd: `/@crate place ${c.id}`, what: "blok, na który patrzysz, staje się tą skrzynką" },
+          ]}
+        />
         <Fold title="Nazwa i wygląd" open>
           <label>
             Nazwa
@@ -365,6 +395,7 @@ export default function CrateEditorPage() {
             ID: {k.id}
           </span>
         </h2>
+        <CommandTip commands={[{ cmd: `/@crate key <gracz> ${k.id} 1`, what: "daje graczowi ten klucz" }]} />
         <Fold title="Nazwa i wygląd" open>
           <label>
             Nazwa

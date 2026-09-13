@@ -2015,6 +2015,49 @@ button:disabled:hover {
   color: var(--accent-strong);
 }
 
+/* Pro tip z komendami w edytorze Skrzynek. */
+.ci-protip {
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ci-protip-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent-strong);
+}
+
+.ci-protip-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ci-protip-row code {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.85rem;
+}
+
+.ci-protip-row span {
+  flex: 1;
+  min-width: 10rem;
+}
+
+.ci-protip-row button {
+  padding: 0.15rem 0.6rem;
+  font-size: 0.8rem;
+}
+
 /* Liczba wygranych przy skrzynce - plakietka z prezentem zamiast nagłówka kolumny. */
 .ci-prize-count {
   display: inline-flex;
