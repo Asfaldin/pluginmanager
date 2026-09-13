@@ -62,12 +62,12 @@ function LoreEditor({ value, onChange }: { value: string[]; onChange: (l: string
   );
 }
 
-/** Pro tip z gotowymi komendami (klik „Kopiuj” = do schowka, do wklejenia w grze/konsoli). */
+/** Ramka „Przydatne komendy” z gotowymi komendami (klik „Kopiuj” = do schowka, do wklejenia w grze/konsoli). */
 function CommandTip({ commands }: { commands: { cmd: string; what: string }[] }) {
   const [copied, setCopied] = useState<string | null>(null);
   return (
     <div className="ci-protip">
-      <div className="ci-protip-title">💡 Pro tip</div>
+      <div className="ci-protip-title">Przydatne komendy</div>
       {commands.map(({ cmd, what }) => (
         <div key={cmd} className="ci-protip-row">
           <code>{cmd}</code>
