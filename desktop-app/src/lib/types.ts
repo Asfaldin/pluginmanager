@@ -225,16 +225,6 @@ export interface IslandConfig {
   };
 }
 
-// Mirrors mainplugins-crates' crate-rewards*.yml entry shape (CrateManager.wczytajNagrody()).
-export interface CrateReward {
-  material: string;
-  amount: number;
-  weight: number;
-  name: string;
-  color: string;
-  broadcast: boolean;
-}
-
 export interface WorldPoint {
   world: string;
   x: number;

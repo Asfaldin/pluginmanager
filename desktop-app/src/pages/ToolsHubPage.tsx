@@ -63,7 +63,7 @@ const TOOL_GROUPS: ToolGroup[] = [
       {
         to: "/crates",
         title: "Skrzynie (crates)",
-        description: "Pula nagród skrzyń: materiał, ilość, waga, kolor, ogłoszenie na czacie.",
+        description: "Twoje skrzynki: wygląd, klucze (własne albo wspólne) i wygrane — pieniądze, itemy, klucze i więcej.",
         icon: Gift,
       },
       {

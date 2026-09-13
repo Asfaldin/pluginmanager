@@ -1,278 +1,323 @@
-import { useDirtyTracking } from "../state/DirtyContext";
 import { Save } from "lucide-react";
-import * as yaml from "js-yaml";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import PresetBar from "../components/PresetBar";
-import ToolbarMore from "../components/ToolbarMore";
+import ItemRefPicker from "../components/ItemRefPicker";
+import MaterialIcon from "../components/MaterialIcon";
+import MinecraftTextInput from "../components/MinecraftTextInput";
+import MinecraftTextPreview from "../components/MinecraftTextPreview";
+import RewardEditor from "../components/RewardEditor";
 import { rconSendCommand, sftpReadFile, sftpWriteFile } from "../lib/api";
-import { getLastUsed, setLastUsed } from "../lib/lastUsed";
-import { COMMON_MATERIALS } from "../lib/minecraftData";
-import { useLocalPresets } from "../lib/useLocalPresets";
+import {
+  addCrate,
+  chancePercent,
+  emptyPrize,
+  parseCratesYaml,
+  serializeCratesYaml,
+  validateCrates,
+  type CrateDef,
+  type CratesFile,
+  type ItemRef,
+  type KeyDef,
+  type Prize,
+} from "../lib/cratesYaml";
+import { loadItemCatalog } from "../lib/itemCatalogRemote";
+import { useIconPack } from "../lib/useIconPack";
+import { useDirtyTracking } from "../state/DirtyContext";
 import { useProfiles } from "../state/ProfilesContext";
-import type { CrateReward } from "../lib/types";
 
-const LAST_USED_KEY = "crates";
+const EMPTY: CratesFile = { keys: [], crates: [] };
+type View = { kind: "crate"; id: string; prize: number | "settings" } | { kind: "keys"; key: string | null };
 
-const NAMED_COLORS = [
-  "BLACK",
-  "DARK_BLUE",
-  "DARK_GREEN",
-  "DARK_AQUA",
-  "DARK_RED",
-  "DARK_PURPLE",
-  "GOLD",
-  "GRAY",
-  "DARK_GRAY",
-  "BLUE",
-  "GREEN",
-  "AQUA",
-  "RED",
-  "LIGHT_PURPLE",
-  "YELLOW",
-  "WHITE",
-];
-
-const TIERS = [
-  { key: "1", file: "crate-rewards.yml", label: "Tier 1" },
-  { key: "2", file: "crate-rewards-2.yml", label: "Tier 2" },
-  { key: "3", file: "crate-rewards-3.yml", label: "Tier 3" },
-];
-
-const EMPTY_REWARDS: CrateReward[] = [];
-
-const EMPTY_REWARD: CrateReward = {
-  material: "STONE",
-  amount: 1,
-  weight: 10,
-  name: "",
-  color: "WHITE",
-  broadcast: false,
-};
-
-function parseCrateYaml(text: string): CrateReward[] {
-  if (!text.trim()) return [];
-  const raw = (yaml.load(text) ?? {}) as Record<string, any>;
-  const rewards = Array.isArray(raw.rewards) ? raw.rewards : [];
-  return rewards.map((r: any) => ({
-    material: r.material ?? "STONE",
-    amount: Number(r.amount ?? 1),
-    weight: Number(r.weight ?? 1),
-    name: r.name ?? "",
-    color: r.color ?? "WHITE",
-    broadcast: Boolean(r.broadcast ?? false),
-  }));
+function cratesPath(pluginsPath: string): string {
+  return `${pluginsPath.replace(/\/+$/, "")}/MainpluginsCrates/crates.yml`;
 }
 
-function quoteYamlString(value: string): string {
-  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
-}
-
-function serializeCrateYaml(rewards: CrateReward[]): string {
-  const lines = ["rewards:"];
-  for (const r of rewards) {
-    lines.push(`  - material: ${r.material}`);
-    lines.push(`    amount: ${r.amount}`);
-    lines.push(`    weight: ${r.weight}`);
-    lines.push(`    name: ${quoteYamlString(r.name)}`);
-    lines.push(`    color: ${r.color}`);
-    lines.push(`    broadcast: ${r.broadcast}`);
-  }
-  return lines.join("\n") + "\n";
+function LoreEditor({ value, onChange }: { value: string[]; onChange: (l: string[]) => void }) {
+  return (
+    <div>
+      {value.map((line, i) => (
+        <div key={i} className="mc-message-row">
+          <MinecraftTextInput
+            value={line}
+            onChange={(v) => onChange(value.map((l, li) => (li === i ? v : l)))}
+            placeholder="&7Linijka opisu"
+          />
+          <button type="button" onClick={() => onChange(value.filter((_, li) => li !== i))}>
+            Usuń
+          </button>
+        </div>
+      ))}
+      <button type="button" onClick={() => onChange([...value, ""])}>
+        + Dodaj linijkę
+      </button>
+    </div>
+  );
 }
 
 export default function CrateEditorPage() {
   const { profiles, loading: profilesLoading, activeProfileId: profileId, setActiveProfileId: setProfileId } = useProfiles();
-  const [tier, setTier] = useState(TIERS[0].key);
-  const [rewards, setRewards] = useState<CrateReward[]>(EMPTY_REWARDS);
-  const [serverRewards, setServerRewards] = useState<CrateReward[]>(EMPTY_REWARDS);
-  const [editing, setEditing] = useState<CrateReward>(EMPTY_REWARD);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [reloadCommand, setReloadCommand] = useState("@reloadcrates");
+  const [pluginsPath, setPluginsPath] = useState("");
+  const [file, setFile] = useState<CratesFile>(EMPTY);
+  const [serverFile, setServerFile] = useState<CratesFile>(EMPTY);
+  const [view, setView] = useState<View | null>(null);
+  const [customIds, setCustomIds] = useState<string[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const autoLoadedRef = useRef(false);
+  const { iconPackDir, allMaterials } = useIconPack(setStatus);
 
-  const {
-    presets: presetList,
-    selectedName: selectedPresetName,
-    setSelectedName: setSelectedPresetName,
-    load: loadPresets,
-    saveAs: savePresetAs,
-    remove: deletePreset,
-    find: findPreset,
-  } = useLocalPresets<CrateReward[]>("crates");
+  const dirty = useMemo(() => serializeCratesYaml(file) !== serializeCratesYaml(serverFile), [file, serverFile]);
+  useDirtyTracking(dirty);
+  const crateIds = file.crates.map((c) => c.id);
+  const keyIds = file.keys.map((k) => k.id);
+  const crate = view?.kind === "crate" ? (file.crates.find((c) => c.id === view.id) ?? null) : null;
 
-  function presetScope(pid: string, tierKey: string): string {
-    return `${pid}:${tierKey}`;
-  }
-
-  function remotePathFor(pid: string, tierKey: string): string {
-    const p = profiles.find((x) => x.id === pid);
-    const file = TIERS.find((t) => t.key === tierKey)!.file;
-    return p ? `${p.remote_plugins_path.replace(/\/+$/, "")}/MainpluginsCrates/${file}` : "";
-  }
-
-  async function load(pid: string, tierKey: string) {
-    const path = remotePathFor(pid, tierKey);
+  async function load(pid: string, path: string) {
     if (!pid || !path) return;
     setBusy(true);
     setStatus(null);
     try {
-      const text = await sftpReadFile(pid, path);
-      const parsed = parseCrateYaml(text);
-      setRewards(parsed);
-      setServerRewards(parsed);
-      loadPresets(presetScope(pid, tierKey));
-      setLastUsed(LAST_USED_KEY, { profileId: pid, remotePath: tierKey });
+      const parsed = parseCratesYaml(await sftpReadFile(pid, cratesPath(path)));
+      setFile(parsed);
+      setServerFile(parsed);
+      setView(parsed.crates[0] ? { kind: "crate", id: parsed.crates[0].id, prize: "settings" } : null);
     } catch (e) {
-      setStatus(String(e));
+      setFile(EMPTY);
+      setServerFile(EMPTY);
+      setView(null);
+      setStatus(`Nie udało się wczytać crates.yml (${String(e)}). Czy na serwerze jest nowa wersja pluginu Skrzynek?`);
     } finally {
       setBusy(false);
     }
+    loadItemCatalog(pid, path)
+      .then((c) => setCustomIds(c.items.map((it) => it.id)))
+      .catch(() => setCustomIds([]));
   }
 
   function selectProfile(id: string) {
     setProfileId(id);
-    if (id) load(id, tier);
+    const p = profiles.find((x) => x.id === id);
+    if (!p) return;
+    setPluginsPath(p.remote_plugins_path);
+    load(id, p.remote_plugins_path);
   }
 
-  function selectTier(key: string) {
-    setTier(key);
-    if (profileId) load(profileId, key);
-  }
-
-  // Serwer aktywny GLOBALNIE (pasek boczny) ma pierwszeństwo - dopiero gdy nic tam
-  // jeszcze nie wybrano, sięgamy do starego zapisu specyficznego dla tej strony.
   useEffect(() => {
     if (profilesLoading || autoLoadedRef.current) return;
     autoLoadedRef.current = true;
-    if (profileId && profiles.some((p) => p.id === profileId)) {
-      load(profileId, tier);
-      return;
-    }
-    const last = getLastUsed(LAST_USED_KEY);
-    if (last && profiles.some((p) => p.id === last.profileId)) {
-      setProfileId(last.profileId);
-      setTier(last.remotePath || TIERS[0].key);
-      load(last.profileId, last.remotePath || TIERS[0].key);
-    }
+    if (profileId && profiles.some((p) => p.id === profileId)) selectProfile(profileId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profilesLoading]);
 
-  // Edits only touch local state - nothing reaches the server until "Wyślij
-  // na serwer" is clicked, and "Cofnij do stanu z serwera" throws away local
-  // changes and goes back to serverRewards (set on load and after publish).
-  const dirty = rewards !== serverRewards;
-  useDirtyTracking(dirty);
+  function updateCrate(id: string, patch: Partial<CrateDef>) {
+    setFile({ ...file, crates: file.crates.map((c) => (c.id === id ? { ...c, ...patch } : c)) });
+  }
 
-  // Writing the file over SFTP does NOT make the running plugin pick it up -
-  // it still has the old reward pool cached in memory until told to reload,
-  // so publish also sends the RCON reload command right after a successful
-  // write. Otherwise "Wyślij na serwer" would silently do nothing visible
-  // in-game until someone separately remembered to click "Wyślij RCON".
-  async function publish() {
-    if (!profileId) return;
-    setBusy(true);
-    setStatus(null);
-    try {
-      await sftpWriteFile(profileId, remotePathFor(profileId, tier), serializeCrateYaml(rewards));
-      setServerRewards(rewards);
-      let statusMsg = "Wysłano na serwer.";
-      if (reloadCommand) {
-        try {
-          const result = await rconSendCommand(profileId, reloadCommand);
-          statusMsg += ` Przeładowano (RCON: ${result || "OK"}).`;
-        } catch (e) {
-          statusMsg += ` Uwaga: przeładowanie nie powiodło się (${String(e)}) - zmiany są zapisane, ale serwer może jeszcze pokazywać stare dane do ręcznego "Wyślij RCON".`;
-        }
-      }
-      setStatus(statusMsg);
-    } catch (e) {
-      setStatus(String(e));
-    } finally {
-      setBusy(false);
+  function updateKey(id: string, patch: Partial<KeyDef>) {
+    setFile({ ...file, keys: file.keys.map((k) => (k.id === id ? { ...k, ...patch } : k)) });
+  }
+
+  function askId(question: string, taken: string[]): string | null {
+    const id = window.prompt(question)?.trim().toLowerCase();
+    if (!id) return null;
+    if (!/^[a-z0-9_-]+$/.test(id) || taken.includes(id)) {
+      setStatus("Niepoprawne albo zajęte ID (tylko małe litery, cyfry, _ i -).");
+      return null;
     }
+    return id;
   }
 
-  function revertToServer() {
-    setRewards(serverRewards);
-    setEditing(EMPTY_REWARD);
-    setEditingIndex(null);
-    setStatus("Przywrócono stan z serwera — lokalne zmiany odrzucone.");
+  function newCrate() {
+    const id = askId("ID nowej skrzynki (małe litery, bez spacji, np. spring):", crateIds);
+    if (!id) return;
+    setFile(addCrate(file, id));
+    setView({ kind: "crate", id, prize: "settings" });
   }
 
-  // Local presets are a separate, opt-in safety net on top of the draft -
-  // saving one never touches the server. Scoped per profile+tier since each
-  // tier is its own file. Loading one only replaces the local draft; it
-  // still has to go through "Wyślij na serwer" to go live - handy if
-  // something got overwritten on the server and you want back what you had.
-  function saveCurrentPresetAs() {
-    if (!profileId) return;
-    const name = window.prompt("Nazwa presetu (nadpisze istniejący o tej samej nazwie):", selectedPresetName || "");
-    if (!name) return;
-    savePresetAs(presetScope(profileId, tier), name, rewards);
-    setStatus(`Zapisano preset lokalnie jako „${name}" (nie wysłano na serwer).`);
+  function newKey() {
+    const id = askId("ID nowego klucza (np. vip_key):", keyIds);
+    if (!id) return;
+    setFile({ ...file, keys: [...file.keys, { id, name: `&e&l${id}`, lore: [], item: { item: "TRIPWIRE_HOOK" } }] });
+    setView({ kind: "keys", key: id });
   }
 
-  function loadPresetIntoDraft(name: string) {
-    const found = findPreset(name);
-    if (!found) return;
-    setRewards(found);
-    setStatus(`Wczytano preset „${name}" do edycji — kliknij "Wyślij na serwer", żeby go opublikować.`);
-  }
-
-  function upsertEditing() {
-    if (!editing.material.trim()) {
-      setStatus("Podaj materiał nagrody.");
+  async function publish() {
+    if (!profileId || !pluginsPath) return;
+    const warnings = validateCrates(file);
+    if (warnings.length && !window.confirm(`Uwaga:\n- ${warnings.join("\n- ")}\n\nPlugin pominie te elementy. Wysłać mimo to?`)) {
       return;
     }
-    const next = [...rewards];
-    if (editingIndex != null) {
-      next[editingIndex] = editing;
-    } else {
-      next.push(editing);
-    }
-    setRewards(next);
-    setEditing(EMPTY_REWARD);
-    setEditingIndex(null);
-  }
-
-  function editReward(index: number) {
-    setEditing(rewards[index]);
-    setEditingIndex(index);
-  }
-
-  function removeReward(index: number) {
-    const next = rewards.filter((_, i) => i !== index);
-    setRewards(next);
-    if (editingIndex === index) {
-      setEditing(EMPTY_REWARD);
-      setEditingIndex(null);
-    }
-  }
-
-  async function reload() {
-    if (!reloadCommand || !profileId) return;
     setBusy(true);
     setStatus(null);
     try {
-      const result = await rconSendCommand(profileId, reloadCommand);
-      setStatus(`RCON: ${result || "(brak odpowiedzi)"}`);
+      await sftpWriteFile(profileId, cratesPath(pluginsPath), serializeCratesYaml(file));
+      setServerFile(file);
+      let msg = "Wysłano na serwer.";
+      try {
+        const r = await rconSendCommand(profileId, "@crate reload");
+        msg += ` Przeładowano (RCON: ${r || "OK"}).`;
+      } catch (e) {
+        msg += ` ${String(e)}`;
+      }
+      setStatus(msg);
     } catch (e) {
       setStatus(String(e));
     } finally {
       setBusy(false);
     }
   }
+
+  const iconOf = (r: ItemRef) =>
+    r.item ? <MaterialIcon material={r.item} iconPackDir={iconPackDir} /> : <span className="ci-badge">custom</span>;
+
+  function renderCrateSettings(c: CrateDef) {
+    return (
+      <>
+        <h2>Skrzynka: {c.id}</h2>
+        <label>
+          Nazwa
+          <MinecraftTextInput value={c.name} onChange={(v) => updateCrate(c.id, { name: v })} placeholder="&6&lNazwa skrzynki" />
+        </label>
+        <div className="ci-section-title">Wygląd (przedmiot)</div>
+        <ItemRefPicker value={c.item} onChange={(r) => updateCrate(c.id, { item: r })} materials={allMaterials} customIds={customIds} />
+        <div className="ci-section">
+          <div className="ci-section-title">Opis</div>
+          <LoreEditor value={c.lore} onChange={(l) => updateCrate(c.id, { lore: l })} />
+        </div>
+        <div className="ci-section">
+          <div className="ci-section-title">Otwierają ją klucze</div>
+          {file.keys.map((k) => (
+            <label key={k.id} className="checkbox">
+              <input
+                type="checkbox"
+                checked={c.keys.includes(k.id)}
+                onChange={(e) =>
+                  updateCrate(c.id, { keys: e.target.checked ? [...c.keys, k.id] : c.keys.filter((x) => x !== k.id) })
+                }
+              />
+              <MinecraftTextPreview text={k.name} emptyLabel={k.id} /> <span className="muted small">({k.id})</span>
+            </label>
+          ))}
+        </div>
+        <div className="row ci-section">
+          <button
+            type="button"
+            onClick={() => {
+              if (!window.confirm(`Usunąć skrzynkę ${c.id}? (Na serwerze zniknie po „Wyślij na serwer”.)`)) return;
+              setFile({ ...file, crates: file.crates.filter((x) => x.id !== c.id) });
+              setView(null);
+            }}
+          >
+            Usuń skrzynkę
+          </button>
+        </div>
+      </>
+    );
+  }
+
+  function renderPrize(c: CrateDef, i: number) {
+    const p = c.prizes[i];
+    const setPrize = (patch: Partial<Prize>) =>
+      updateCrate(c.id, { prizes: c.prizes.map((x, xi) => (xi === i ? { ...x, ...patch } : x)) });
+    return (
+      <>
+        <h2>Wygrana {i + 1}</h2>
+        <div className="ci-tooltip">
+          <MinecraftTextPreview text={p.name} />
+          <div className="ci-tip-gray">Szansa: {chancePercent(c, p).toFixed(1)}%</div>
+        </div>
+        <label>
+          Nazwa (w animacji i podglądzie)
+          <MinecraftTextInput value={p.name} onChange={(v) => setPrize({ name: v })} placeholder="&bNazwa wygranej" />
+        </label>
+        <div className="ci-section-title">Ikona</div>
+        <ItemRefPicker
+          value={p.icon}
+          onChange={(r) => setPrize({ icon: r })}
+          materials={allMaterials}
+          customIds={customIds}
+          showAmount
+        />
+        <label>
+          Waga (im więcej, tym częściej)
+          <input type="number" min={1} value={p.weight} onChange={(e) => setPrize({ weight: Math.max(1, Number(e.target.value)) })} />
+        </label>
+        <label className="checkbox">
+          <input type="checkbox" checked={p.announce} onChange={(e) => setPrize({ announce: e.target.checked })} />
+          Ogłoś na czacie, gdy ktoś to wylosuje
+        </label>
+        <div className="ci-section">
+          <div className="ci-section-title">Co gracz dostaje</div>
+          <RewardEditor
+            value={p.rewards}
+            onChange={(l) => setPrize({ rewards: l })}
+            materials={allMaterials}
+            customIds={customIds}
+            crateIds={crateIds}
+            keyIds={keyIds}
+          />
+        </div>
+        <div className="row ci-section">
+          <button
+            type="button"
+            onClick={() => {
+              updateCrate(c.id, { prizes: c.prizes.filter((_, xi) => xi !== i) });
+              setView({ kind: "crate", id: c.id, prize: "settings" });
+            }}
+          >
+            Usuń wygraną
+          </button>
+        </div>
+      </>
+    );
+  }
+
+  function renderKey(k: KeyDef) {
+    const used = file.crates.filter((c) => c.keys.includes(k.id));
+    return (
+      <>
+        <h2>Klucz: {k.id}</h2>
+        <label>
+          Nazwa
+          <MinecraftTextInput value={k.name} onChange={(v) => updateKey(k.id, { name: v })} placeholder="&e&lNazwa klucza" />
+        </label>
+        <div className="ci-section-title">Wygląd (przedmiot)</div>
+        <ItemRefPicker value={k.item} onChange={(r) => updateKey(k.id, { item: r })} materials={allMaterials} customIds={customIds} />
+        <div className="ci-section">
+          <div className="ci-section-title">Opis</div>
+          <LoreEditor value={k.lore} onChange={(l) => updateKey(k.id, { lore: l })} />
+        </div>
+        <p className="muted small">
+          Otwiera: {used.map((c) => c.id).join(", ") || "żadnej skrzynki (ustaw w ustawieniach skrzynki)"}
+        </p>
+        <div className="row ci-section">
+          <button
+            type="button"
+            disabled={used.length > 0}
+            title={used.length > 0 ? "Najpierw odepnij ten klucz od skrzynek" : undefined}
+            onClick={() => {
+              setFile({ ...file, keys: file.keys.filter((x) => x.id !== k.id) });
+              setView({ kind: "keys", key: null });
+            }}
+          >
+            Usuń klucz
+          </button>
+        </div>
+      </>
+    );
+  }
+
+  const selectedKey = view?.kind === "keys" && view.key ? file.keys.find((k) => k.id === view.key) : undefined;
 
   return (
     <div className="page">
-      <Link to="/tools" className="back-link">← Twoje pluginy</Link>
-      <h1>Skrzynie (crates)</h1>
+      <Link to="/tools" className="back-link">
+        ← Twoje pluginy
+      </Link>
+      <h1>Skrzynki</h1>
       <p className="muted">
-        Edytuje pulę nagród skrzyń mainplugins-crates (material, amount, weight, name, color, broadcast), osobno
-        dla każdego z 3 tierów.
+        Twoje skrzynki: wygląd, klucze, które je otwierają, i co można wygrać. Jedna wygrana może dać kilka rzeczy naraz —
+        pieniądze, itemy, inne skrzynki albo klucze.
       </p>
 
       <div className="row">
@@ -284,144 +329,133 @@ export default function CrateEditorPage() {
             </option>
           ))}
         </select>
-        <div className="row subtabs">
-          {TIERS.map((t) => (
-            <button key={t.key} type="button" className={tier === t.key ? "active" : ""} onClick={() => selectTier(t.key)}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <button onClick={publish} disabled={!profileId || !dirty || busy}>
-          <Save size={14} strokeWidth={1.75} /> Wyślij na serwer
-        </button>
-        <button type="button" onClick={revertToServer} disabled={!dirty}>
+        <span style={{ flex: 1 }} />
+        {dirty && <span className="muted small">masz niewysłane zmiany</span>}
+        <button type="button" onClick={() => setFile(serverFile)} disabled={!dirty}>
           ↶ Cofnij do stanu z serwera
         </button>
-        {dirty && <span className="muted small">masz niezapisane zmiany</span>}
+        <button className="ci-publish" onClick={publish} disabled={!profileId || !dirty || busy}>
+          <Save size={14} strokeWidth={1.75} /> Wyślij na serwer
+        </button>
       </div>
-
-      <ToolbarMore>
-        <PresetBar
-          presets={presetList}
-          selectedName={selectedPresetName}
-          onSelectName={setSelectedPresetName}
-          onSaveAs={saveCurrentPresetAs}
-          onLoad={loadPresetIntoDraft}
-          onDelete={(name) => deletePreset(presetScope(profileId, tier), name)}
-          disabled={!profileId}
-        />
-      </ToolbarMore>
-
-      <div className="two-col">
-        <div className="card">
-          <h2>Nagrody ({rewards.length})</h2>
-          <div className="card-grid">
-            {rewards.map((r, index) => (
-              <div key={index} className="card">
-                <div className="card-title">{r.name || r.material}</div>
-                <div className="muted small">
-                  {r.material} x{r.amount} · waga {r.weight} · {r.color}
-                </div>
-                <div className="row">
-                  <button onClick={() => editReward(index)}>Edytuj</button>
-                  <button onClick={() => removeReward(index)}>Usuń</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card form">
-          <h2>{editingIndex != null ? "Edytuj nagrodę" : "Nowa nagroda"}</h2>
-
-          <label>
-            Materiał
-            <input
-              list="materials"
-              value={editing.material}
-              onChange={(e) => setEditing({ ...editing, material: e.target.value })}
-            />
-            <datalist id="materials">
-              {COMMON_MATERIALS.map((m) => (
-                <option key={m} value={m} />
-              ))}
-            </datalist>
-          </label>
-
-          <label>
-            Nazwa
-            <input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
-          </label>
-
-          <div className="row">
-            <label>
-              Ilość
-              <input
-                type="number"
-                min={1}
-                max={64}
-                value={editing.amount}
-                onChange={(e) => setEditing({ ...editing, amount: Number(e.target.value) })}
-              />
-            </label>
-            <label>
-              Waga (szansa względna)
-              <input
-                type="number"
-                min={0}
-                value={editing.weight}
-                onChange={(e) => setEditing({ ...editing, weight: Number(e.target.value) })}
-              />
-            </label>
-            <label>
-              Kolor
-              <select value={editing.color} onChange={(e) => setEditing({ ...editing, color: e.target.value })}>
-                {NAMED_COLORS.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="checkbox">
-              <input
-                type="checkbox"
-                checked={editing.broadcast}
-                onChange={(e) => setEditing({ ...editing, broadcast: e.target.checked })}
-              />
-              Ogłoś na czacie
-            </label>
-          </div>
-
-          <div className="row">
-            <button onClick={upsertEditing} disabled={!profileId}>
-              Zapisz nagrodę (lokalnie — pamiętaj o "Wyślij na serwer")
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEditing(EMPTY_REWARD);
-                setEditingIndex(null);
-              }}
-            >
-              Wyczyść formularz
-            </button>
-          </div>
-
-          <div className="row">
-            <input
-              placeholder="komenda RCON, np. @reloadcrates"
-              value={reloadCommand}
-              onChange={(e) => setReloadCommand(e.target.value)}
-            />
-            <button onClick={reload} disabled={busy || !profileId}>
-              Wyślij RCON
-            </button>
-          </div>
-        </div>
-      </div>
-
       {status && <p className="status">{status}</p>}
+
+      <div className="ci-layout">
+        <aside className="card ci-cats">
+          <div className="ci-section-title">Skrzynki</div>
+          {file.crates.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={`ci-cat${view?.kind === "crate" && view.id === c.id ? " active" : ""}`}
+              onClick={() => setView({ kind: "crate", id: c.id, prize: "settings" })}
+            >
+              <span className="ci-item-name">
+                <MinecraftTextPreview text={c.name} emptyLabel={c.id} />
+              </span>
+              <span className="ci-count">{c.prizes.length}</span>
+            </button>
+          ))}
+          <button type="button" onClick={newCrate} disabled={!profileId}>
+            + Nowa skrzynka
+          </button>
+          <div className="ci-section-title" style={{ marginTop: "1rem" }}>
+            Klucze
+          </div>
+          <button
+            type="button"
+            className={`ci-cat${view?.kind === "keys" ? " active" : ""}`}
+            onClick={() => setView({ kind: "keys", key: file.keys[0]?.id ?? null })}
+          >
+            <span>Wszystkie klucze</span>
+            <span className="ci-count">{file.keys.length}</span>
+          </button>
+        </aside>
+
+        <section className="card ci-list">
+          {view?.kind === "crate" && crate && (
+            <>
+              <button
+                type="button"
+                className={`ci-item${view.prize === "settings" ? " active" : ""}`}
+                onClick={() => setView({ ...view, prize: "settings" })}
+              >
+                {iconOf(crate.item)}
+                <span className="ci-item-text">
+                  <strong>Ustawienia skrzynki</strong>
+                  <span className="muted small">nazwa, wygląd, klucze</span>
+                </span>
+              </button>
+              <div className="ci-group">Wygrane ({crate.prizes.length})</div>
+              {crate.prizes.map((p, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className={`ci-item${view.prize === i ? " active" : ""}`}
+                  onClick={() => setView({ ...view, prize: i })}
+                >
+                  {iconOf(p.icon)}
+                  <span className="ci-item-text">
+                    <span className="ci-item-name">
+                      <MinecraftTextPreview text={p.name} />
+                    </span>
+                    <span className="ci-badges">
+                      <span className="ci-badge">{chancePercent(crate, p).toFixed(1)}%</span>
+                      {p.announce && <span className="ci-badge">ogłoszenie</span>}
+                      {p.rewards.length === 0 && <span className="ci-badge warn">brak nagród</span>}
+                    </span>
+                  </span>
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  updateCrate(crate.id, { prizes: [...crate.prizes, emptyPrize()] });
+                  setView({ ...view, prize: crate.prizes.length });
+                }}
+              >
+                + Dodaj wygraną
+              </button>
+            </>
+          )}
+          {view?.kind === "keys" && (
+            <>
+              {file.keys.map((k) => (
+                <button
+                  key={k.id}
+                  type="button"
+                  className={`ci-item${view.key === k.id ? " active" : ""}`}
+                  onClick={() => setView({ kind: "keys", key: k.id })}
+                >
+                  {iconOf(k.item)}
+                  <span className="ci-item-text">
+                    <span className="ci-item-name">
+                      <MinecraftTextPreview text={k.name} emptyLabel={k.id} />
+                    </span>
+                    <span className="muted small">
+                      otwiera:{" "}
+                      {file.crates
+                        .filter((c) => c.keys.includes(k.id))
+                        .map((c) => c.id)
+                        .join(", ") || "nic"}
+                    </span>
+                  </span>
+                </button>
+              ))}
+              <button type="button" onClick={newKey} disabled={!profileId}>
+                + Nowy klucz
+              </button>
+            </>
+          )}
+          {!view && <p className="muted">{profileId ? "Brak skrzynek — dodaj pierwszą." : "Wybierz serwer, żeby wczytać skrzynki."}</p>}
+        </section>
+
+        <section className="card form ci-editor">
+          {crate && view?.kind === "crate" && view.prize === "settings" && renderCrateSettings(crate)}
+          {crate && view?.kind === "crate" && typeof view.prize === "number" && crate.prizes[view.prize] && renderPrize(crate, view.prize)}
+          {selectedKey && renderKey(selectedKey)}
+        </section>
+      </div>
     </div>
   );
 }
