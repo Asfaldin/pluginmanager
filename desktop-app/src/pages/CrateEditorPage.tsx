@@ -366,6 +366,33 @@ export default function CrateEditorPage() {
           </label>
           <div className="ci-section-title">Wygląd (przedmiot)</div>
           <ItemRefPicker value={c.item} onChange={(r) => updateCrate(c.id, { item: r })} materials={allMaterials} customIds={customIds} />
+          <div className="ci-section-title" style={{ marginTop: "0.8rem" }}>
+            Postawione skrzynki <span style={{ textTransform: "none", fontWeight: 400 }}>(wspólne dla wszystkich skrzynek)</span>
+          </div>
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={file.settings.placedBlockFromItem}
+              onChange={(e) => setFile({ ...file, settings: { ...file.settings, placedBlockFromItem: e.target.checked } })}
+            />
+            Postawiony blok wygląda jak przedmiot skrzynki (np. ENDER_CHEST)
+          </label>
+          <label>
+            Wysokość napisu nad blokiem
+            <input
+              type="number"
+              min={0}
+              max={5}
+              step={0.1}
+              value={file.settings.hologramHeight}
+              onChange={(e) =>
+                setFile({
+                  ...file,
+                  settings: { ...file.settings, hologramHeight: Math.min(5, Math.max(0, Number(e.target.value))) },
+                })
+              }
+            />
+          </label>
         </Fold>
         <Fold title="Opis przedmiotu w ekwipunku">
           <LoreEditor value={c.lore} onChange={(l) => updateCrate(c.id, { lore: l })} />
@@ -416,32 +443,6 @@ export default function CrateEditorPage() {
               )}
             </>
           )}
-        </Fold>
-        <Fold title="Postawione skrzynki — wspólne dla wszystkich">
-          <label>
-            Wysokość napisu nad blokiem
-            <input
-              type="number"
-              min={0}
-              max={5}
-              step={0.1}
-              value={file.settings.hologramHeight}
-              onChange={(e) =>
-                setFile({
-                  ...file,
-                  settings: { ...file.settings, hologramHeight: Math.min(5, Math.max(0, Number(e.target.value))) },
-                })
-              }
-            />
-          </label>
-          <label className="checkbox">
-            <input
-              type="checkbox"
-              checked={file.settings.placedBlockFromItem}
-              onChange={(e) => setFile({ ...file, settings: { ...file.settings, placedBlockFromItem: e.target.checked } })}
-            />
-            Postawiony blok wygląda jak przedmiot skrzynki (np. ENDER_CHEST)
-          </label>
         </Fold>
       </>
     );
