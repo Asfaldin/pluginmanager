@@ -2378,6 +2378,13 @@ button:disabled:hover {
   grid-template-columns: 250px minmax(0, 0.75fr) minmax(0, 1.25fr);
 }
 
+/* Lista wygranych/kluczy też jedzie z ekranem przy przewijaniu (jak lista skrzynek). */
+.ci-layout-crates .ci-list {
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 2rem);
+}
+
 @media (max-width: 1100px) {
   .ci-layout.ci-layout-crates {
     grid-template-columns: 240px minmax(0, 1fr);
