@@ -26,7 +26,11 @@ import { useIconPack } from "../lib/useIconPack";
 import { useDirtyTracking } from "../state/DirtyContext";
 import { useProfiles } from "../state/ProfilesContext";
 
-const EMPTY: CratesFile = { settings: { hologramHeight: DEFAULT_HOLOGRAM_HEIGHT }, keys: [], crates: [] };
+const EMPTY: CratesFile = {
+  settings: { hologramHeight: DEFAULT_HOLOGRAM_HEIGHT, placedBlockFromItem: true },
+  keys: [],
+  crates: [],
+};
 type View = { kind: "crate"; id: string; prize: number | "settings" } | { kind: "keys"; key: string | null };
 
 function cratesPath(pluginsPath: string): string {
@@ -216,9 +220,20 @@ export default function CrateEditorPage() {
               step={0.1}
               value={file.settings.hologramHeight}
               onChange={(e) =>
-                setFile({ ...file, settings: { hologramHeight: Math.min(5, Math.max(0, Number(e.target.value))) } })
+                setFile({
+                  ...file,
+                  settings: { ...file.settings, hologramHeight: Math.min(5, Math.max(0, Number(e.target.value))) },
+                })
               }
             />
+          </label>
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={file.settings.placedBlockFromItem}
+              onChange={(e) => setFile({ ...file, settings: { ...file.settings, placedBlockFromItem: e.target.checked } })}
+            />
+            Postawiony blok wygląda jak przedmiot skrzynki (np. ENDER_CHEST) — wspólne dla wszystkich skrzynek
           </label>
         </div>
         <div className="row ci-section">

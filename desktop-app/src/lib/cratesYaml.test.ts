@@ -3,6 +3,7 @@ import { addCrate, chancePercent, parseCratesYaml, serializeCratesYaml, validate
 
 const YML = `settings:
   hologram-height: 1.2
+  placed-block-from-item: false
 keys:
   basic_key:
     name: "&eKey"
@@ -38,11 +39,13 @@ describe("cratesYaml", () => {
     expect(c.prizes[1].rewards.map((r) => r.type)).toEqual(["money", "key"]);
     expect(c.hologram).toEqual(["&6Mystery", "&7Click me"]);
     expect(f.settings.hologramHeight).toBe(1.2);
+    expect(f.settings.placedBlockFromItem).toBe(false);
   });
 
   it("defaults hologram settings when missing", () => {
     const f = parseCratesYaml("crates: {}\n");
     expect(f.settings.hologramHeight).toBe(0.6);
+    expect(f.settings.placedBlockFromItem).toBe(true);
     expect(serializeCratesYaml(f)).toContain("hologram-height: 0.6");
   });
 

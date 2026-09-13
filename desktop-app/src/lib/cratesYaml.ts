@@ -38,6 +38,8 @@ export interface CrateDef {
 export interface CratesSettings {
   /** Ile bloków nad postawioną skrzynką wisi napis (settings.hologram-height). */
   hologramHeight: number;
+  /** Postawiony blok przyjmuje wygląd przedmiotu skrzynki (settings.placed-block-from-item). */
+  placedBlockFromItem: boolean;
 }
 
 export interface CratesFile {
@@ -92,7 +94,11 @@ export function parseCratesYaml(text: string): CratesFile {
     hologram: lore(v?.hologram),
   }));
   const h = raw?.settings?.["hologram-height"];
-  return { settings: { hologramHeight: typeof h === "number" ? h : DEFAULT_HOLOGRAM_HEIGHT }, keys, crates };
+  const settings: CratesSettings = {
+    hologramHeight: typeof h === "number" ? h : DEFAULT_HOLOGRAM_HEIGHT,
+    placedBlockFromItem: raw?.settings?.["placed-block-from-item"] !== false,
+  };
+  return { settings, keys, crates };
 }
 
 function refOut(r: ItemRef): Record<string, unknown> {
@@ -121,7 +127,10 @@ export function serializeCratesYaml(f: CratesFile): string {
       })),
     };
   }
-  const settings = { "hologram-height": f.settings.hologramHeight };
+  const settings = {
+    "hologram-height": f.settings.hologramHeight,
+    "placed-block-from-item": f.settings.placedBlockFromItem,
+  };
   return HEADER + yaml.dump({ settings, keys, crates }, { lineWidth: -1, noRefs: true });
 }
 

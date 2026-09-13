@@ -61,6 +61,69 @@ export function textureRelPathsForMaterial(material: string): string[] {
   return paths;
 }
 
+/** Kawałek tekstury do wycięcia (sx,sy,sw,sh) i miejsce na ikonce (dx,dy). */
+export interface IconCropPart {
+  sx: number;
+  sy: number;
+  sw: number;
+  sh: number;
+  dx: number;
+  dy: number;
+}
+
+/** Ikonka składana z tekstury modelu (skrzynie, głowy) - te przedmioty nie mają płaskiej tekstury. */
+export interface IconCrop {
+  texture: string;
+  width: number;
+  height: number;
+  parts: IconCropPart[];
+}
+
+// Przód skrzyni z tekstury modelu 64x64: przód wieka, przód dołu i zamek.
+function chestCrop(file: string): IconCrop {
+  return {
+    texture: `assets/minecraft/textures/entity/chest/${file}.png`,
+    width: 14,
+    height: 15,
+    parts: [
+      { sx: 14, sy: 14, sw: 14, sh: 5, dx: 0, dy: 0 },
+      { sx: 14, sy: 33, sw: 14, sh: 10, dx: 0, dy: 5 },
+      { sx: 1, sy: 1, sw: 2, sh: 4, dx: 6, dy: 3 },
+    ],
+  };
+}
+
+// Twarz głowy (przód 8x8) + nakładka "czapki", jeśli tekstura ją ma.
+function headCrop(texture: string, faceWidth = 8, withHat = false): IconCrop {
+  const parts: IconCropPart[] = [{ sx: 8, sy: 8, sw: faceWidth, sh: 8, dx: 0, dy: 0 }];
+  if (withHat) parts.push({ sx: 40, sy: 8, sw: 8, sh: 8, dx: 0, dy: 0 });
+  return { texture: `assets/minecraft/textures/entity/${texture}.png`, width: faceWidth, height: 8, parts };
+}
+
+const COPPER: Record<string, string> = { "": "copper", EXPOSED_: "copper_exposed", WEATHERED_: "copper_weathered", OXIDIZED_: "copper_oxidized" };
+
+const ICON_CROPS: Record<string, IconCrop> = {
+  CHEST: chestCrop("normal"),
+  TRAPPED_CHEST: chestCrop("trapped"),
+  ENDER_CHEST: chestCrop("ender"),
+  ...Object.fromEntries(
+    Object.entries(COPPER).flatMap(([prefix, file]) => [
+      [`${prefix}COPPER_CHEST`, chestCrop(file)],
+      [`WAXED_${prefix}COPPER_CHEST`, chestCrop(file)],
+    ])
+  ),
+  PLAYER_HEAD: headCrop("player/wide/steve", 8, true),
+  ZOMBIE_HEAD: headCrop("zombie/zombie", 8, true),
+  SKELETON_SKULL: headCrop("skeleton/skeleton"),
+  WITHER_SKELETON_SKULL: headCrop("skeleton/wither_skeleton"),
+  CREEPER_HEAD: headCrop("creeper/creeper"),
+  PIGLIN_HEAD: headCrop("piglin/piglin", 10),
+};
+
+export function iconCropForMaterial(material: string): IconCrop | undefined {
+  return ICON_CROPS[material];
+}
+
 // Purely cosmetic default icons for structural GUI button roles that have no
 // per-slot material of their own in the real data (nav arrows, exit, search,
 // sort) - standard Minecraft plugin convention, not a claim about any
