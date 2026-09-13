@@ -1984,6 +1984,10 @@ button:disabled:hover {
   overflow-y: auto;
 }
 
+.modal.modal-wide {
+  width: min(820px, 92vw);
+}
+
 /* ---- Custom itemy: kategorie | lista | edycja ---- */
 .ci-layout {
   display: grid;

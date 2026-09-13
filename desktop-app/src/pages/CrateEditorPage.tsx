@@ -1,4 +1,4 @@
-import { Gift, Save, Trash2 } from "lucide-react";
+import { Gift, Save, Terminal, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import ItemRefPicker from "../components/ItemRefPicker";
@@ -62,26 +62,87 @@ function LoreEditor({ value, onChange }: { value: string[]; onChange: (l: string
   );
 }
 
-/** Ramka „Przydatne komendy” z gotowymi komendami (klik „Kopiuj” = do schowka, do wklejenia w grze/konsoli). */
+/** Jedna komenda z opisem i przyciskiem „Kopiuj” (do schowka, do wklejenia w grze/konsoli). */
+function CopyRow({ cmd, what }: { cmd: string; what: ReactNode }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="ci-protip-row">
+      <code>{cmd}</code>
+      <span className="muted small">{what}</span>
+      <button
+        type="button"
+        onClick={() => {
+          navigator.clipboard?.writeText(cmd).then(() => setCopied(true)).catch(() => {});
+        }}
+      >
+        {copied ? "Skopiowano" : "Kopiuj"}
+      </button>
+    </div>
+  );
+}
+
+/** Ramka „Przydatne komendy” przy skrzynce/kluczu. */
 function CommandTip({ commands }: { commands: { cmd: string; what: string }[] }) {
-  const [copied, setCopied] = useState<string | null>(null);
   return (
     <div className="ci-protip">
       <div className="ci-protip-title">Przydatne komendy</div>
       {commands.map(({ cmd, what }) => (
-        <div key={cmd} className="ci-protip-row">
-          <code>{cmd}</code>
-          <span className="muted small">{what}</span>
-          <button
-            type="button"
-            onClick={() => {
-              navigator.clipboard?.writeText(cmd).then(() => setCopied(cmd)).catch(() => {});
-            }}
-          >
-            {copied === cmd ? "Skopiowano" : "Kopiuj"}
+        <CopyRow key={cmd} cmd={cmd} what={what} />
+      ))}
+    </div>
+  );
+}
+
+const ALL_COMMANDS: { cmd: string; what: string }[] = [
+  { cmd: "/@crate give <gracz> <skrzynka> 1", what: "daje graczowi skrzynkę (ostatnia liczba = ile sztuk)" },
+  { cmd: "/@crate key <gracz> <klucz> 1", what: "daje graczowi klucz" },
+  { cmd: "/@crate place <skrzynka>", what: "blok, na który patrzysz, staje się tą skrzynką (np. na spawnie)" },
+  { cmd: "/@crate remove", what: "patrzysz na postawioną skrzynkę — wraca do zwykłego bloku" },
+  { cmd: "/@crate list", what: "lista skrzynek, kluczy i miejsc, gdzie stoją skrzynki" },
+  { cmd: "/@crate reload", what: "wczytuje skrzynki od nowa (aplikacja robi to sama po „Wyślij na serwer”)" },
+];
+
+/** Okienko ze wszystkimi komendami skrzynek i kluczy w jednym miejscu. */
+function CrateCommandsModal({ file, onClose }: { file: CratesFile; onClose: () => void }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal modal-wide card" onClick={(e) => e.stopPropagation()}>
+        <div className="row">
+          <h2 style={{ margin: 0, flex: 1 }}>Komendy skrzynek</h2>
+          <button type="button" onClick={onClose}>
+            Zamknij
           </button>
         </div>
-      ))}
+        <p className="muted small">
+          Dla admina (uprawnienie mainplugins.crates.admin). W konsoli serwera wpisuj bez „/” na początku. Zamiast
+          &lt;gracz&gt; wpisz nick, zamiast &lt;skrzynka&gt;/&lt;klucz&gt; — ID z list niżej.
+        </p>
+        <div className="ci-protip">
+          {ALL_COMMANDS.map((c) => (
+            <CopyRow key={c.cmd} cmd={c.cmd} what={c.what} />
+          ))}
+        </div>
+
+        <div className="ci-section-title" style={{ marginTop: "1rem" }}>
+          Twoje skrzynki
+        </div>
+        <div className="ci-protip">
+          {file.crates.length === 0 && <span className="muted small">Brak skrzynek.</span>}
+          {file.crates.map((c) => (
+            <CopyRow key={c.id} cmd={`/@crate give <gracz> ${c.id} 1`} what={<MinecraftTextPreview text={c.name} emptyLabel={c.id} />} />
+          ))}
+        </div>
+
+        <div className="ci-section-title" style={{ marginTop: "1rem" }}>
+          Twoje klucze
+        </div>
+        <div className="ci-protip">
+          {file.keys.length === 0 && <span className="muted small">Brak kluczy.</span>}
+          {file.keys.map((k) => (
+            <CopyRow key={k.id} cmd={`/@crate key <gracz> ${k.id} 1`} what={<MinecraftTextPreview text={k.name} emptyLabel={k.id} />} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -112,6 +173,7 @@ export default function CrateEditorPage() {
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [trashConfirm, setTrashConfirm] = useState<string | null>(null);
+  const [showCommands, setShowCommands] = useState(false);
   const autoLoadedRef = useRef(false);
   const { iconPackDir, allMaterials } = useIconPack(setStatus);
 
@@ -478,6 +540,9 @@ export default function CrateEditorPage() {
             </option>
           ))}
         </select>
+        <button type="button" onClick={() => setShowCommands(true)} disabled={!profileId}>
+          <Terminal size={14} strokeWidth={1.75} /> Komendy
+        </button>
         <span style={{ flex: 1 }} />
         {notSent && !unsaved && <span className="muted small">zapisane, jeszcze niewysłane</span>}
         <button
@@ -495,6 +560,7 @@ export default function CrateEditorPage() {
         </button>
       </div>
       {status && <p className="status">{status}</p>}
+      {showCommands && <CrateCommandsModal file={file} onClose={() => setShowCommands(false)} />}
 
       <div className="ci-layout ci-layout-crates">
         <aside className="card ci-cats">
