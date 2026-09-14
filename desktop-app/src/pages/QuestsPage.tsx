@@ -368,7 +368,7 @@ export default function QuestsPage() {
           </span>
         </h2>
         <CommandTip commands={[{ cmd: `/@quests reset <gracz> ${c.id}`, what: "zeruje graczowi postęp w tej kategorii" }]} />
-        <Fold title="Nazwa i wygląd" open>
+        <Fold title="Nazwa i wygląd">
           <label>
             Nazwa
             <MinecraftTextInput value={c.name} onChange={(v) => updateCategory(c.id, { name: v })} placeholder="Nazwa kategorii" />
@@ -499,7 +499,7 @@ export default function QuestsPage() {
             { cmd: `/@quests undo <gracz> ${c.id} ${q.id}`, what: "cofa graczowi to zadanie (nagrody zostają u gracza)" },
           ]}
         />
-        <Fold title="Tytuł i opis" open>
+        <Fold title="Tytuł i opis">
           <label>
             Tytuł
             <MinecraftTextInput value={q.title} onChange={(v) => setQuest({ title: v })} placeholder="Nazwa zadania" />
@@ -507,10 +507,10 @@ export default function QuestsPage() {
           <div className="ci-section-title">Opis</div>
           <LoreEditor value={q.description} onChange={(l) => setQuest({ description: l })} />
         </Fold>
-        <Fold title="Co trzeba zrobić" open>
+        <Fold title="Co trzeba zrobić">
           {requirementEditor(q.requirement, (r) => setQuest({ requirement: r }))}
         </Fold>
-        <Fold title="Nagrody" open>
+        <Fold title="Nagrody">
           <RewardEditor
             value={q.rewards}
             onChange={(l) => setQuest({ rewards: l })}
@@ -575,7 +575,7 @@ export default function QuestsPage() {
     return (
       <>
         <h2>Wygląd i zachowanie</h2>
-        <Fold title="Ikonki zadań i kategorii" open>
+        <Fold title="Ikonki zadań i kategorii">
           {pick("Zadanie do zrobienia", s.icons.available, (r) => setS({ icons: { ...s.icons, available: r } }))}
           {pick("Zadanie zrobione", s.icons.completed, (r) => setS({ icons: { ...s.icons, completed: r } }))}
           {pick("Zadanie zablokowane", s.icons.locked, (r) => setS({ icons: { ...s.icons, locked: r } }))}
