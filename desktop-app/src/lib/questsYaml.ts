@@ -49,9 +49,12 @@ export interface CategoryDef {
   requiresUnlock: string | null;
   pageLayout: SlotEntry[];
   quests: QuestDef[];
+  /** Własny wygląd kategorii; null = taki jak w settings (patrz lookOf). */
+  look: QuestSettings | null;
   extra: Obj;
 }
 
+/** Wygląd menu: ikonki zadań i kategorii, przyciski, tło. settings = domyślny (+ tło menu głównego). */
 export interface QuestSettings {
   filler: ItemRef;
   icons: { available: ItemRef; completed: ItemRef; locked: ItemRef; categoryLocked: ItemRef; categoryEmpty: ItemRef };
@@ -195,51 +198,15 @@ function questOut(q: QuestDef): Obj {
 }
 
 // main-path: stara nazwa blasku - czytana jak glow i znika z pliku przy zapisie.
-const CATEGORY_KEYS = ["name", "icon", "description", "glow", "main-path", "sequential", "after", "requires-unlock", "page-layout", "quests"];
+const CATEGORY_KEYS = ["name", "icon", "description", "glow", "main-path", "sequential", "after", "requires-unlock", "page-layout", "quests", "look"];
 
-function parseCategory(id: string, raw: unknown): CategoryDef {
-  const c = obj(raw);
-  const a = obj(c.after);
-  const unlock = c["requires-unlock"];
-  return {
-    id,
-    name: c.name != null ? String(c.name) : id,
-    icon: c.icon != null ? itemRefFromYaml(c.icon) : { item: "BOOK" },
-    description: c.description != null ? String(c.description) : "",
-    glow: c.glow === true || (c.glow == null && c["main-path"] === true),
-    sequential: c.sequential === true,
-    after: typeof a.category === "string" && typeof a.quest === "number" ? { category: a.category, quest: a.quest } : null,
-    requiresUnlock: unlock != null && String(unlock).trim() !== "" ? String(unlock).trim().toLowerCase() : null,
-    pageLayout: parseLayout(c["page-layout"]),
-    quests: Array.isArray(c.quests) ? c.quests.map(parseQuest) : [],
-    extra: rest(c, CATEGORY_KEYS),
-  };
-}
-
-function categoryOut(c: CategoryDef): Obj {
-  const unlock = c.requiresUnlock?.trim();
-  return {
-    ...c.extra,
-    name: c.name,
-    icon: itemRefToYaml(c.icon),
-    description: c.description,
-    glow: c.glow,
-    sequential: c.sequential,
-    after: c.after ? { category: c.after.category, quest: c.after.quest } : null,
-    "requires-unlock": unlock ? unlock : null,
-    "page-layout": layoutOut(c.pageLayout),
-    quests: c.quests.map(questOut),
-  };
-}
-
-export function parseQuestsYaml(text: string): QuestsFile {
-  const raw = obj(text.trim() ? yaml.load(text) : {});
-  const s = obj(raw.settings);
+/** Sekcja wyglądu (settings albo look kategorii); czego brak - z d. */
+function parseLook(raw: unknown, d: QuestSettings): QuestSettings {
+  const s = obj(raw);
   const icons = obj(s.icons);
   const buttons = obj(s.buttons);
-  const d = DEFAULT_SETTINGS;
   const ref = (v: unknown, def: ItemRef): ItemRef => (v == null ? def : itemRefFromYaml(v));
-  const settings: QuestSettings = {
+  return {
     filler: ref(s.filler, d.filler),
     icons: {
       available: ref(icons.available, d.icons.available),
@@ -256,7 +223,89 @@ export function parseQuestsYaml(text: string): QuestsFile {
     // join-reminder i welcome-sound to usunięte ustawienia - na liście, żeby zniknęły z pliku przy zapisie.
     extra: rest(s, ["join-reminder", "welcome-sound", "filler", "icons", "buttons"]),
   };
-  const all = Object.entries(obj(raw.categories)).map(([id, v]) => parseCategory(id, v));
+}
+
+function lookOut(s: QuestSettings): Obj {
+  return {
+    ...s.extra,
+    filler: itemRefToYaml(s.filler),
+    icons: {
+      available: itemRefToYaml(s.icons.available),
+      completed: itemRefToYaml(s.icons.completed),
+      locked: itemRefToYaml(s.icons.locked),
+      "category-locked": itemRefToYaml(s.icons.categoryLocked),
+      "category-empty": itemRefToYaml(s.icons.categoryEmpty),
+    },
+    buttons: {
+      back: itemRefToYaml(s.buttons.back),
+      prev: itemRefToYaml(s.buttons.prev),
+      next: itemRefToYaml(s.buttons.next),
+    },
+  };
+}
+
+/** Kopia wyglądu (np. domyślny dla nowej kategorii) - bez wspólnych obiektów. */
+export function copyLook(s: QuestSettings): QuestSettings {
+  return {
+    filler: { ...s.filler },
+    icons: {
+      available: { ...s.icons.available },
+      completed: { ...s.icons.completed },
+      locked: { ...s.icons.locked },
+      categoryLocked: { ...s.icons.categoryLocked },
+      categoryEmpty: { ...s.icons.categoryEmpty },
+    },
+    buttons: { back: { ...s.buttons.back }, prev: { ...s.buttons.prev }, next: { ...s.buttons.next } },
+    extra: {},
+  };
+}
+
+/** Wygląd, który kategoria ma w grze: własny albo domyślny z settings. */
+export function lookOf(f: QuestsFile, c: CategoryDef): QuestSettings {
+  return c.look ?? f.settings;
+}
+
+function parseCategory(id: string, raw: unknown, defaults: QuestSettings): CategoryDef {
+  const c = obj(raw);
+  const a = obj(c.after);
+  const unlock = c["requires-unlock"];
+  return {
+    id,
+    name: c.name != null ? String(c.name) : id,
+    icon: c.icon != null ? itemRefFromYaml(c.icon) : { item: "BOOK" },
+    description: c.description != null ? String(c.description) : "",
+    glow: c.glow === true || (c.glow == null && c["main-path"] === true),
+    sequential: c.sequential === true,
+    after: typeof a.category === "string" && typeof a.quest === "number" ? { category: a.category, quest: a.quest } : null,
+    requiresUnlock: unlock != null && String(unlock).trim() !== "" ? String(unlock).trim().toLowerCase() : null,
+    pageLayout: parseLayout(c["page-layout"]),
+    quests: Array.isArray(c.quests) ? c.quests.map(parseQuest) : [],
+    look: c.look != null ? parseLook(c.look, defaults) : null,
+    extra: rest(c, CATEGORY_KEYS),
+  };
+}
+
+function categoryOut(c: CategoryDef): Obj {
+  const unlock = c.requiresUnlock?.trim();
+  return {
+    ...c.extra,
+    name: c.name,
+    icon: itemRefToYaml(c.icon),
+    description: c.description,
+    glow: c.glow,
+    sequential: c.sequential,
+    after: c.after ? { category: c.after.category, quest: c.after.quest } : null,
+    "requires-unlock": unlock ? unlock : null,
+    ...(c.look ? { look: lookOut(c.look) } : {}),
+    "page-layout": layoutOut(c.pageLayout),
+    quests: c.quests.map(questOut),
+  };
+}
+
+export function parseQuestsYaml(text: string): QuestsFile {
+  const raw = obj(text.trim() ? yaml.load(text) : {});
+  const settings = parseLook(raw.settings, DEFAULT_SETTINGS);
+  const all = Object.entries(obj(raw.categories)).map(([id, v]) => parseCategory(id, v, settings));
   const order = Array.isArray(raw["category-order"]) ? raw["category-order"].map(String) : [];
   const categories = [
     ...order.map((id) => all.find((c) => c.id === id)).filter((c): c is CategoryDef => !!c),
@@ -274,23 +323,7 @@ export function parseQuestsYaml(text: string): QuestsFile {
 }
 
 export function serializeQuestsYaml(f: QuestsFile): string {
-  const s = f.settings;
-  const settings = {
-    ...s.extra,
-    filler: itemRefToYaml(s.filler),
-    icons: {
-      available: itemRefToYaml(s.icons.available),
-      completed: itemRefToYaml(s.icons.completed),
-      locked: itemRefToYaml(s.icons.locked),
-      "category-locked": itemRefToYaml(s.icons.categoryLocked),
-      "category-empty": itemRefToYaml(s.icons.categoryEmpty),
-    },
-    buttons: {
-      back: itemRefToYaml(s.buttons.back),
-      prev: itemRefToYaml(s.buttons.prev),
-      next: itemRefToYaml(s.buttons.next),
-    },
-  };
+  const settings = lookOut(f.settings);
   const categories: Obj = {};
   for (const c of f.categories) categories[c.id] = categoryOut(c);
   const out = {
@@ -341,6 +374,8 @@ export function addCategory(f: QuestsFile, id: string, name: string): QuestsFile
     requiresUnlock: null,
     pageLayout: SIDE_LAYOUT.map((e) => ({ ...e })),
     quests: [emptyQuest(1)],
+    // Nowa kategoria od razu z gotowym wyglądem (kopia domyślnego) - do zmiany w jej ustawieniach.
+    look: copyLook(f.settings),
     extra: {},
   };
   return { ...f, categories: [...f.categories, c] };

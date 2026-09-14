@@ -18,7 +18,9 @@ import { conventionalRoleIcon } from "../lib/materialIcons";
 import { QUEST_TEMPLATES, templateFor } from "../lib/questTemplates";
 import {
   addCategory,
+  copyLook,
   defaultRequirement,
+  lookOf,
   emptyQuest,
   nextQuestId,
   parseQuestsYaml,
@@ -46,8 +48,7 @@ const MAX_REQUIRED = 36 * 64;
 type View =
   | { kind: "category"; id: string; quest: number | "settings" }
   | { kind: "menu" }
-  | { kind: "titles" }
-  | { kind: "look" };
+  | { kind: "titles" };
 
 const NAV_LABEL: Record<string, string> = { NAV_PREV: "Wstecz", NAV_BACK: "Powrót", NAV_NEXT: "Dalej" };
 const PAGE_ROLES: { role: SlotRole; label: string }[] = [
@@ -322,6 +323,8 @@ export default function QuestsPage() {
 
   function layoutEditor(layout: SlotEntry[], onChange: (l: SlotEntry[]) => void, mode: "menu" | "page", c?: CategoryDef, title?: string) {
     const content: Record<number, SlotContent> = {};
+    // Menu główne ma wygląd domyślny, strona kategorii - wygląd tej kategorii.
+    const look = c ? lookOf(file, c) : file.settings;
     let n = 0;
     for (const e of layout) {
       if (e.role === "CATEGORY_SLOT") {
@@ -333,12 +336,12 @@ export default function QuestsPage() {
           label: q ? `#${q.id}` : "(wolne)",
           sublabel: q ? plain(q.title) : undefined,
           kind: "quest",
-          material: file.settings.icons.available.item,
+          material: look.icons.available.item,
           dim: !q,
         };
       } else if (e.role === "FILLER") {
         // Własne tło to zwykły element: da się go przesunąć, usunąć i kliknąć, żeby zmienić przedmiot.
-        const item = e.item ?? file.settings.filler.item ?? "BLACK_STAINED_GLASS_PANE";
+        const item = e.item ?? look.filler.item ?? "BLACK_STAINED_GLASS_PANE";
         content[e.slot] = {
           label: itemLabel({ item }),
           kind: "item",
@@ -379,7 +382,7 @@ export default function QuestsPage() {
           editable={layoutEdit}
           allowSwap
           plain
-          emptyLabel={itemLabel(file.settings.filler)}
+          emptyLabel={itemLabel(look.filler)}
           iconPackDir={iconPackDir}
           onMoveSlot={(from, to) =>
             onChange(layout.map((e) => (e.slot === from ? { ...e, slot: to } : e.slot === to ? { ...e, slot: from } : e)))
@@ -488,6 +491,7 @@ export default function QuestsPage() {
           )}
         </Fold>
         <Fold title="Wygląd strony w grze">{layoutEditor(c.pageLayout, (l) => updateCategory(c.id, { pageLayout: l }), "page", c)}</Fold>
+        {renderCategoryLook(c)}
       </>
     );
   }
@@ -627,32 +631,31 @@ export default function QuestsPage() {
     );
   }
 
-  function renderLook() {
-    const s = file.settings;
-    const setS = (patch: Partial<QuestSettings>) => setFile({ ...file, settings: { ...s, ...patch } });
-    const pick = (label: string, value: ItemRef, onChange: (r: ItemRef) => void) => (
+  function lookPick(label: string, value: ItemRef, onChange: (r: ItemRef) => void) {
+    return (
       <div key={label}>
         <div className="ci-section-title">{label}</div>
         <ItemRefPicker value={value} onChange={onChange} materials={allMaterials} customIds={customIds} />
       </div>
     );
+  }
+
+  /** Wygląd jednej kategorii w grze - zmiana zapisuje własny wygląd tej kategorii. */
+  function renderCategoryLook(c: CategoryDef) {
+    const s = lookOf(file, c);
+    const setS = (patch: Partial<QuestSettings>) => updateCategory(c.id, { look: { ...copyLook(s), extra: s.extra, ...patch } });
     return (
-      <>
-        <h2>Wygląd i zachowanie</h2>
-        <Fold title="Ikonki zadań i kategorii">
-          {pick("Zadanie do zrobienia", s.icons.available, (r) => setS({ icons: { ...s.icons, available: r } }))}
-          {pick("Zadanie zrobione", s.icons.completed, (r) => setS({ icons: { ...s.icons, completed: r } }))}
-          {pick("Zadanie zablokowane", s.icons.locked, (r) => setS({ icons: { ...s.icons, locked: r } }))}
-          {pick("Kategoria zablokowana", s.icons.categoryLocked, (r) => setS({ icons: { ...s.icons, categoryLocked: r } }))}
-          {pick("Kategoria bez zadań", s.icons.categoryEmpty, (r) => setS({ icons: { ...s.icons, categoryEmpty: r } }))}
-        </Fold>
-        <Fold title="Przyciski i tło">
-          {pick("Powrót", s.buttons.back, (r) => setS({ buttons: { ...s.buttons, back: r } }))}
-          {pick("Poprzednia strona", s.buttons.prev, (r) => setS({ buttons: { ...s.buttons, prev: r } }))}
-          {pick("Następna strona", s.buttons.next, (r) => setS({ buttons: { ...s.buttons, next: r } }))}
-          {pick("Tło (wypełniacz)", s.filler, (r) => setS({ filler: r }))}
-        </Fold>
-      </>
+      <Fold title="Wygląd w grze">
+        {lookPick("Zadanie do zrobienia", s.icons.available, (r) => setS({ icons: { ...s.icons, available: r } }))}
+        {lookPick("Zadanie zrobione", s.icons.completed, (r) => setS({ icons: { ...s.icons, completed: r } }))}
+        {lookPick("Zadanie zablokowane", s.icons.locked, (r) => setS({ icons: { ...s.icons, locked: r } }))}
+        {lookPick("Ikonka w menu, gdy kategoria zablokowana", s.icons.categoryLocked, (r) => setS({ icons: { ...s.icons, categoryLocked: r } }))}
+        {lookPick("Ikonka w menu, gdy kategoria nie ma zadań", s.icons.categoryEmpty, (r) => setS({ icons: { ...s.icons, categoryEmpty: r } }))}
+        {lookPick("Przycisk: powrót", s.buttons.back, (r) => setS({ buttons: { ...s.buttons, back: r } }))}
+        {lookPick("Przycisk: poprzednia strona", s.buttons.prev, (r) => setS({ buttons: { ...s.buttons, prev: r } }))}
+        {lookPick("Przycisk: następna strona", s.buttons.next, (r) => setS({ buttons: { ...s.buttons, next: r } }))}
+        {lookPick("Tło strony", s.filler, (r) => setS({ filler: r }))}
+      </Fold>
     );
   }
 
@@ -703,7 +706,7 @@ export default function QuestsPage() {
 
   const iconOf = (r: ItemRef) => (r.item ? <MaterialIcon material={r.item} iconPackDir={iconPackDir} /> : <span className="ci-badge">custom</span>);
 
-  const generalButton = (kind: "menu" | "titles" | "look", label: string) => (
+  const generalButton = (kind: "menu" | "titles", label: string) => (
     <button type="button" className={`ci-cat${view?.kind === kind ? " active" : ""}`} onClick={() => setView({ kind })}>
       <span>{label}</span>
     </button>
@@ -790,7 +793,6 @@ export default function QuestsPage() {
             Ogólne
           </div>
           {generalButton("menu", "Menu główne")}
-          {generalButton("look", "Wygląd i zachowanie")}
           {/* Tytuły przejdą do pluginu Rang - do tego czasu zablokowane (dalej działają w grze z quests.yml). */}
           <button type="button" className="ci-cat" disabled title="Tytuły przeniesiemy na stronę Rang">
             <span className="muted">Tytuły na czacie (wkrótce w Rangach)</span>
@@ -831,7 +833,7 @@ export default function QuestsPage() {
                       title={`Zadanie #${q.id}`}
                       onClick={() => setView({ ...view, quest: i })}
                     >
-                      {iconOf(file.settings.icons.available)}
+                      {iconOf(lookOf(file, category).icons.available)}
                       {/* Jak zadanie w grze: czerwony pogrubiony tytuł, szary opis, żółty wymóg. */}
                       <span className="ci-item-text">
                         <span className="ci-item-name">
@@ -877,10 +879,12 @@ export default function QuestsPage() {
           {view?.kind === "menu" && (
             <>
               {layoutEditor(file.mainMenu, (l) => setFile({ ...file, mainMenu: l }), "menu", undefined, "Menu główne")}
+              <div style={{ marginTop: "0.8rem" }}>
+                {lookPick("Tło menu", file.settings.filler, (r) => setFile({ ...file, settings: { ...file.settings, filler: r } }))}
+              </div>
             </>
           )}
           {view?.kind === "titles" && renderTitles()}
-          {view?.kind === "look" && renderLook()}
           {(view || unsaved) && (
             <div className="ci-actions">
               {confirmDelete && del ? (

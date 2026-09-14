@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { QUEST_TEMPLATES, templateFor } from "./questTemplates";
 import {
   addCategory,
+  copyLook,
   emptyQuest,
+  lookOf,
   moveInList,
   nextQuestId,
   parseQuestsYaml,
@@ -155,6 +157,26 @@ describe("questsYaml", () => {
     expect(w).toContain("Kategoria „mining” odblokowuje się po zadaniu #99 z „main_path”, a takiego zadania nie ma.");
     expect(w).toContain("W kategorii „mining” numer zadania #1 się powtarza.");
     expect(w).toContain("Zadanie #1 w „mining” nie daje żadnej nagrody.");
+  });
+
+  it("category look: missing = null (uses settings), present = own look filled from settings, round-trips", () => {
+    const f = parseQuestsYaml(
+      SAMPLE.replace("    name: Mining\n", "    name: Mining\n    look:\n      filler: { item: STONE }\n")
+    );
+    const mining = f.categories.find((c) => c.id === "mining")!;
+    const main = f.categories.find((c) => c.id === "main_path")!;
+    expect(main.look).toBeNull();
+    expect(lookOf(f, main)).toBe(f.settings);
+    expect(mining.look!.filler).toEqual({ item: "STONE" });
+    expect(mining.look!.icons.available).toEqual({ item: "ARROW" }); // z settings
+    expect(parseQuestsYaml(serializeQuestsYaml(f))).toEqual(f);
+  });
+
+  it("new category gets its own copy of the default look", () => {
+    const f = parseQuestsYaml(SAMPLE);
+    const added = addCategory(f, "fishing", "Fishing").categories[2];
+    expect(added.look).toEqual(copyLook(f.settings));
+    expect(added.look!.icons).not.toBe(f.settings.icons);
   });
 
   it("empty text gives an empty file with default settings", () => {
