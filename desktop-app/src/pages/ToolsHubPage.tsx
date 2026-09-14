@@ -108,7 +108,7 @@ const TOOL_GROUPS: ToolGroup[] = [
       {
         to: "/quests",
         title: "Questy",
-        description: "Pełny, klikalny podgląd i edytor menu questów - dokładnie jak w grze.",
+        description: "Kategorie i zadania: co gracz musi zrobić i co za to dostaje. Gotowe szablony (mały EN/PL, duży PL).",
         icon: ScrollText,
       },
       {

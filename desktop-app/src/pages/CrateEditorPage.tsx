@@ -1,6 +1,7 @@
 import { Gift, Save, Terminal, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { CommandTip, CopyRow, Fold, LoreEditor } from "../components/EditorBits";
 import ItemRefPicker from "../components/ItemRefPicker";
 import MaterialIcon from "../components/MaterialIcon";
 import MinecraftTextInput from "../components/MinecraftTextInput";
@@ -42,66 +43,6 @@ type View = { kind: "crate"; id: string; prize: number | "settings" } | { kind: 
 
 function cratesPath(pluginsPath: string): string {
   return `${pluginsPath.replace(/\/+$/, "")}/MainpluginsCrates/crates.yml`;
-}
-
-function LoreEditor({ value, onChange }: { value: string[]; onChange: (l: string[]) => void }) {
-  return (
-    <div>
-      {value.map((line, i) => (
-        <div key={i} className="mc-message-row">
-          <MinecraftTextInput
-            value={line}
-            onChange={(v) => onChange(value.map((l, li) => (li === i ? v : l)))}
-            placeholder="&7Linijka opisu"
-          />
-          <button type="button" onClick={() => onChange(value.filter((_, li) => li !== i))}>
-            Usuń
-          </button>
-        </div>
-      ))}
-      <button type="button" onClick={() => onChange([...value, ""])}>
-        + Dodaj linijkę
-      </button>
-    </div>
-  );
-}
-
-/** Jedna komenda z opisem i przyciskiem „Kopiuj” (do schowka, do wklejenia w grze/konsoli). */
-function CopyRow({ cmd, what }: { cmd: string; what: ReactNode }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <div className="ci-protip-row">
-      <code>{cmd}</code>
-      <span className="muted small">{what}</span>
-      <button
-        type="button"
-        onClick={() => {
-          navigator.clipboard
-            ?.writeText(cmd)
-            .then(() => {
-              setCopied(true);
-              // Po chwili wraca do „Kopiuj”, żeby dało się skopiować jeszcze raz.
-              setTimeout(() => setCopied(false), 500);
-            })
-            .catch(() => {});
-        }}
-      >
-        {copied ? "Skopiowano" : "Kopiuj"}
-      </button>
-    </div>
-  );
-}
-
-/** Ramka „Przydatne komendy” przy skrzynce/kluczu. */
-function CommandTip({ commands }: { commands: { cmd: string; what: string }[] }) {
-  return (
-    <div className="ci-protip">
-      <div className="ci-protip-title">Przydatne komendy</div>
-      {commands.map(({ cmd, what }) => (
-        <CopyRow key={cmd} cmd={cmd} what={what} />
-      ))}
-    </div>
-  );
 }
 
 const ALL_COMMANDS: { cmd: string; what: string }[] = [
@@ -196,18 +137,6 @@ function PercentInput({ value, disabled, onCommit }: { value: number; disabled?:
       />
       <span>%</span>
     </div>
-  );
-}
-
-/** Sekcja zwijana strzałką - żeby prawy panel nie pokazywał wszystkiego naraz. */
-function Fold({ title, open, children }: { title: string; open?: boolean; children: ReactNode }) {
-  return (
-    <details className="ci-fold" open={open}>
-      <summary>
-        <span className="ci-fold-title">{title}</span>
-      </summary>
-      <div className="ci-fold-body">{children}</div>
-    </details>
   );
 }
 

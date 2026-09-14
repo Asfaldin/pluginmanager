@@ -8,6 +8,8 @@ interface Props {
   customIds: string[];
   crateIds: string[];
   keyIds: string[];
+  /** Id tytułów (sekcja titles w quests.yml) - podpowiedzi dla nagrody „Tytuł”. */
+  titleIds?: string[];
   /** Wewnątrz nagrody zastępczej - bez kolejnego poziomu fallbacku. */
   nested?: boolean;
 }
@@ -19,6 +21,7 @@ function options(type: string, p: Props): string[] {
   if (type === "custom") return p.customIds;
   if (type === "crate") return p.crateIds;
   if (type === "key") return p.keyIds;
+  if (type === "title") return p.titleIds ?? [];
   return [];
 }
 
@@ -26,6 +29,7 @@ function placeholder(type: string): string {
   if (type === "money") return "kwota, np. 500";
   if (type === "command") return "np. give {player} cake";
   if (type === "title") return "id tytułu";
+  if (type === "unlock") return "nazwa, np. kowal";
   return "wybierz z listy";
 }
 
@@ -59,7 +63,16 @@ export default function RewardEditor(props: Props) {
               list={`${baseId}-${i}`}
               value={r.value}
               placeholder={placeholder(r.type)}
-              onChange={(e) => set(i, { value: r.type === "item" ? e.target.value.toUpperCase() : e.target.value })}
+              onChange={(e) =>
+                set(i, {
+                  value:
+                    r.type === "item"
+                      ? e.target.value.toUpperCase()
+                      : r.type === "unlock"
+                        ? e.target.value.toLowerCase().replace(/\s+/g, "_")
+                        : e.target.value,
+                })
+              }
               style={{ flex: 1 }}
             />
             <datalist id={`${baseId}-${i}`}>

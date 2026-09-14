@@ -7,10 +7,12 @@ interface Props {
   materials: string[];
   customIds: string[];
   showAmount?: boolean;
+  /** Górna granica ilości (domyślnie 64 - stack). */
+  maxAmount?: number;
 }
 
 /** Wybór przedmiotu: zwykły item Minecrafta albo custom item z katalogu (items/). */
-export default function ItemRefPicker({ value, onChange, materials, customIds, showAmount }: Props) {
+export default function ItemRefPicker({ value, onChange, materials, customIds, showAmount, maxAmount }: Props) {
   const listId = useId();
   const custom = value.custom != null;
   return (
@@ -45,7 +47,7 @@ export default function ItemRefPicker({ value, onChange, materials, customIds, s
         <input
           type="number"
           min={1}
-          max={64}
+          max={maxAmount ?? 64}
           title="Ilość"
           value={value.amount ?? 1}
           onChange={(e) => onChange({ ...value, amount: Math.max(1, Number(e.target.value)) })}
