@@ -823,7 +823,7 @@ export default function QuestsPage() {
           {category && view?.kind === "category" && typeof view.quest === "number" && category.quests[view.quest] && renderQuest(category, view.quest)}
           {view?.kind === "menu" && (
             <>
-              <h2>Menu główne (/quests)</h2>
+              <h2>Menu główne</h2>
               {layoutEditor(file.mainMenu, (l) => setFile({ ...file, mainMenu: l }), "menu")}
             </>
           )}
