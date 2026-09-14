@@ -364,8 +364,9 @@ Create `ShopPlaceholders.java`: registers resolver answering `reset_cen_dni` (da
 - Provider ids: `spawner_<type id lower-case>` for every type in the spawners config; `create` builds the same item as the pickup drop (lines ~315-322) but tags it with the provider id.
 - Placing (line ~185): tag value `spawner_zombie` or legacy `ZOMBIE` -> strip `spawner_` prefix, look up type case-insensitively. Pickup drops now use the new tag.
 - Register provider in onEnable via `CoreAPI.getCustomItemService().registerProvider(this, provider)`.
-- [ ] Step 1: build `-pl mainplugins-core,mainplugins-spawners` - PASS.
-- [ ] Step 2: commit `Spawnery: spawnery w katalogu itemow (spawner_<typ>)`.
+- Generators: same idea - `mainplugins-generators` registers a provider for its existing generator ids (e.g. `GENERATOR_BRUK_T1`, ids read from its config/constants; the tag value stays the same, so old items keep working). Big template uses `custom: <generator id>` for them.
+- [ ] Step 1: build `-pl mainplugins-core,mainplugins-spawners,mainplugins-generators` - PASS.
+- [ ] Step 2: commit `Spawnery i Generatory: przedmioty w katalogu itemow`.
 
 ---
 
