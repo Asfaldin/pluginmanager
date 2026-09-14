@@ -490,8 +490,8 @@ export default function QuestsPage() {
             </div>
           )}
         </Fold>
-        <Fold title="Wygląd strony w grze">{layoutEditor(c.pageLayout, (l) => updateCategory(c.id, { pageLayout: l }), "page", c)}</Fold>
         {renderCategoryLook(c)}
+        <Fold title="Wygląd strony w grze">{layoutEditor(c.pageLayout, (l) => updateCategory(c.id, { pageLayout: l }), "page", c)}</Fold>
       </>
     );
   }
@@ -645,7 +645,7 @@ export default function QuestsPage() {
     const s = lookOf(file, c);
     const setS = (patch: Partial<QuestSettings>) => updateCategory(c.id, { look: { ...copyLook(s), extra: s.extra, ...patch } });
     return (
-      <Fold title="Wygląd w grze">
+      <Fold title="Ikonki, przyciski i tło">
         {lookPick("Zadanie do zrobienia", s.icons.available, (r) => setS({ icons: { ...s.icons, available: r } }))}
         {lookPick("Zadanie zrobione", s.icons.completed, (r) => setS({ icons: { ...s.icons, completed: r } }))}
         {lookPick("Zadanie zablokowane", s.icons.locked, (r) => setS({ icons: { ...s.icons, locked: r } }))}
