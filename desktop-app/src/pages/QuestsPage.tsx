@@ -750,9 +750,16 @@ export default function QuestsPage() {
                 onClick={() => setView({ ...view, quest: "settings" })}
               >
                 {iconOf(category.icon)}
-                <span className="ci-item-text">
-                  <strong>Ustawienia kategorii</strong>
-                  <span className="muted small">nazwa, zasady, wygląd strony</span>
+                {/* Jak ikonka kategorii w grze: złota pogrubiona nazwa, szary opis. */}
+                <span className="ci-item-text" title="Ustawienia kategorii: nazwa, zasady, wygląd strony">
+                  <span className="ci-item-name">
+                    <MinecraftTextPreview text={`&6&l${category.name}`} emptyLabel={category.id} />
+                  </span>
+                  {category.description.trim() !== "" && (
+                    <span className="small">
+                      <MinecraftTextPreview text={`&7${category.description}`} />
+                    </span>
+                  )}
                 </span>
               </button>
               <div className="ci-group">Zadania ({category.quests.length})</div>
