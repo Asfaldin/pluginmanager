@@ -56,12 +56,8 @@ const PAGE_ROLES: { role: SlotRole; label: string }[] = [
   { role: "NAV_BACK", label: "Przycisk: powrót" },
   { role: "NAV_PREV", label: "Przycisk: poprzednia strona" },
   { role: "NAV_NEXT", label: "Przycisk: następna strona" },
-  { role: "FILLER", label: "Własne tło (dowolny przedmiot)" },
 ];
-const MENU_ROLES: { role: SlotRole; label: string }[] = [
-  { role: "CATEGORY_SLOT", label: "Miejsce na kategorię" },
-  { role: "FILLER", label: "Własne tło (dowolny przedmiot)" },
-];
+const MENU_ROLES: { role: SlotRole; label: string }[] = [{ role: "CATEGORY_SLOT", label: "Miejsce na kategorię" }];
 
 /** Nazwa przedmiotu do podglądu: OAK_LOG -> "Oak Log", custom item -> jego id. */
 function itemLabel(r: ItemRef): string {
@@ -364,13 +360,16 @@ export default function QuestsPage() {
           </button>
           {layoutEdit && (
             <>
-              <select value={role} onChange={(e) => setAddRole(e.target.value as SlotRole)}>
-                {roles.map((r) => (
-                  <option key={r.role} value={r.role}>
-                    Dodawane: {r.label}
-                  </option>
-                ))}
-              </select>
+              {/* W menu głównym da się dodać tylko miejsce na kategorię - wtedy bez wyboru. */}
+              {roles.length > 1 && (
+                <select value={role} onChange={(e) => setAddRole(e.target.value as SlotRole)}>
+                  {roles.map((r) => (
+                    <option key={r.role} value={r.role}>
+                      Dodawane: {r.label}
+                    </option>
+                  ))}
+                </select>
+              )}
               <span className="muted small">Przytrzymaj pole i przeciągnij je w inne miejsce.</span>
             </>
           )}
