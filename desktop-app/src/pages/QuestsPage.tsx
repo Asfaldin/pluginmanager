@@ -83,8 +83,6 @@ function QuestCommandsModal({ file, onClose }: { file: QuestsFile; onClose: () =
           <CopyRow cmd="/@quests reload" what="wczytuje questy od nowa (aplikacja robi to sama po „Wyślij na serwer”)" />
           <CopyRow cmd="/@quests list" what="lista kategorii i liczba zadań" />
           <CopyRow cmd="/@quests reset <gracz>" what="zeruje graczowi cały postęp (też tytuły)" />
-          <CopyRow cmd="/@unlock give <gracz> <nazwa>" what="daje graczowi odblokowanie (np. do kategorii z „Wymaga odblokowania”)" />
-          <CopyRow cmd="/@unlock list <gracz>" what="odblokowania gracza" />
         </div>
         <div className="ci-section-title" style={{ marginTop: "1rem" }}>
           Twoje kategorie
@@ -398,28 +396,6 @@ export default function QuestsPage() {
               </select>
             </div>
           )}
-          <label className="checkbox">
-            <input
-              type="checkbox"
-              checked={c.requiresUnlock != null}
-              onChange={(e) => updateCategory(c.id, { requiresUnlock: e.target.checked ? "" : null })}
-            />
-            Wymaga odblokowania
-          </label>
-          {c.requiresUnlock != null && (
-            <label>
-              Nazwa odblokowania
-              <input
-                value={c.requiresUnlock}
-                placeholder="np. nether"
-                onChange={(e) => updateCategory(c.id, { requiresUnlock: e.target.value.toLowerCase().replace(/\s+/g, "_") })}
-              />
-            </label>
-          )}
-          <p className="muted small">
-            Odblokowanie daje dowolny plugin nagrodą „Odblokowanie” (np. inne zadanie, osiągnięcie) albo admin komendą /@unlock give
-            &lt;gracz&gt; &lt;nazwa&gt;.
-          </p>
         </Fold>
         <Fold title="Wygląd strony w grze">{layoutEditor(c.pageLayout, (l) => updateCategory(c.id, { pageLayout: l }), "page", c)}</Fold>
       </>
