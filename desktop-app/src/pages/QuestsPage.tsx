@@ -374,7 +374,7 @@ export default function QuestsPage() {
             <MinecraftTextInput value={c.name} onChange={(v) => updateCategory(c.id, { name: v })} placeholder="Nazwa kategorii" />
           </label>
           <label>
-            Opis (pod nazwą w menu)
+            Opis
             <MinecraftTextInput value={c.description} onChange={(v) => updateCategory(c.id, { description: v })} placeholder="Krótki opis" />
           </label>
           <div className="ci-section-title">Ikona</div>
