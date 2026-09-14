@@ -2579,3 +2579,14 @@ button:disabled:hover {
     grid-template-columns: 240px minmax(0, 1fr);
   }
 }
+
+/* Questy: trochę szersza lista kategorii (dłuższe nazwy). */
+.ci-layout.ci-layout-crates.ci-layout-quests {
+  grid-template-columns: 290px minmax(0, 0.75fr) minmax(0, 1.25fr);
+}
+
+@media (max-width: 1100px) {
+  .ci-layout.ci-layout-crates.ci-layout-quests {
+    grid-template-columns: 270px minmax(0, 1fr);
+  }
+}

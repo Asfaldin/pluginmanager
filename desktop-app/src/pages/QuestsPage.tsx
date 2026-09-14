@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Save, ScrollText, Terminal, Trash2 } from "lucide-react";
+import { Save, ScrollText, Terminal, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { CommandTip, CopyRow, Fold, LoreEditor } from "../components/EditorBits";
@@ -20,7 +20,6 @@ import {
   addCategory,
   defaultRequirement,
   emptyQuest,
-  moveInList,
   nextQuestId,
   parseQuestsYaml,
   plain,
@@ -274,17 +273,6 @@ export default function QuestsPage() {
     }
   }
 
-  function moveCategory(i: number, dir: -1 | 1) {
-    setFile({ ...file, categories: moveInList(file.categories, i, i + dir) });
-  }
-
-  function moveQuest(c: CategoryDef, i: number, dir: -1 | 1) {
-    const next = moveInList(c.quests, i, i + dir);
-    if (next === c.quests) return;
-    updateCategory(c.id, { quests: next });
-    if (view?.kind === "category" && view.quest === i) setView({ ...view, quest: i + dir });
-  }
-
   // ---- Siatka menu ----
 
   function layoutEditor(layout: SlotEntry[], onChange: (l: SlotEntry[]) => void, mode: "menu" | "page", c?: CategoryDef) {
@@ -533,9 +521,6 @@ export default function QuestsPage() {
             keyIds={keyIds}
             titleIds={Object.keys(file.titles)}
           />
-          <p className="muted small">
-            Skrzynka i klucz działają tylko z pluginem Skrzynek - dodaj im „Nagrodę zastępczą”, żeby gracz dostał coś i bez niego.
-          </p>
           <label>
             Własny opis nagrody w menu (puste = składany z nagród)
             <MinecraftTextInput value={q.rewardLabel ?? ""} onChange={(v) => setQuest({ rewardLabel: v || undefined })} placeholder="np. &e1x Kilof" />
@@ -650,19 +635,6 @@ export default function QuestsPage() {
     );
   }
 
-  function arrows(onUp: () => void, onDown: () => void, first: boolean, last: boolean) {
-    return (
-      <>
-        <button type="button" className="ci-trash" title="Wyżej" disabled={first} onClick={onUp}>
-          <ArrowUp size={14} strokeWidth={1.75} />
-        </button>
-        <button type="button" className="ci-trash" title="Niżej" disabled={last} onClick={onDown}>
-          <ArrowDown size={14} strokeWidth={1.75} />
-        </button>
-      </>
-    );
-  }
-
   function deleteAction(): { label: string; question: string; run: () => void } | null {
     if (category && view?.kind === "category" && view.quest === "settings") {
       const c = category;
@@ -734,10 +706,10 @@ export default function QuestsPage() {
       {status && <p className="status">{status}</p>}
       {showCommands && <QuestCommandsModal file={file} onClose={() => setShowCommands(false)} />}
 
-      <div className="ci-layout ci-layout-crates">
+      <div className="ci-layout ci-layout-crates ci-layout-quests">
         <aside className="card ci-cats">
           <div className="ci-section-title">Kategorie</div>
-          {file.categories.map((c, i) =>
+          {file.categories.map((c) =>
             trashConfirm === `cat:${c.id}` ? (
               <div key={c.id}>{confirmRow(`Usunąć kategorię ${c.id}?`, () => doRemoveCategory(c.id))}</div>
             ) : (
@@ -754,7 +726,6 @@ export default function QuestsPage() {
                     <ScrollText size={12} strokeWidth={2} /> {c.quests.length}
                   </span>
                 </button>
-                {arrows(() => moveCategory(i, -1), () => moveCategory(i, 1), i === 0, i === file.categories.length - 1)}
                 {trashButton(`cat:${c.id}`, `Usuń kategorię ${c.id}`)}
               </div>
             )
@@ -802,7 +773,6 @@ export default function QuestsPage() {
                         </span>
                       </span>
                     </button>
-                    {arrows(() => moveQuest(category, i, -1), () => moveQuest(category, i, 1), i === 0, i === category.quests.length - 1)}
                     {trashButton(`quest:${category.id}:${i}`, `Usuń zadanie #${q.id}`)}
                   </div>
                 )
