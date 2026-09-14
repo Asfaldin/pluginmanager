@@ -240,10 +240,6 @@ export default function QuestsPage() {
     setFile({ ...file, categories: file.categories.map((c) => (c.id === id ? { ...c, ...patch } : c)) });
   }
 
-  function setMainPath(id: string, on: boolean) {
-    setFile({ ...file, categories: file.categories.map((c) => ({ ...c, mainPath: c.id === id ? on : on ? false : c.mainPath })) });
-  }
-
   async function newCategory() {
     const name = (await showPrompt("Nazwa nowej kategorii (może mieć spacje, np. Kowalstwo):"))?.trim();
     if (!name) return;
@@ -359,10 +355,6 @@ export default function QuestsPage() {
           </label>
           <div className="ci-section-title">Ikona</div>
           <ItemRefPicker value={c.icon} onChange={(r) => updateCategory(c.id, { icon: r })} materials={allMaterials} customIds={customIds} />
-          <label className="checkbox">
-            <input type="checkbox" checked={c.mainPath} onChange={(e) => setMainPath(c.id, e.target.checked)} />
-            Główna Ścieżka (powitanie po pierwszym zadaniu i przypomnienie po wejściu na serwer)
-          </label>
         </Fold>
         <Fold title="Zasady">
           <label className="checkbox">
