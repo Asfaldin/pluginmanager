@@ -561,7 +561,7 @@ export default function QuestsPage() {
     return (
       <>
         <h2>
-          #{q.id} <MinecraftTextPreview text={q.title} emptyLabel="(bez tytułu)" />
+          <MinecraftTextPreview text={q.title} emptyLabel="(bez tytułu)" />
         </h2>
         <CommandTip
           commands={[
