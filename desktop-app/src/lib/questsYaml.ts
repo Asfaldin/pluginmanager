@@ -52,8 +52,6 @@ export interface CategoryDef {
 }
 
 export interface QuestSettings {
-  joinReminder: boolean;
-  welcomeSound: string;
   filler: ItemRef;
   icons: { available: ItemRef; completed: ItemRef; locked: ItemRef; categoryLocked: ItemRef; categoryEmpty: ItemRef };
   buttons: { back: ItemRef; prev: ItemRef; next: ItemRef };
@@ -90,8 +88,6 @@ export function defaultRequirement(type: Requirement["type"]): Requirement {
 }
 
 const DEFAULT_SETTINGS: QuestSettings = {
-  joinReminder: true,
-  welcomeSound: "mainplugins:quest_welcome",
   filler: { item: "BLACK_STAINED_GLASS_PANE" },
   icons: {
     available: { item: "RED_DYE" },
@@ -242,8 +238,6 @@ export function parseQuestsYaml(text: string): QuestsFile {
   const d = DEFAULT_SETTINGS;
   const ref = (v: unknown, def: ItemRef): ItemRef => (v == null ? def : itemRefFromYaml(v));
   const settings: QuestSettings = {
-    joinReminder: s["join-reminder"] !== false,
-    welcomeSound: s["welcome-sound"] != null ? String(s["welcome-sound"]) : d.welcomeSound,
     filler: ref(s.filler, d.filler),
     icons: {
       available: ref(icons.available, d.icons.available),
@@ -257,6 +251,7 @@ export function parseQuestsYaml(text: string): QuestsFile {
       prev: ref(buttons.prev, d.buttons.prev),
       next: ref(buttons.next, d.buttons.next),
     },
+    // join-reminder i welcome-sound to usunięte ustawienia - na liście, żeby zniknęły z pliku przy zapisie.
     extra: rest(s, ["join-reminder", "welcome-sound", "filler", "icons", "buttons"]),
   };
   const all = Object.entries(obj(raw.categories)).map(([id, v]) => parseCategory(id, v));
@@ -280,8 +275,6 @@ export function serializeQuestsYaml(f: QuestsFile): string {
   const s = f.settings;
   const settings = {
     ...s.extra,
-    "join-reminder": s.joinReminder,
-    "welcome-sound": s.welcomeSound,
     filler: itemRefToYaml(s.filler),
     icons: {
       available: itemRefToYaml(s.icons.available),

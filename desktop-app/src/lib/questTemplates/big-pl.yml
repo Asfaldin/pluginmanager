@@ -1,7 +1,5 @@
 # Szablon: pełne questy naszego serwera (17 kategorii) - po polsku.
 settings:
-  join-reminder: true
-  welcome-sound: mainplugins:quest_welcome
   filler:
     item: BLACK_STAINED_GLASS_PANE
   icons:

@@ -2018,6 +2018,21 @@ button:disabled:hover {
   box-shadow: 0 0 0 2px #ffcc4d inset;
 }
 
+/* Siatka „jak w grze”: bez kolorowych pasków ról nad polami. */
+.slot-grid-plain .slot-cell {
+  box-shadow:
+    inset 0 2px 0 #4a3f2e,
+    inset 1px 0 0 rgba(255, 255, 255, 0.06),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.45);
+}
+
+/* Pole, nad którym trzymasz przeciągany element - tu wyląduje po puszczeniu. */
+.slot-drag-over {
+  background: rgba(126, 224, 138, 0.22);
+  outline: 2px dashed var(--success);
+  outline-offset: -2px;
+}
+
 .slot-remove-btn {
   position: absolute;
   top: 1px;
@@ -2589,4 +2604,15 @@ button:disabled:hover {
   .ci-layout.ci-layout-crates.ci-layout-quests {
     grid-template-columns: 270px minmax(0, 1fr);
   }
+}
+
+/* Questy - ustawienia ogólne: bez środkowej listy, edytor na środku wolnego miejsca. */
+.ci-layout.ci-layout-crates.ci-layout-quests.ci-layout-general {
+  grid-template-columns: 290px minmax(0, 1fr);
+}
+
+.ci-layout-general .ci-editor {
+  width: 100%;
+  max-width: 900px;
+  justify-self: center;
 }

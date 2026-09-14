@@ -55,11 +55,11 @@ const PAGE_ROLES: { role: SlotRole; label: string }[] = [
   { role: "NAV_BACK", label: "Przycisk: powrót" },
   { role: "NAV_PREV", label: "Przycisk: poprzednia strona" },
   { role: "NAV_NEXT", label: "Przycisk: następna strona" },
-  { role: "FILLER", label: "Tło (inny kolor)" },
+  { role: "FILLER", label: "Własne tło (dowolny przedmiot)" },
 ];
 const MENU_ROLES: { role: SlotRole; label: string }[] = [
   { role: "CATEGORY_SLOT", label: "Miejsce na kategorię" },
-  { role: "FILLER", label: "Tło (inny kolor)" },
+  { role: "FILLER", label: "Własne tło (dowolny przedmiot)" },
 ];
 
 /** Nazwa przedmiotu do podglądu: OAK_LOG -> "Oak Log", custom item -> jego id. */
@@ -142,6 +142,9 @@ export default function QuestsPage() {
   const [showCommands, setShowCommands] = useState(false);
   const [layoutEdit, setLayoutEdit] = useState(false);
   const [addRole, setAddRole] = useState<SlotRole>("QUEST_SLOT");
+  // Własne tło menu: przedmiot dla nowo dodawanych pól i pole wybrane do zmiany.
+  const [fillerMaterial, setFillerMaterial] = useState("GRAY_STAINED_GLASS_PANE");
+  const [selectedFiller, setSelectedFiller] = useState<number | null>(null);
   const autoLoadedRef = useRef(false);
   const { iconPackDir, allMaterials } = useIconPack(setStatus);
 
@@ -152,6 +155,7 @@ export default function QuestsPage() {
   useEffect(() => {
     setConfirmDelete(false);
     setLayoutEdit(false);
+    setSelectedFiller(null);
   }, [view]);
 
   async function load(pid: string, path: string) {
@@ -295,7 +299,28 @@ export default function QuestsPage() {
 
   // ---- Siatka menu ----
 
-  function layoutEditor(layout: SlotEntry[], onChange: (l: SlotEntry[]) => void, mode: "menu" | "page", c?: CategoryDef) {
+  /** Wybór zwykłego przedmiotu Minecrafta (tło menu) z podpowiedziami i ikonką. */
+  function materialInput(value: string, onPick: (m: string) => void) {
+    return (
+      <span className="row" style={{ alignItems: "center", gap: "0.4rem" }}>
+        {value && <MaterialIcon material={value} iconPackDir={iconPackDir} />}
+        <input
+          list="quests-filler-materials"
+          value={value}
+          placeholder="np. RED_STAINED_GLASS_PANE"
+          onChange={(e) => onPick(e.target.value.toUpperCase().replace(/\s+/g, "_"))}
+          style={{ minWidth: "16rem" }}
+        />
+        <datalist id="quests-filler-materials">
+          {allMaterials.map((m) => (
+            <option key={m} value={m} />
+          ))}
+        </datalist>
+      </span>
+    );
+  }
+
+  function layoutEditor(layout: SlotEntry[], onChange: (l: SlotEntry[]) => void, mode: "menu" | "page", c?: CategoryDef, title?: string) {
     const content: Record<number, SlotContent> = {};
     let n = 0;
     for (const e of layout) {
@@ -312,43 +337,78 @@ export default function QuestsPage() {
           dim: !q,
         };
       } else if (e.role === "FILLER") {
-        content[e.slot] = { label: "", kind: "filler", material: e.item };
+        // Własne tło to zwykły element: da się go przesunąć, usunąć i kliknąć, żeby zmienić przedmiot.
+        const item = e.item ?? file.settings.filler.item ?? "BLACK_STAINED_GLASS_PANE";
+        content[e.slot] = {
+          label: itemLabel({ item }),
+          kind: "item",
+          material: item,
+          highlighted: selectedFiller === e.slot,
+          onClick: () => setSelectedFiller(selectedFiller === e.slot ? null : e.slot),
+        };
       } else {
         content[e.slot] = { label: NAV_LABEL[e.role] ?? e.role, kind: "nav", material: conventionalRoleIcon(e.role) };
       }
     }
     const roles = mode === "menu" ? MENU_ROLES : PAGE_ROLES;
+    // W menu głównym nie ma miejsc na zadania - wtedy dodajemy pierwszą rolę z listy tego widoku.
+    const role = roles.some((r) => r.role === addRole) ? addRole : roles[0].role;
     return (
       <>
+        <div className="row" style={{ marginBottom: "0.5rem", alignItems: "center" }}>
+          {title && <h2 style={{ margin: 0 }}>{title}</h2>}
+          <button type="button" className={layoutEdit ? "ci-publish" : undefined} onClick={() => setLayoutEdit(!layoutEdit)}>
+            {layoutEdit ? "Gotowe" : "Zmień układ"}
+          </button>
+          {layoutEdit && (
+            <>
+              <select value={role} onChange={(e) => setAddRole(e.target.value as SlotRole)}>
+                {roles.map((r) => (
+                  <option key={r.role} value={r.role}>
+                    Dodawane: {r.label}
+                  </option>
+                ))}
+              </select>
+              {role === "FILLER" && materialInput(fillerMaterial, setFillerMaterial)}
+              <span className="muted small">Przytrzymaj pole i przeciągnij je w inne miejsce.</span>
+            </>
+          )}
+        </div>
         <SlotGrid
           content={content}
           editable={layoutEdit}
+          allowSwap
+          plain
+          emptyLabel={itemLabel(file.settings.filler)}
           iconPackDir={iconPackDir}
           onMoveSlot={(from, to) =>
             onChange(layout.map((e) => (e.slot === from ? { ...e, slot: to } : e.slot === to ? { ...e, slot: from } : e)))
           }
-          onAddSlot={(slot) => onChange([...layout, addRole === "FILLER" ? { slot, role: addRole, item: "GRAY_STAINED_GLASS_PANE" } : { slot, role: addRole }])}
+          onAddSlot={(slot) => onChange([...layout, role === "FILLER" ? { slot, role, item: fillerMaterial } : { slot, role }])}
           onRemoveSlot={(slot) => onChange(layout.filter((e) => e.slot !== slot))}
         />
-        <div className="row" style={{ marginTop: "0.5rem" }}>
-          <label className="checkbox">
-            <input type="checkbox" checked={layoutEdit} onChange={(e) => setLayoutEdit(e.target.checked)} />
-            Zmieniam układ (kliknij pole, żeby je przenieść; puste pole = dodaj)
-          </label>
-          {layoutEdit && (
-            <select value={roles.some((r) => r.role === addRole) ? addRole : roles[0].role} onChange={(e) => setAddRole(e.target.value as SlotRole)}>
-              {roles.map((r) => (
-                <option key={r.role} value={r.role}>
-                  Dodawane: {r.label}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-        {mode === "page" && (
-          <p className="muted small">
-            Zadania trafiają na „Miejsca na zadanie” po kolei. Gdy zadań jest więcej niż miejsc, gra robi kolejne strony (przyciski strzałek).
-          </p>
+        {!layoutEdit && selectedFiller !== null && layout.some((e) => e.slot === selectedFiller && e.role === "FILLER") && (
+          <div className="row" style={{ marginTop: "0.5rem", alignItems: "center" }}>
+            <span className="muted small">Tło na polu {selectedFiller}:</span>
+            {materialInput(layout.find((e) => e.slot === selectedFiller)?.item ?? "", (m) =>
+              onChange(layout.map((e) => (e.slot === selectedFiller ? { ...e, item: m } : e)))
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                onChange(layout.filter((e) => e.slot !== selectedFiller));
+                setSelectedFiller(null);
+              }}
+            >
+              Usuń
+            </button>
+            <button type="button" onClick={() => setSelectedFiller(null)}>
+              Zamknij
+            </button>
+          </div>
+        )}
+        {!layoutEdit && selectedFiller === null && layout.some((e) => e.role === "FILLER") && (
+          <p className="muted small">Kliknij pole z własnym tłem, żeby zmienić jego przedmiot.</p>
         )}
       </>
     );
@@ -588,17 +648,6 @@ export default function QuestsPage() {
           {pick("Następna strona", s.buttons.next, (r) => setS({ buttons: { ...s.buttons, next: r } }))}
           {pick("Tło (wypełniacz)", s.filler, (r) => setS({ filler: r }))}
         </Fold>
-        <Fold title="Zachowanie">
-          <label className="checkbox">
-            <input type="checkbox" checked={s.joinReminder} onChange={(e) => setS({ joinReminder: e.target.checked })} />
-            Pasek z przypomnieniem po wejściu na serwer (gdy w Głównej Ścieżce czeka zadanie)
-          </label>
-          <label>
-            Dźwięk po pierwszym zadaniu Głównej Ścieżki (puste = bez dźwięku)
-            <input value={s.welcomeSound} onChange={(e) => setS({ welcomeSound: e.target.value })} placeholder="np. minecraft:ui.toast.challenge_complete" />
-          </label>
-          <p className="muted small">Teksty w menu (np. „Kliknij, aby zdać”) są w plikach językowych pluginu: plugins/MainpluginsQuests/lang/</p>
-        </Fold>
       </>
     );
   }
@@ -705,7 +754,8 @@ export default function QuestsPage() {
       {status && <p className="status">{status}</p>}
       {showCommands && <QuestCommandsModal file={file} onClose={() => setShowCommands(false)} />}
 
-      <div className="ci-layout ci-layout-crates ci-layout-quests">
+      {/* Ustawienia ogólne (menu, wygląd) nie mają środkowej listy - edytor zajmuje całą resztę. */}
+      <div className={`ci-layout ci-layout-crates ci-layout-quests${view && view.kind !== "category" ? " ci-layout-general" : ""}`}>
         <aside className="card ci-cats">
           <div className="ci-section-title">Kategorie</div>
           {file.categories.map((c) =>
@@ -743,6 +793,7 @@ export default function QuestsPage() {
           </button>
         </aside>
 
+        {(!view || view.kind === "category") && (
         <section className="card ci-list">
           {view?.kind === "category" && category && (
             <>
@@ -812,19 +863,16 @@ export default function QuestsPage() {
               </button>
             </>
           )}
-          {view && view.kind !== "category" && (
-            <p className="muted small">Ustawienia wspólne dla wszystkich kategorii - edytujesz je po prawej.</p>
-          )}
           {!view && <p className="muted">{profileId ? "Brak kategorii - dodaj pierwszą albo wczytaj szablon." : "Wybierz serwer, żeby wczytać questy."}</p>}
         </section>
+        )}
 
         <section className="card form ci-editor">
           {category && view?.kind === "category" && view.quest === "settings" && renderCategorySettings(category)}
           {category && view?.kind === "category" && typeof view.quest === "number" && category.quests[view.quest] && renderQuest(category, view.quest)}
           {view?.kind === "menu" && (
             <>
-              <h2>Menu główne</h2>
-              {layoutEditor(file.mainMenu, (l) => setFile({ ...file, mainMenu: l }), "menu")}
+              {layoutEditor(file.mainMenu, (l) => setFile({ ...file, mainMenu: l }), "menu", undefined, "Menu główne")}
             </>
           )}
           {view?.kind === "titles" && renderTitles()}

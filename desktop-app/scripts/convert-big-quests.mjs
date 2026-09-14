@@ -78,8 +78,6 @@ for (const [id, c] of Object.entries(old.categories ?? {})) {
 
 const out = {
   settings: {
-    "join-reminder": true,
-    "welcome-sound": "mainplugins:quest_welcome",
     filler: { item: "BLACK_STAINED_GLASS_PANE" },
     icons: {
       available: { item: "RED_DYE" },

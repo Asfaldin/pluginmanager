@@ -16,7 +16,6 @@ const SAMPLE = `
 custom-top: keep me
 settings:
   join-reminder: false
-  welcome-sound: ""
   filler: { item: GRAY_STAINED_GLASS_PANE }
   icons:
     available: { item: ARROW }
@@ -79,8 +78,7 @@ categories:
 describe("questsYaml", () => {
   it("parses settings, layout, categories in menu order and requirements", () => {
     const f = parseQuestsYaml(SAMPLE);
-    expect(f.settings.joinReminder).toBe(false);
-    expect(f.settings.welcomeSound).toBe("");
+    expect(f.settings.extra).toEqual({});
     expect(f.settings.filler).toEqual({ item: "GRAY_STAINED_GLASS_PANE" });
     expect(f.settings.icons.available).toEqual({ item: "ARROW" });
     expect(f.settings.icons.completed).toEqual({ item: "LIME_DYE" });
@@ -112,6 +110,7 @@ describe("questsYaml", () => {
     const text = serializeQuestsYaml(f);
     expect(parseQuestsYaml(text)).toEqual(f);
     expect(text).toContain("custom-top: keep me");
+    expect(text).not.toContain("join-reminder"); // usunięte ustawienie znika z pliku
     expect(text).toContain("my-extra: 5");
     expect(text).toContain("note: extra field");
     expect(text).toContain("category-order:\n  - main_path\n  - mining");
