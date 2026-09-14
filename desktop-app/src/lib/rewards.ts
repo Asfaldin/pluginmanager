@@ -1,7 +1,7 @@
 // Wspólny format nagród (fundament, RewardService w core): lista "rewards:" w każdym configu.
-// Ten sam model w każdym edytorze aplikacji (Skrzynki teraz, Questy/Osiągnięcia później).
+// Ten sam model w każdym edytorze aplikacji (Skrzynki, Questy, później Osiągnięcia).
 
-export type RewardType = "money" | "item" | "custom" | "command" | "crate" | "key" | "title";
+export type RewardType = "money" | "item" | "custom" | "command" | "crate" | "key" | "title" | "unlock";
 
 export interface Reward {
   type: string;
@@ -20,6 +20,7 @@ export const REWARD_TYPES: { type: RewardType; label: string }[] = [
   { type: "crate", label: "Skrzynka" },
   { type: "key", label: "Klucz" },
   { type: "title", label: "Tytuł" },
+  { type: "unlock", label: "Odblokowanie" },
 ];
 
 const RESERVED = new Set(["amount", "silent", "fallback"]);

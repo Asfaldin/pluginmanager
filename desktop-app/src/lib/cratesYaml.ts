@@ -1,13 +1,10 @@
 import * as yaml from "js-yaml";
+import { itemRefFromYaml as itemRef, itemRefToYaml as refOut, type ItemRef } from "./itemRef";
 import { parseRewards, rewardsToYaml, type Reward } from "./rewards";
 
-// plugins/MainpluginsCrates/crates.yml - skrzynki, klucze, wygrane (patrz spec pilota Skrzynek).
+export type { ItemRef } from "./itemRef";
 
-export interface ItemRef {
-  item?: string;
-  custom?: string;
-  amount?: number;
-}
+// plugins/MainpluginsCrates/crates.yml - skrzynki, klucze, wygrane (patrz spec pilota Skrzynek).
 
 export interface KeyDef {
   id: string;
@@ -66,15 +63,6 @@ export const DEFAULT_HOLOGRAM_HEIGHT = 0.6;
 const HEADER =
   "# Skrzynki - zarządzane przez aplikację (komentarze nie są zachowywane). Po zmianach: /@crate reload.\n";
 
-function itemRef(raw: unknown): ItemRef {
-  const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  const ref: ItemRef = {};
-  if (o.custom != null) ref.custom = String(o.custom);
-  else ref.item = o.item != null ? String(o.item) : "STONE";
-  if (typeof o.amount === "number" && o.amount > 1) ref.amount = o.amount;
-  return ref;
-}
-
 function lore(raw: unknown): string[] {
   return Array.isArray(raw) ? raw.map((l) => (l == null ? "" : String(l))) : [];
 }
@@ -113,12 +101,6 @@ export function parseCratesYaml(text: string): CratesFile {
     placedBlockFromItem: raw?.settings?.["placed-block-from-item"] !== false,
   };
   return { settings, keys, crates };
-}
-
-function refOut(r: ItemRef): Record<string, unknown> {
-  const o: Record<string, unknown> = r.custom != null ? { custom: r.custom } : { item: r.item ?? "STONE" };
-  if (r.amount && r.amount > 1) o.amount = r.amount;
-  return o;
 }
 
 export function serializeCratesYaml(f: CratesFile): string {
