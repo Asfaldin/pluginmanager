@@ -104,7 +104,7 @@ stats:
 menus:                     # to, co dziś w sklep-gui.yml (main-menu, category-page, buy-picker, search-results)
   main-menu: {size: 54, layout: [...]}
   category-page: {...}
-  buy-picker: {...}        # AMOUNT_SLOT z polem amount = ile paczek
+  buy-picker: {...}        # AMOUNT_SLOT z polem amount = ile sztuk
   search-results: {...}
   colors: {...}            # kolory tytułów
   buttons: {...}           # materiały przycisków (teksty w lang)
@@ -135,6 +135,8 @@ rotation:                     # opcjonalne - kategoria rotująca
 ```
 
 - Ceny mogą mieć grosze (np. `0.16`).
+- Kupno jak dziś: gracz wybiera liczbę sztuk (1/8/16/32/64), cena liczona proporcjonalnie
+  z ceny paczki i zaokrąglana w górę do grosza (np. paczka 64 za 10, 1 sztuka = 0.16).
 - Sprzedaż tylko pełnymi paczkami (`sell-amount`); reszta zostaje w ekwipunku (jak dziś).
   Znika wyjątek kategorii "mineraly" na sztywno - wystarczy `sell-amount: 1`.
 - W kategorii z rotacją menu pokazuje `items` + aktualnie wylosowane z `pool`.
