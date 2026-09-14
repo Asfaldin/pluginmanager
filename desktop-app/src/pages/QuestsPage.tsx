@@ -106,6 +106,8 @@ function QuestCommandsModal({ file, onClose }: { file: QuestsFile; onClose: () =
         <div className="ci-protip">
           <CopyRow cmd="/@quests reload" what="wczytuje questy od nowa (aplikacja robi to sama po „Wyślij na serwer”)" />
           <CopyRow cmd="/@quests list" what="lista kategorii i liczba zadań" />
+          <CopyRow cmd="/@quests complete <gracz> <kategoria> <nr>" what="zalicza graczowi zadanie i daje nagrody (np. gdy coś się zbugowało)" />
+          <CopyRow cmd="/@quests undo <gracz> <kategoria> <nr>" what="cofa graczowi jedno zadanie (nagrody zostają u gracza)" />
           <CopyRow cmd="/@quests reset <gracz>" what="zeruje graczowi cały postęp (też tytuły)" />
         </div>
         <div className="ci-section-title" style={{ marginTop: "1rem" }}>
@@ -491,7 +493,12 @@ export default function QuestsPage() {
         <h2>
           #{q.id} <MinecraftTextPreview text={q.title} emptyLabel="(bez tytułu)" />
         </h2>
-        <CommandTip commands={[{ cmd: `/@quests complete <gracz> ${c.id} ${q.id}`, what: "zalicza graczowi to zadanie i daje nagrody (do testów)" }]} />
+        <CommandTip
+          commands={[
+            { cmd: `/@quests complete <gracz> ${c.id} ${q.id}`, what: "zalicza graczowi to zadanie i daje nagrody" },
+            { cmd: `/@quests undo <gracz> ${c.id} ${q.id}`, what: "cofa graczowi to zadanie (nagrody zostają u gracza)" },
+          ]}
+        />
         <Fold title="Tytuł i opis" open>
           <label>
             Tytuł
