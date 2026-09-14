@@ -23,6 +23,7 @@ const JARS: &[(&str, &str, &[u8])] = &[
     jar_entry!("dungeons", "mainplugins-dungeons-1.0-SNAPSHOT.jar"),
     jar_entry!("farming", "mainplugins-farming-1.0-SNAPSHOT.jar"),
     jar_entry!("fishing", "mainplugins-fishing-1.0-SNAPSHOT.jar"),
+    jar_entry!("generators", "mainplugins-generators-1.0-SNAPSHOT.jar"),
     jar_entry!("hud", "mainplugins-hud-1.0-SNAPSHOT.jar"),
     jar_entry!("market", "mainplugins-market-1.0-SNAPSHOT.jar"),
     jar_entry!("menu", "mainplugins-menu-1.0-SNAPSHOT.jar"),
@@ -81,8 +82,8 @@ mod tests {
     }
 
     #[test]
-    fn all_20_jars_are_findable() {
-        for id in ["advancements","announcer","chatfilter","core","crates","dungeons","farming","fishing","hud","market","menu","quests","ranks","redstone","shop","skyblock","spawn","spawners","teleport","tools"] {
+    fn all_21_jars_are_findable() {
+        for id in ["advancements","announcer","chatfilter","core","crates","dungeons","farming","fishing","generators","hud","market","menu","quests","ranks","redstone","shop","skyblock","spawn","spawners","teleport","tools"] {
             assert!(jar_bytes(id).is_some(), "missing jar for {id}");
             assert!(jar_filename(id).is_some(), "missing filename for {id}");
         }

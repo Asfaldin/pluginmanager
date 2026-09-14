@@ -1,5 +1,6 @@
 import {
   Award,
+  Boxes,
   Carrot,
   Coins,
   Compass,
@@ -33,6 +34,7 @@ export const PLUGIN_ICONS: Record<string, LucideIcon> = {
   crates: Gift,
   dungeons: Skull,
   fishing: Fish,
+  generators: Boxes,
   hud: Tv,
   market: Coins,
   quests: ScrollText,
@@ -60,6 +62,7 @@ export const PLUGIN_LABELS: Record<string, string> = {
   crates: "Skrzynki",
   dungeons: "Loch i boss",
   fishing: "Wędkarstwo",
+  generators: "Generatory",
   hud: "HUD i placeholdery",
   market: "Rynek graczy",
   quests: "Questy",

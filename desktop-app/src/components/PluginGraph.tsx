@@ -1,5 +1,6 @@
 import {
   Award,
+  Boxes,
   Coins,
   Compass,
   Fish,
@@ -44,6 +45,7 @@ const DEPENDENTS: GraphNode[] = [
   { id: "crates", label: "Crates", icon: Gift },
   { id: "dungeons", label: "Dungeons", icon: Skull },
   { id: "fishing", label: "Fishing", icon: Fish },
+  { id: "generators", label: "Generators", icon: Boxes },
   { id: "hud", label: "HUD", icon: Tv },
   { id: "market", label: "Market", icon: Coins },
   { id: "quests", label: "Quests", icon: ScrollText },

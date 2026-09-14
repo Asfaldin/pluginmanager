@@ -183,14 +183,14 @@ export default function GeneratorsPage() {
     setProfileId(id);
     const p = profiles.find((x) => x.id === id);
     if (!p) return;
-    const path = `${p.remote_plugins_path.replace(/\/+$/, "")}/MainpluginsQuests/generatory.yml`;
+    const path = `${p.remote_plugins_path.replace(/\/+$/, "")}/MainpluginsGenerators/generatory.yml`;
     setRemotePath(path);
     setLastUsed(LAST_USED_KEY, { profileId: id, remotePath: path });
     loadPresets(id);
     load(id, path);
   }
 
-  // If mainplugins-quests hasn't had this file created yet on this server,
+  // If mainplugins-generators hasn't had this file created yet on this server,
   // bootstrap it from the plugin's own bundled resource - same reasoning as
   // EvolvingToolsPage / IslandsPage, so a fresh server shows the real
   // default generators instead of an empty list with an error.
@@ -358,7 +358,7 @@ export default function GeneratorsPage() {
       <Link to="/tools" className="back-link">← Twoje pluginy</Link>
       <h1>Generatory (tier 2-4)</h1>
       <p className="muted">
-        Nowy silnik generatorów mainplugins-quests (generatory.yml) - dodatkowe tiery obok istniejących, nietkniętych
+        Nowy silnik generatorów mainplugins-generators (generatory.yml) - dodatkowe tiery obok istniejących, nietkniętych
         GENERATOR_BRUK_T1/GENERATOR_KRUCHY_T1 (te dwa dalej edytujesz w zakładce „Custom itemy", bo żyją w
         custom-items.yml). Tryb PRZEPUSZCZAJĄCY (rodzina kilofowa) podmienia blok na prawdziwy materiał i integruje
         się z resztą ekonomii kilofa; BEZPOŚREDNI (rodzina łopatowa) sam losuje jeden z „baza-dropy". W obu trybach
@@ -386,7 +386,7 @@ export default function GeneratorsPage() {
       <ToolbarMore>
         <div className="row">
           <input
-            placeholder="/plugins/MainpluginsQuests/generatory.yml"
+            placeholder="/plugins/MainpluginsGenerators/generatory.yml"
             value={remotePath}
             onChange={(e) => setRemotePath(e.target.value)}
           />

@@ -1,6 +1,6 @@
 // Raw, byte-for-byte copies of the plugin's own bundled resource files
 // (mainplugins-tools/src/main/resources/ewoluujace-narzedzia.yml and
-// mainplugins-quests/src/main/resources/generatory.yml) - used to bootstrap
+// mainplugins-generators/src/main/resources/generatory.yml) - used to bootstrap
 // a fresh server that hasn't had the plugin write its own copy yet, same
 // approach as islandDefaults.ts. Kept as raw text rather than parsed TS
 // objects (like islandDefaults.ts does) because these schemas are large and

@@ -600,7 +600,7 @@ export interface EvolvingToolEntry {
   czastkiOtoczenia: string;
 }
 
-// Mirrors mainplugins-quests' generatory.yml exactly (GeneratorLoader.java) - T2-T4
+// Mirrors mainplugins-generators' generatory.yml exactly (GeneratorLoader.java) - T2-T4
 // generators only, additional to the untouched, hardcoded T1 (GENERATOR_BRUK_T1/
 // GENERATOR_KRUCHY_T1, still edited via CustomItemsPage since they live in custom-items.yml).
 export type GeneratorMode = "PRZEPUSZCZAJACY" | "BEZPOSREDNI";

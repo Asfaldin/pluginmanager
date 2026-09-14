@@ -20,6 +20,8 @@ export const FREE_PLUGIN_IDS: ReadonlySet<string> = new Set([
   "chatfilter",
   "hud",
   "ranks",
+  // Tymczasowo bez licencji (wydzielone z Questów 2026-09-14) - decyzja płatny/darmowy ze Stasikiem.
+  "generators",
 ]);
 
 export interface FreePlugin {
