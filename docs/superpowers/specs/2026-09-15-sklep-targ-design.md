@@ -92,6 +92,7 @@ Plugin zachowuje wszystkie funkcje (ceny dynamiczne, rotacja, statystyki), każd
 
 ```yaml
 categories: [blocks, farming, ores, mob-drops, food]   # kolejność w menu głównym
+price-rounding: cents      # whole = pełne złotówki, cents = grosze
 dynamic-prices:
   enabled: true
   cycle-minutes: 60
@@ -136,7 +137,10 @@ rotation:                     # opcjonalne - kategoria rotująca
 
 - Ceny mogą mieć grosze (np. `0.16`).
 - Kupno jak dziś: gracz wybiera liczbę sztuk (1/8/16/32/64), cena liczona proporcjonalnie
-  z ceny paczki i zaokrąglana w górę do grosza (np. paczka 64 za 10, 1 sztuka = 0.16).
+  z ceny paczki i zaokrąglana w górę według `price-rounding` w `shop.yml`:
+  `whole` = do pełnej złotówki, minimum 1 (jak dziś; paczka 64 za 10, 1 sztuka = 1),
+  `cents` = do grosza, minimum 0.01 (1 sztuka = 0.16). Ta sama zasada dla skupu (w dół).
+  Szablon "Mały": `cents`, szablon "Duży" (nasz serwer): `whole`. W aplikacji przełącznik.
 - Sprzedaż tylko pełnymi paczkami (`sell-amount`); reszta zostaje w ekwipunku (jak dziś).
   Znika wyjątek kategorii "mineraly" na sztywno - wystarczy `sell-amount: 1`.
 - W kategorii z rotacją menu pokazuje `items` + aktualnie wylosowane z `pool`.

@@ -274,7 +274,8 @@ public record DynamicSettings(boolean enabled, int cycleMinutes, double minMulti
 public enum SlotRole { CATEGORY_SLOT, ITEM_SLOT, AMOUNT_SLOT, NAV_BACK, NAV_PREV, NAV_NEXT, EXIT, SEARCH, SORT, FILLER }
 public record SlotEntry(int slot, SlotRole role, String material, int amount) {}
 public record MenuScreen(int size, List<SlotEntry> layout) {}
-public record ShopSettings(List<String> categoryOrder, DynamicSettings dynamic, boolean statsEnabled,
+public enum Rounding { WHOLE, CENTS }   // price-rounding: whole | cents (default cents; unknown -> cents + warn)
+public record ShopSettings(List<String> categoryOrder, Rounding rounding, DynamicSettings dynamic, boolean statsEnabled,
                            Map<String, MenuScreen> menus, Map<String, String> colors, Map<String, String> buttonMaterials) {}
 public record ShopConfig(ShopSettings settings, Map<String, Category> categories) {}
 public final class ShopConfigParser {
@@ -296,10 +297,10 @@ Rules: item needs `item` (known material) or `custom`; no `buy` and no `sell` ->
 **Interfaces - Produces:**
 ```java
 public final class ShopRules {
-    /** Cena za dowolną ilość sztuk: proporcjonalnie z ceny paczki, w górę do grosza, minimum 0.01 (jak dawne policzCene). */
-    public static double buyPrice(ShopItem item, int pieces);
-    /** Ile pełnych paczek skupu z posiadanych sztuk i ile za nie (mnożnik cen dynamicznych). */
-    public static SellResult sell(ShopItem item, int ownedPieces, double multiplier, double maxSellShare);
+    /** Cena za dowolną ilość sztuk: proporcjonalnie z ceny paczki, w górę; WHOLE = do złotówki (min 1, jak dawne policzCene), CENTS = do grosza (min 0.01). */
+    public static double buyPrice(ShopItem item, int pieces, Rounding rounding);
+    /** Ile pełnych paczek skupu z posiadanych sztuk i ile za nie (mnożnik cen dynamicznych), w dół według rounding. */
+    public static SellResult sell(ShopItem item, int ownedPieces, double multiplier, double maxSellShare, Rounding rounding);
     public record SellResult(int lots, int pieces, double money) {}
     /** Pierwsza pozycja (po kolejności kategorii) sprzedawalna dla danego klucza; null gdy brak. */
     public static ShopItem sellOffer(ShopConfig cfg, List<ShopItem> activeRotationItems, String key);
@@ -314,7 +315,7 @@ public final class RotationRules {
 ```
 Sell money = `lots * sell * multiplier`, capped per lot at `maxSellShare * buyPerSellLot` when the item is buyable (buy price converted to the sell lot), rounded down to the grosz. Cooldown `rest` = 5 rotations (constant in code, as today).
 
-- [ ] Step 1: tests (examples): `buy 10, amount 64` -> `buyPrice(64)=10`, `buyPrice(128)=20`, `buyPrice(1)=0.16`, `buyPrice(8)=1.25`; `buy 0.16, amount 1` -> `buyPrice(64)=10.24`; `buy 1, amount 1000` -> `buyPrice(1)=0.01`; `sell 4, sellAmount 16`, owned 40 -> lots 2, pieces 32, money 8; multiplier 1.5 with buy 5/16 and share 0.9 -> capped at 4.5 per lot; `sellOffer` prefers first category in order and matches custom keys exactly; `maxBuyPieces` limited by money and space in whole lots; rotation pick avoids cooldown, falls back when pool too small, never duplicates; `nextCooldown` decrements and adds picked.
+- [ ] Step 1: tests (examples, CENTS unless noted): `buy 10, amount 64` -> `buyPrice(64)=10`, `buyPrice(128)=20`, `buyPrice(1)=0.16`, `buyPrice(8)=1.25`; WHOLE: `buyPrice(1)=1`, `buyPrice(8)=2`, `buyPrice(64)=10`; `buy 0.16, amount 1` -> `buyPrice(64)=10.24`; `buy 1, amount 1000` -> `buyPrice(1)=0.01`; WHOLE sell of 3.7 -> 3; `sell 4, sellAmount 16`, owned 40 -> lots 2, pieces 32, money 8; multiplier 1.5 with buy 5/16 and share 0.9 -> capped at 4.5 per lot; `sellOffer` prefers first category in order and matches custom keys exactly; `maxBuyPieces` limited by money and space in whole lots; rotation pick avoids cooldown, falls back when pool too small, never duplicates; `nextCooldown` decrements and adds picked.
 - [ ] Step 2: FAIL -> implement -> PASS. Step 3: commit `Sklep: liczenie cen paczek, skupu i rotacji`.
 
 ### Task S3: Default content + first start + old files
@@ -381,7 +382,7 @@ export interface ShopItemDraft { ref: ItemRef; buy: number | null; sell: number 
   name: string; lore: string[]; instrument: string; raw: Record<string, unknown> }
 export interface RotationDraft { enabled: boolean; show: number; everyDays: number; pool: ShopItemDraft[] }
 export interface CategoryDraft { id: string; name: string; icon: ItemRef; items: ShopItemDraft[]; rotation: RotationDraft | null; raw: Record<string, unknown> }
-export interface ShopSettingsDraft { categoryOrder: string[]; dynamic: { enabled: boolean; cycleMinutes: number; minMultiplier: number;
+export interface ShopSettingsDraft { categoryOrder: string[]; rounding: "whole" | "cents"; dynamic: { enabled: boolean; cycleMinutes: number; minMultiplier: number;
   maxMultiplier: number; resetDays: number; maxSellShare: number }; statsEnabled: boolean;
   menus: Record<string, { size: number; layout: { slot: number; role: string; material?: string; amount?: number }[] }>;
   raw: Record<string, unknown> }
@@ -403,7 +404,7 @@ export function newCategoryId(name: string, existing: string[]): string;      //
 
 - Template JSON shape: `{ "shop.yml": "<text>", "categories": { "<id>": "<text>" } }`.
 - `small-*.json`: generated from the plugin's `defaults/<lang>/` by the same script (`--small`), so app and plugin never differ.
-- `big-pl.json`: from old files: each old item -> `{item|custom, buy: buy-price, sell: sell-price, amount, sell-amount, name: display-name, lore, instrument}` (drop `slot`, `display-name` only kept when it differs from the vanilla name is NOT checked - always kept as `name`); spawners `custom-id: ZOMBIE` -> `custom: spawner_zombie`; other `custom-id` values -> `custom: <id>`; `kolekcja` gets `rotation: {enabled: true, show: 5, every-days: 14, pool: <pula-rotacyjna converted: material/nazwa/cena/instrument>}`; `shop.yml` from `sklep-gui.yml` layouts + `category-order` + defaults for dynamic/stats (`stats.enabled: true` for big).
+- `big-pl.json`: from old files: each old item -> `{item|custom, buy: buy-price, sell: sell-price, amount, sell-amount, name: display-name, lore, instrument}` (drop `slot`, `display-name` only kept when it differs from the vanilla name is NOT checked - always kept as `name`); spawners `custom-id: ZOMBIE` -> `custom: spawner_zombie`; other `custom-id` values -> `custom: <id>`; `kolekcja` gets `rotation: {enabled: true, show: 5, every-days: 14, pool: <pula-rotacyjna converted: material/nazwa/cena/instrument>}`; `shop.yml` from `sklep-gui.yml` layouts + `category-order` + defaults for dynamic/stats (`stats.enabled: true`, `price-rounding: whole` for big; small templates `price-rounding: cents`).
 - `shopTemplates.ts`: `templateChoices(lang)` -> `[{id:"small", label:"Mały"}, {id:"big", label:"Duży (po polsku)"}]`, `templateFor(id, lang)`.
 - [ ] Step 1: run `node scripts/convert-big-shop.mjs` - writes JSON; vitest: big template parses (every category parses via `parseCategory` with no thrown error, 10 categories, `kolekcja` has rotation with pool size equal to old pool, spawner items use `spawner_`).
 - [ ] Step 2: commit (app) `Aplikacja: szablony Sklepu (Maly, Duzy)`.
@@ -415,7 +416,7 @@ export function newCategoryId(name: string, existing: string[]): string;      //
 **Layout (same building blocks as QuestsPage: `Fold`, `CommandTip`, `CopyRow`, `LoreEditor`, `ItemRefPicker`, `MaterialIcon`, `MinecraftTextInput`, `SlotGrid`, `showPrompt`, `useDirtyTracking`, `loadItemCatalog`, `readSetting` for language):**
 - Top: profile/server, tabs "Kategorie" | "Ustawienia" | "Statystyki", template select (when no `shop.yml` on server show the small template for server language, like Quests), "Zapisz", "Wyślij na serwer" (writes `shop.yml` + every category file + deletes category files removed in the app after a confirm, then `@shop reload`), "Komendy" modal.
 - Kategorie tab: left list (order drag or up/down, add via `showPrompt` -> `newCategoryId`, delete with confirm), middle: in-game-like grid of the category items (MaterialIcon + name, click selects, "+ Dodaj przedmiot"), right folds for the selected item: "Przedmiot" (ItemRefPicker from catalog, name, lore, instrument select only for GOAT_HORN), "Cena" (checkbox "Da się kupić" + "Cena kupna za sztukę"; checkbox "Da się sprzedać" + "Cena skupu za sztukę"; switch "Sprzedawaj w paczkach" -> fields "Kupno: paczka X szt. za Y", "Skup: paczka X szt. za Y"; when switch off, per-piece values are written with amount 1). Category folds: "Nazwa i ikonka", "Rotacja" (switch, show, every days, pool list with the same item editor).
-- Ustawienia tab: folds "Ceny dynamiczne" (switch + 5 numbers with Polish hints), "Statystyki" (switch), "Wygląd menu" (4 screens, each SlotGrid with drag like Quests main menu; AMOUNT_SLOT shows its amount, editable).
+- Ustawienia tab: fold "Ceny" (switch "pełne złotówki / grosze" = `price-rounding`), folds "Ceny dynamiczne" (switch + 5 numbers with Polish hints), "Statystyki" (switch), "Wygląd menu" (4 screens, each SlotGrid with drag like Quests main menu; AMOUNT_SLOT shows its amount, editable).
 - Statystyki tab: existing stats table from the old page (moved code, reads new path).
 - [ ] Step 1: write page; Step 2: `npx tsc --noEmit`, `npx vitest run` - PASS.
 - [ ] Step 3: commit (app) `Aplikacja: nowa strona Sklepu (kategorie, ceny, rotacja, ustawienia, statystyki)`.
