@@ -62,6 +62,30 @@ const MENU_ROLES: { role: SlotRole; label: string }[] = [
   { role: "FILLER", label: "Tło (inny kolor)" },
 ];
 
+/** Nazwa przedmiotu do podglądu: OAK_LOG -> "Oak Log", custom item -> jego id. */
+function itemLabel(r: ItemRef): string {
+  if (r.custom != null) return r.custom;
+  return (r.item ?? "STONE")
+    .toLowerCase()
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+/** Linijka „Wymaga: ...” jak w opisie zadania w grze. */
+function requirementText(r: Requirement): string {
+  switch (r.type) {
+    case "free":
+      return "Wymaga: nic - kliknij, żeby odebrać!";
+    case "money":
+      return `Wymaga: ${r.amount}$`;
+    case "have-item":
+      return `Wymaga: posiadania ${r.item.amount ?? 1}x ${itemLabel(r.item)} (zostaje przy Tobie)`;
+    case "items":
+      return `Wymaga: ${r.items.map((it) => `${it.amount ?? 1}x ${itemLabel(it)}`).join(", ")}`;
+  }
+}
+
 function questsPath(pluginsPath: string): string {
   return `${pluginsPath.replace(/\/+$/, "")}/MainpluginsQuests/quests.yml`;
 }
@@ -736,16 +760,31 @@ export default function QuestsPage() {
                   <div key={`${q.id}-${i}`}>{confirmRow(`Usunąć zadanie #${q.id}?`, () => doRemoveQuest(category, i))}</div>
                 ) : (
                   <div key={`${q.id}-${i}`} className="ci-cat-row">
-                    <button type="button" className={`ci-item${view.quest === i ? " active" : ""}`} onClick={() => setView({ ...view, quest: i })}>
-                      <span className="ci-badge">#{q.id}</span>
+                    <button
+                      type="button"
+                      className={`ci-item${view.quest === i ? " active" : ""}`}
+                      title={`Zadanie #${q.id}`}
+                      onClick={() => setView({ ...view, quest: i })}
+                    >
+                      {iconOf(file.settings.icons.available)}
+                      {/* Jak zadanie w grze: czerwony pogrubiony tytuł, szary opis, żółty wymóg. */}
                       <span className="ci-item-text">
                         <span className="ci-item-name">
-                          <MinecraftTextPreview text={q.title} emptyLabel="(bez tytułu)" />
+                          <MinecraftTextPreview text={`&c&l${q.title}`} emptyLabel="(bez tytułu)" />
                         </span>
-                        <span className="ci-badges">
-                          <span className="ci-badge">{REQUIREMENT_TYPES.find((t) => t.type === q.requirement.type)?.label.split(" (")[0]}</span>
-                          {q.rewards.length === 0 && <span className="ci-badge warn">brak nagród</span>}
+                        {q.description.map((line, li) => (
+                          <span key={li} className="small">
+                            <MinecraftTextPreview text={`&7${line}`} emptyLabel=" " />
+                          </span>
+                        ))}
+                        <span className="small">
+                          <MinecraftTextPreview text={`&e${requirementText(q.requirement)}`} />
                         </span>
+                        {q.rewards.length === 0 && (
+                          <span className="ci-badges">
+                            <span className="ci-badge warn">brak nagród</span>
+                          </span>
+                        )}
                       </span>
                     </button>
                     {trashButton(`quest:${category.id}:${i}`, `Usuń zadanie #${q.id}`)}
