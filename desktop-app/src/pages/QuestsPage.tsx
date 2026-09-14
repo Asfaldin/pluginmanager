@@ -141,6 +141,8 @@ export default function QuestsPage() {
   const [showCommands, setShowCommands] = useState(false);
   const [layoutEdit, setLayoutEdit] = useState(false);
   const [addRole, setAddRole] = useState<SlotRole>("QUEST_SLOT");
+  // Zwinięta lista zadań w środkowym oknie.
+  const [questsCollapsed, setQuestsCollapsed] = useState(false);
   // Pole z własnym tłem wybrane do zmiany przedmiotu (klik po „Gotowe”).
   const [selectedFiller, setSelectedFiller] = useState<number | null>(null);
   const autoLoadedRef = useRef(false);
@@ -825,8 +827,15 @@ export default function QuestsPage() {
                   )}
                 </span>
               </button>
-              <div className="ci-group">Zadania ({category.quests.length})</div>
-              {category.quests.map((q, i) =>
+              <button
+                type="button"
+                className="ci-group quest-list-toggle"
+                title={questsCollapsed ? "Rozwiń listę zadań" : "Zwiń listę zadań"}
+                onClick={() => setQuestsCollapsed(!questsCollapsed)}
+              >
+                <span className="quest-list-arrow">{questsCollapsed ? "▸" : "▾"}</span> Zadania ({category.quests.length})
+              </button>
+              {!questsCollapsed && category.quests.map((q, i) =>
                 trashConfirm === `quest:${category.id}:${i}` ? (
                   <div key={`${q.id}-${i}`}>{confirmRow(`Usunąć zadanie #${q.id}?`, () => doRemoveQuest(category, i))}</div>
                 ) : (
@@ -841,6 +850,8 @@ export default function QuestsPage() {
                       {/* Jak zadanie w grze: czerwony pogrubiony tytuł, szary opis, żółty wymóg. */}
                       <span className="ci-item-text">
                         <span className="ci-item-name">
+                          {/* Numer zadania - ten sam co w komendach /@quests complete|undo. */}
+                          <span className="quest-num">#{q.id}</span>
                           <MinecraftTextPreview text={`&c&l${q.title}`} emptyLabel="(bez tytułu)" />
                         </span>
                         {q.description.map((line, li) => (
@@ -862,15 +873,17 @@ export default function QuestsPage() {
                   </div>
                 )
               )}
-              <button
-                type="button"
-                onClick={() => {
-                  updateCategory(category.id, { quests: [...category.quests, emptyQuest(nextQuestId(category))] });
-                  setView({ ...view, quest: category.quests.length });
-                }}
-              >
-                + Dodaj zadanie
-              </button>
+              {!questsCollapsed && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateCategory(category.id, { quests: [...category.quests, emptyQuest(nextQuestId(category))] });
+                    setView({ ...view, quest: category.quests.length });
+                  }}
+                >
+                  + Dodaj zadanie
+                </button>
+              )}
             </>
           )}
           {!view && <p className="muted">{profileId ? "Brak kategorii - dodaj pierwszą albo wczytaj szablon." : "Wybierz serwer, żeby wczytać questy."}</p>}

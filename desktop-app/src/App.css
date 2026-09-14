@@ -2606,6 +2606,35 @@ button:disabled:hover {
   }
 }
 
+/* Questy - nagłówek „Zadania (N)” jako przycisk zwijania listy. */
+.quest-list-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.quest-list-toggle:hover {
+  color: var(--text);
+}
+
+.quest-num {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-right: 0.4rem;
+}
+
+.quest-list-arrow {
+  display: inline-block;
+  width: 0.8rem;
+}
+
 /* Questy - „Ikonki, przyciski i tło”: obrazek w polu jak w ekwipunku, obok wybór przedmiotu. */
 .quest-look-row {
   display: flex;
