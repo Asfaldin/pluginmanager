@@ -82,7 +82,7 @@ categories:
     icon:
       item: KNOWLEDGE_BOOK
     description: Zacznij tutaj - zadania po kolei!
-    main-path: true
+    glow: true
     sequential: true
     after: null
     requires-unlock: null
@@ -687,7 +687,7 @@ categories:
     icon:
       item: IRON_PICKAXE
     description: Zadania w kopalni
-    main-path: false
+    glow: false
     sequential: false
     after:
       category: GLOWNA_SCIEZKA
@@ -908,7 +908,7 @@ categories:
     icon:
       item: WHEAT
     description: Zadania rolnicze
-    main-path: false
+    glow: false
     sequential: false
     after:
       category: GLOWNA_SCIEZKA
@@ -1061,7 +1061,7 @@ categories:
     icon:
       item: BOW
     description: Zadania z potworami
-    main-path: false
+    glow: false
     sequential: false
     after:
       category: GLOWNA_SCIEZKA
@@ -1212,7 +1212,7 @@ categories:
     icon:
       item: OAK_LOG
     description: Zadania z drewnem
-    main-path: false
+    glow: false
     sequential: false
     after: null
     requires-unlock: null
@@ -1287,7 +1287,7 @@ categories:
     icon:
       item: FISHING_ROD
     description: Zadania wędkarskie
-    main-path: false
+    glow: false
     sequential: false
     after:
       category: GLOWNA_SCIEZKA
@@ -1456,7 +1456,7 @@ categories:
     icon:
       item: BREWING_STAND
     description: Warzenie mikstur
-    main-path: false
+    glow: false
     sequential: false
     after: null
     requires-unlock: null
@@ -1531,7 +1531,7 @@ categories:
     icon:
       item: COOKED_BEEF
     description: Zadania kulinarne
-    main-path: false
+    glow: false
     sequential: false
     after: null
     requires-unlock: null
@@ -1606,7 +1606,7 @@ categories:
     icon:
       item: BRICKS
     description: Budowa wyspy
-    main-path: false
+    glow: false
     sequential: false
     after: null
     requires-unlock: null
@@ -1681,7 +1681,7 @@ categories:
     icon:
       item: ENCHANTING_TABLE
     description: Zaklęcia
-    main-path: false
+    glow: false
     sequential: false
     after: null
     requires-unlock: null
@@ -1756,7 +1756,7 @@ categories:
     icon:
       item: COMPASS
     description: Eksploracja mapy
-    main-path: false
+    glow: false
     sequential: false
     after: null
     requires-unlock: null
@@ -1831,7 +1831,7 @@ categories:
     icon:
       item: PORKCHOP
     description: Zdobywanie mięsa
-    main-path: false
+    glow: false
     sequential: false
     after: null
     requires-unlock: null
@@ -1906,7 +1906,7 @@ categories:
     icon:
       item: OAK_SAPLING
     description: Sadzenie drzew
-    main-path: false
+    glow: false
     sequential: false
     after: null
     requires-unlock: null
@@ -1981,7 +1981,7 @@ categories:
     icon:
       item: DIAMOND
     description: Cenne kruszce
-    main-path: false
+    glow: false
     sequential: false
     after: null
     requires-unlock: null
@@ -2056,7 +2056,7 @@ categories:
     icon:
       item: GOLD_NUGGET
     description: Kradzież (Zadania)
-    main-path: false
+    glow: false
     sequential: false
     after: null
     requires-unlock: null
@@ -2131,7 +2131,7 @@ categories:
     icon:
       item: REDSTONE
     description: Mechanizmy
-    main-path: false
+    glow: false
     sequential: false
     after: null
     requires-unlock: null
@@ -2206,7 +2206,7 @@ categories:
     icon:
       item: NETHER_STAR
     description: Trudne wyzwania dla weteranów
-    main-path: false
+    glow: false
     sequential: false
     after:
       category: GLOWNA_SCIEZKA

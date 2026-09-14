@@ -59,7 +59,7 @@ for (const [id, c] of Object.entries(old.categories ?? {})) {
     name: line(c["display-name"]),
     icon: { item: c.icon },
     description: c.description ?? "",
-    "main-path": !!c["main-path"],
+    glow: !!c["main-path"],
     sequential: !!c.sequential,
     after: c.unlock ? { category: c.unlock.category, quest: c.unlock["quest-id"] } : null,
     "requires-unlock": null,

@@ -42,7 +42,8 @@ export interface CategoryDef {
   name: string;
   icon: ItemRef;
   description: string;
-  mainPath: boolean;
+  /** Blask na ikonce kategorii w menu. */
+  glow: boolean;
   sequential: boolean;
   after: After | null;
   requiresUnlock: string | null;
@@ -193,7 +194,8 @@ function questOut(q: QuestDef): Obj {
   };
 }
 
-const CATEGORY_KEYS = ["name", "icon", "description", "main-path", "sequential", "after", "requires-unlock", "page-layout", "quests"];
+// main-path: stara nazwa blasku - czytana jak glow i znika z pliku przy zapisie.
+const CATEGORY_KEYS = ["name", "icon", "description", "glow", "main-path", "sequential", "after", "requires-unlock", "page-layout", "quests"];
 
 function parseCategory(id: string, raw: unknown): CategoryDef {
   const c = obj(raw);
@@ -204,7 +206,7 @@ function parseCategory(id: string, raw: unknown): CategoryDef {
     name: c.name != null ? String(c.name) : id,
     icon: c.icon != null ? itemRefFromYaml(c.icon) : { item: "BOOK" },
     description: c.description != null ? String(c.description) : "",
-    mainPath: c["main-path"] === true,
+    glow: c.glow === true || (c.glow == null && c["main-path"] === true),
     sequential: c.sequential === true,
     after: typeof a.category === "string" && typeof a.quest === "number" ? { category: a.category, quest: a.quest } : null,
     requiresUnlock: unlock != null && String(unlock).trim() !== "" ? String(unlock).trim().toLowerCase() : null,
@@ -221,7 +223,7 @@ function categoryOut(c: CategoryDef): Obj {
     name: c.name,
     icon: itemRefToYaml(c.icon),
     description: c.description,
-    "main-path": c.mainPath,
+    glow: c.glow,
     sequential: c.sequential,
     after: c.after ? { category: c.after.category, quest: c.after.quest } : null,
     "requires-unlock": unlock ? unlock : null,
@@ -333,7 +335,7 @@ export function addCategory(f: QuestsFile, id: string, name: string): QuestsFile
     name,
     icon: { item: "BOOK" },
     description: "",
-    mainPath: false,
+    glow: false,
     sequential: false,
     after: null,
     requiresUnlock: null,
@@ -363,9 +365,6 @@ export function moveInList<T>(list: T[], from: number, to: number): T[] {
 /** Ostrzeżenia przed wysłaniem - to, co plugin pominie albo czego gracz nie zobaczy. */
 export function validateQuests(f: QuestsFile): string[] {
   const w: string[] = [];
-  const mains = f.categories.filter((c) => c.mainPath);
-  if (mains.length === 0) w.push("Żadna kategoria nie jest Główną Ścieżką - nie będzie powitania ani przypomnienia.");
-  if (mains.length > 1) w.push(`Kilka kategorii ma „Główna Ścieżka”: ${mains.map((c) => c.id).join(", ")} - liczy się tylko pierwsza.`);
   const slots = f.mainMenu.filter((e) => e.role === "CATEGORY_SLOT").length;
   if (slots < f.categories.length) {
     w.push(`Menu główne ma ${slots} miejsc na kategorie, a kategorii jest ${f.categories.length} - nadmiarowe nie będą widoczne.`);

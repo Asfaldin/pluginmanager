@@ -88,7 +88,7 @@ describe("questsYaml", () => {
     ]);
     expect(f.categories.map((c) => c.id)).toEqual(["main_path", "mining"]);
     const main = f.categories[0];
-    expect(main.mainPath).toBe(true);
+    expect(main.glow).toBe(true); // stare main-path: true = blask
     expect(main.quests[0].description).toEqual(["Hi", "~"]);
     expect(main.quests[0].requirement).toEqual({ type: "free" });
     expect(main.quests[1].requirement).toEqual({ type: "money", amount: 200 });
@@ -148,11 +148,10 @@ describe("questsYaml", () => {
       categories: f.categories.map((c) =>
         c.id === "mining"
           ? { ...c, after: { category: "main_path", quest: 99 }, quests: [{ ...c.quests[0], rewards: [] }, { ...c.quests[0], rewards: [] }] }
-          : { ...c, mainPath: false }
+          : c
       ),
     };
     const w = validateQuests(broken);
-    expect(w).toContain("Żadna kategoria nie jest Główną Ścieżką - nie będzie powitania ani przypomnienia.");
     expect(w).toContain("Kategoria „mining” odblokowuje się po zadaniu #99 z „main_path”, a takiego zadania nie ma.");
     expect(w).toContain("W kategorii „mining” numer zadania #1 się powtarza.");
     expect(w).toContain("Zadanie #1 w „mining” nie daje żadnej nagrody.");

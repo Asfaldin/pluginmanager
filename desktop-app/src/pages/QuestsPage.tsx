@@ -439,6 +439,10 @@ export default function QuestsPage() {
           </label>
           <div className="ci-section-title">Ikona</div>
           <ItemRefPicker value={c.icon} onChange={(r) => updateCategory(c.id, { icon: r })} materials={allMaterials} customIds={customIds} />
+          <label className="checkbox">
+            <input type="checkbox" checked={c.glow} onChange={(e) => updateCategory(c.id, { glow: e.target.checked })} />
+            Blask na ikonce (ikonka mieni się jak zaklęty przedmiot)
+          </label>
         </Fold>
         <Fold title="Zasady">
           <label className="checkbox">
