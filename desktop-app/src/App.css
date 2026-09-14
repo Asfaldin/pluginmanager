@@ -2627,7 +2627,9 @@ button:disabled:hover {
   color: var(--text-muted);
   font-size: 0.8rem;
   font-weight: 600;
-  margin-right: 0.4rem;
+  min-width: 1.8rem;
+  flex-shrink: 0;
+  text-align: right;
 }
 
 .quest-list-arrow {

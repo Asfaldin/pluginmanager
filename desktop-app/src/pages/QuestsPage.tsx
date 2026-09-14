@@ -846,12 +846,12 @@ export default function QuestsPage() {
                       title={`Zadanie #${q.id}`}
                       onClick={() => setView({ ...view, quest: i })}
                     >
+                      {/* Numer zadania - ten sam co w komendach /@quests complete|undo. */}
+                      <span className="quest-num">#{q.id}</span>
                       {iconOf(lookOf(file, category).icons.available)}
                       {/* Jak zadanie w grze: czerwony pogrubiony tytuł, szary opis, żółty wymóg. */}
                       <span className="ci-item-text">
                         <span className="ci-item-name">
-                          {/* Numer zadania - ten sam co w komendach /@quests complete|undo. */}
-                          <span className="quest-num">#{q.id}</span>
                           <MinecraftTextPreview text={`&c&l${q.title}`} emptyLabel="(bez tytułu)" />
                         </span>
                         {q.description.map((line, li) => (
