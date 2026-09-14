@@ -795,9 +795,7 @@ export default function QuestsPage() {
           <button type="button" onClick={newCategory} disabled={!profileId}>
             + Nowa kategoria
           </button>
-          <div className="ci-section-title" style={{ marginTop: "1rem" }}>
-            Ogólne
-          </div>
+          <div style={{ marginTop: "1rem" }} />
           {generalButton("menu", "Menu główne")}
           {/* Tytuły przejdą do pluginu Rang - do tego czasu zablokowane (dalej działają w grze z quests.yml). */}
           <button type="button" className="ci-cat" disabled title="Tytuły przeniesiemy na stronę Rang">
