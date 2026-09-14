@@ -143,8 +143,7 @@ export default function QuestsPage() {
   const [showCommands, setShowCommands] = useState(false);
   const [layoutEdit, setLayoutEdit] = useState(false);
   const [addRole, setAddRole] = useState<SlotRole>("QUEST_SLOT");
-  // Własne tło menu: przedmiot dla nowo dodawanych pól i pole wybrane do zmiany.
-  const [fillerMaterial, setFillerMaterial] = useState("GRAY_STAINED_GLASS_PANE");
+  // Pole z własnym tłem wybrane do zmiany przedmiotu (klik po „Gotowe”).
   const [selectedFiller, setSelectedFiller] = useState<number | null>(null);
   const autoLoadedRef = useRef(false);
   const { iconPackDir, allMaterials } = useIconPack(setStatus);
@@ -372,7 +371,6 @@ export default function QuestsPage() {
                   </option>
                 ))}
               </select>
-              {role === "FILLER" && materialInput(fillerMaterial, setFillerMaterial)}
               <span className="muted small">Przytrzymaj pole i przeciągnij je w inne miejsce.</span>
             </>
           )}
@@ -387,7 +385,7 @@ export default function QuestsPage() {
           onMoveSlot={(from, to) =>
             onChange(layout.map((e) => (e.slot === from ? { ...e, slot: to } : e.slot === to ? { ...e, slot: from } : e)))
           }
-          onAddSlot={(slot) => onChange([...layout, role === "FILLER" ? { slot, role, item: fillerMaterial } : { slot, role }])}
+          onAddSlot={(slot) => onChange([...layout, role === "FILLER" ? { slot, role, item: "GRAY_STAINED_GLASS_PANE" } : { slot, role }])}
           onRemoveSlot={(slot) => onChange(layout.filter((e) => e.slot !== slot))}
         />
         {!layoutEdit && selectedFiller !== null && layout.some((e) => e.slot === selectedFiller && e.role === "FILLER") && (
