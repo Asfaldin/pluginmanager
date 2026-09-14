@@ -17,7 +17,6 @@ import {
   Skull,
   Sparkles,
   Store,
-  Trophy,
   Tv,
   Wrench,
   Zap,
@@ -29,7 +28,6 @@ import {
 // komponentu. Używane jako ikona nagłówka na PluginDetailPage.tsx.
 export const PLUGIN_ICONS: Record<string, LucideIcon> = {
   core: Puzzle,
-  advancements: Trophy,
   chatfilter: MessageSquare,
   crates: Gift,
   dungeons: Skull,
@@ -57,7 +55,6 @@ export const PACKAGE_ICON: LucideIcon = Package;
 /** Czytelna nazwa per id pluginu (te same id co PLUGIN_ICONS i embedded_jars.rs). */
 export const PLUGIN_LABELS: Record<string, string> = {
   core: "Core (wspólne API + licencje)",
-  advancements: "Osiągnięcia",
   chatfilter: "Filtr czatu",
   crates: "Skrzynki",
   dungeons: "Loch i boss",

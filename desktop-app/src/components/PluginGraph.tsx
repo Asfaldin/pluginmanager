@@ -14,7 +14,6 @@ import {
   Skull,
   Sparkles,
   Store,
-  Trophy,
   Tv,
   Wrench,
   Zap,
@@ -40,7 +39,6 @@ interface GraphNode {
 const CORE: GraphNode = { id: "core", label: "Core", icon: Puzzle };
 
 const DEPENDENTS: GraphNode[] = [
-  { id: "advancements", label: "Advancements", icon: Trophy },
   { id: "chatfilter", label: "Chat Filter", icon: MessageSquare },
   { id: "crates", label: "Crates", icon: Gift },
   { id: "dungeons", label: "Dungeons", icon: Skull },

@@ -15,7 +15,6 @@ macro_rules! jar_entry {
 }
 
 const JARS: &[(&str, &str, &[u8])] = &[
-    jar_entry!("advancements", "mainplugins-advancements-1.0-SNAPSHOT.jar"),
     jar_entry!("announcer", "mainplugins-announcer-1.0-SNAPSHOT.jar"),
     jar_entry!("chatfilter", "mainplugins-chatfilter-1.0-SNAPSHOT.jar"),
     jar_entry!("core", "mainplugins-core-1.0-SNAPSHOT.jar"),
@@ -82,11 +81,12 @@ mod tests {
     }
 
     #[test]
-    fn all_21_jars_are_findable() {
-        for id in ["advancements","announcer","chatfilter","core","crates","dungeons","farming","fishing","generators","hud","market","menu","quests","ranks","redstone","shop","skyblock","spawn","spawners","teleport","tools"] {
+    fn all_20_jars_are_findable() {
+        for id in ["announcer","chatfilter","core","crates","dungeons","farming","fishing","generators","hud","market","menu","quests","ranks","redstone","shop","skyblock","spawn","spawners","teleport","tools"] {
             assert!(jar_bytes(id).is_some(), "missing jar for {id}");
             assert!(jar_filename(id).is_some(), "missing filename for {id}");
         }
         assert!(jar_bytes("nonexistent-plugin").is_none());
+        assert!(jar_bytes("advancements").is_none(), "advancements plugin was removed");
     }
 }

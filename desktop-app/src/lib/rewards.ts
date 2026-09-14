@@ -1,5 +1,5 @@
 // Wspólny format nagród (fundament, RewardService w core): lista "rewards:" w każdym configu.
-// Ten sam model w każdym edytorze aplikacji (Skrzynki, Questy, później Osiągnięcia).
+// Ten sam model w każdym edytorze aplikacji (Skrzynki, Questy, później kolejne pluginy).
 
 export type RewardType = "money" | "item" | "custom" | "command" | "crate" | "key" | "title" | "unlock";
 
