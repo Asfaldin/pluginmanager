@@ -206,8 +206,6 @@ describe("quest templates", () => {
     expect(pl[0].text).toBe(QUEST_TEMPLATES[1].text);
     expect(en[0].text).toBe(QUEST_TEMPLATES[0].text);
     expect(en[1].text).toBe(QUEST_TEMPLATES[2].text);
-    expect(en[1].label).toContain("po polsku");
-    expect(pl[1].label).not.toContain("po polsku");
   });
 
   it("big template: 17 categories, only the 4 simple requirement types, kowal unlock on #16", () => {

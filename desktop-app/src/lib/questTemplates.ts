@@ -22,6 +22,6 @@ export function templateFor(language: string): string {
 export function templateChoices(language: string): { id: "small" | "big"; label: string; text: string }[] {
   return [
     { id: "small", label: "Mały - 6 kategorii, 35 zadań", text: templateFor(language) },
-    { id: "big", label: `Duży - 17 kategorii${language === "pl" ? "" : " (na razie po polsku)"}`, text: bigPl },
+    { id: "big", label: "Duży - 17 kategorii", text: bigPl },
   ];
 }
