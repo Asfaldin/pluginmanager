@@ -736,8 +736,11 @@ export default function QuestsPage() {
             Ogólne
           </div>
           {generalButton("menu", "Menu główne")}
-          {generalButton("titles", "Tytuły na czacie")}
           {generalButton("look", "Wygląd i zachowanie")}
+          {/* Tytuły przejdą do pluginu Rang - do tego czasu zablokowane (dalej działają w grze z quests.yml). */}
+          <button type="button" className="ci-cat" disabled title="Tytuły przeniesiemy na stronę Rang">
+            <span className="muted">Tytuły na czacie (wkrótce w Rangach)</span>
+          </button>
         </aside>
 
         <section className="card ci-list">
