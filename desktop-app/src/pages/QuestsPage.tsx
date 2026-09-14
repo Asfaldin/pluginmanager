@@ -635,7 +635,13 @@ export default function QuestsPage() {
     return (
       <div key={label}>
         <div className="ci-section-title">{label}</div>
-        <ItemRefPicker value={value} onChange={onChange} materials={allMaterials} customIds={customIds} />
+        <div className="quest-look-row">
+          {/* Podgląd, jak przedmiot wygląda w grze - w polu jak w ekwipunku. */}
+          <span className="quest-look-icon">{iconOf(value)}</span>
+          <div className="quest-look-picker">
+            <ItemRefPicker value={value} onChange={onChange} materials={allMaterials} customIds={customIds} />
+          </div>
+        </div>
       </div>
     );
   }

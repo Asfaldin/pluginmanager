@@ -50,10 +50,15 @@ export function textureRelPathsForMaterial(material: string): string[] {
   const paths = [
     `assets/minecraft/textures/item/${lower}.png`,
     `assets/minecraft/textures/block/${lower}.png`,
+  ];
+  // Szybki nie mają własnej tekstury przedmiotu - w ekwipunku wyglądają jak całe szkło w tym kolorze
+  // (bez tego łapało się *_pane_top.png, czyli sama cienka krawędź).
+  if (lower.endsWith("_pane")) paths.push(`assets/minecraft/textures/block/${lower.slice(0, -"_pane".length)}.png`);
+  paths.push(
     `assets/minecraft/textures/block/${lower}_top.png`,
     `assets/minecraft/textures/block/${lower}_front.png`,
     `assets/minecraft/textures/block/${lower}_side.png`,
-  ];
+  );
   const exception = MATERIAL_NAME_EXCEPTIONS[material];
   if (exception) {
     paths.push(`assets/minecraft/textures/item/${exception}.png`, `assets/minecraft/textures/block/${exception}.png`);
