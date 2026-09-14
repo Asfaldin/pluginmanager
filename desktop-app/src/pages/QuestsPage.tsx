@@ -15,7 +15,7 @@ import { idFromName, parseCratesYaml } from "../lib/cratesYaml";
 import { loadItemCatalog } from "../lib/itemCatalogRemote";
 import type { ItemRef } from "../lib/itemRef";
 import { conventionalRoleIcon } from "../lib/materialIcons";
-import { QUEST_TEMPLATES, templateFor } from "../lib/questTemplates";
+import { templateChoices, templateFor } from "../lib/questTemplates";
 import {
   addCategory,
   copyLook,
@@ -133,6 +133,8 @@ export default function QuestsPage() {
   const [crateIds, setCrateIds] = useState<string[]>([]);
   const [keyIds, setKeyIds] = useState<string[]>([]);
   const [status, setStatus] = useState<string | null>(null);
+  // Język serwera (core config.yml) - od niego zależy język szablonów.
+  const [language, setLanguage] = useState("en");
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [trashConfirm, setTrashConfirm] = useState<string | null>(null);
@@ -165,6 +167,7 @@ export default function QuestsPage() {
     } catch {
       // brak configu core - zostaje angielski
     }
+    setLanguage(language);
     try {
       const parsed = parseQuestsYaml(await sftpReadFile(pid, questsPath(path)));
       setFile(parsed);
@@ -249,7 +252,7 @@ export default function QuestsPage() {
   }
 
   function loadTemplate(id: string) {
-    const t = QUEST_TEMPLATES.find((x) => x.id === id);
+    const t = templateChoices(language).find((x) => x.id === id);
     if (!t) return;
     if (!window.confirm(`Wczytać szablon „${t.label}”? Questy w edytorze zostaną zastąpione (na serwerze nic się nie zmieni, dopóki nie wyślesz).`)) return;
     const f = parseQuestsYaml(t.text);
@@ -739,7 +742,7 @@ export default function QuestsPage() {
         </button>
         <select value="" onChange={(e) => loadTemplate(e.target.value)} disabled={!profileId} title="Gotowe zestawy questów">
           <option value="">Wczytaj szablon...</option>
-          {QUEST_TEMPLATES.map((t) => (
+          {templateChoices(language).map((t) => (
             <option key={t.id} value={t.id}>
               {t.label}
             </option>

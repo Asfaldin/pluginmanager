@@ -14,3 +14,14 @@ export const QUEST_TEMPLATES: { id: "small-en" | "small-pl" | "big-pl"; label: s
 export function templateFor(language: string): string {
   return language === "pl" ? smallPl : smallEn;
 }
+
+/**
+ * Wybór w aplikacji: dwa szablony, język według serwera. Duży jest na razie tylko po polsku
+ * (tłumaczenie na angielski - zadanie na później).
+ */
+export function templateChoices(language: string): { id: "small" | "big"; label: string; text: string }[] {
+  return [
+    { id: "small", label: "Mały - 6 kategorii, 35 zadań", text: templateFor(language) },
+    { id: "big", label: `Duży - 17 kategorii${language === "pl" ? "" : " (na razie po polsku)"}`, text: bigPl },
+  ];
+}

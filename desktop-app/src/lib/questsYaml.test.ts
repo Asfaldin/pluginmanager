@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { QUEST_TEMPLATES, templateFor } from "./questTemplates";
+import { QUEST_TEMPLATES, templateChoices, templateFor } from "./questTemplates";
 import {
   addCategory,
   copyLook,
@@ -197,6 +197,17 @@ describe("quest templates", () => {
     }
     expect(templateFor("pl")).toBe(QUEST_TEMPLATES[1].text);
     expect(templateFor("en")).toBe(QUEST_TEMPLATES[0].text);
+  });
+
+  it("choices in the app: small follows the server language, big is Polish for now", () => {
+    const pl = templateChoices("pl");
+    const en = templateChoices("en");
+    expect(pl.map((t) => t.id)).toEqual(["small", "big"]);
+    expect(pl[0].text).toBe(QUEST_TEMPLATES[1].text);
+    expect(en[0].text).toBe(QUEST_TEMPLATES[0].text);
+    expect(en[1].text).toBe(QUEST_TEMPLATES[2].text);
+    expect(en[1].label).toContain("po polsku");
+    expect(pl[1].label).not.toContain("po polsku");
   });
 
   it("big template: 17 categories, only the 4 simple requirement types, kowal unlock on #16", () => {
