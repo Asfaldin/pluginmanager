@@ -345,11 +345,11 @@ export default function QuestsPage() {
             </select>
           )}
         </div>
-        <p className="muted small">
-          {mode === "menu"
-            ? "Kategorie trafiają na „Miejsca na kategorię” po kolei - tak jak na liście po lewej."
-            : "Zadania trafiają na „Miejsca na zadanie” po kolei. Gdy zadań jest więcej niż miejsc, gra robi kolejne strony (przyciski strzałek)."}
-        </p>
+        {mode === "page" && (
+          <p className="muted small">
+            Zadania trafiają na „Miejsca na zadanie” po kolei. Gdy zadań jest więcej niż miejsc, gra robi kolejne strony (przyciski strzałek).
+          </p>
+        )}
       </>
     );
   }
