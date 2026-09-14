@@ -1,0 +1,2351 @@
+# Szablon: pełne questy naszego serwera (17 kategorii) - po polsku.
+settings:
+  join-reminder: true
+  welcome-sound: mainplugins:quest_welcome
+  filler:
+    item: BLACK_STAINED_GLASS_PANE
+  icons:
+    available:
+      item: RED_DYE
+    completed:
+      item: LIME_DYE
+    locked:
+      item: GRAY_DYE
+    category-locked:
+      item: GRAY_DYE
+    category-empty:
+      item: BARRIER
+  buttons:
+    back:
+      item: DARK_OAK_DOOR
+    prev:
+      item: ARROW
+    next:
+      item: ARROW
+main-menu:
+  layout:
+    - slot: 22
+      role: CATEGORY_SLOT
+    - slot: 31
+      role: CATEGORY_SLOT
+    - slot: 49
+      role: CATEGORY_SLOT
+    - slot: 40
+      role: CATEGORY_SLOT
+    - slot: 13
+      role: CATEGORY_SLOT
+    - slot: 21
+      role: CATEGORY_SLOT
+    - slot: 11
+      role: CATEGORY_SLOT
+    - slot: 29
+      role: CATEGORY_SLOT
+    - slot: 19
+      role: CATEGORY_SLOT
+    - slot: 28
+      role: CATEGORY_SLOT
+    - slot: 37
+      role: CATEGORY_SLOT
+    - slot: 23
+      role: CATEGORY_SLOT
+    - slot: 15
+      role: CATEGORY_SLOT
+    - slot: 33
+      role: CATEGORY_SLOT
+    - slot: 25
+      role: CATEGORY_SLOT
+    - slot: 34
+      role: CATEGORY_SLOT
+    - slot: 43
+      role: CATEGORY_SLOT
+category-order:
+  - GLOWNA_SCIEZKA
+  - GORNICTWO
+  - HODOWLA
+  - LOWCA
+  - DRWAL
+  - RYBAK
+  - ALCHEMIK
+  - KUCHARZ
+  - BUDOWNICZY
+  - MAG
+  - ODKRYWCA
+  - RZEZNIK
+  - OGRODNIK
+  - JUBILER
+  - ZLODZIEJ
+  - INZYNIER
+  - QUESTY_SPECJALNE
+titles:
+  POCZATKUJACY: '&7&l[Początkujący] '
+categories:
+  GLOWNA_SCIEZKA:
+    name: Główna Ścieżka
+    icon:
+      item: KNOWLEDGE_BOOK
+    description: Zacznij tutaj - zadania po kolei!
+    main-path: true
+    sequential: true
+    after: null
+    requires-unlock: null
+    page-layout:
+      - slot: 0
+        role: QUEST_SLOT
+      - slot: 1
+        role: QUEST_SLOT
+      - slot: 2
+        role: QUEST_SLOT
+      - slot: 3
+        role: QUEST_SLOT
+      - slot: 4
+        role: QUEST_SLOT
+      - slot: 5
+        role: QUEST_SLOT
+      - slot: 6
+        role: QUEST_SLOT
+      - slot: 7
+        role: QUEST_SLOT
+      - slot: 8
+        role: QUEST_SLOT
+      - slot: 17
+        role: QUEST_SLOT
+      - slot: 26
+        role: QUEST_SLOT
+      - slot: 23
+        role: QUEST_SLOT
+      - slot: 22
+        role: QUEST_SLOT
+      - slot: 25
+        role: QUEST_SLOT
+      - slot: 24
+        role: QUEST_SLOT
+      - slot: 21
+        role: QUEST_SLOT
+      - slot: 19
+        role: QUEST_SLOT
+      - slot: 18
+        role: QUEST_SLOT
+      - slot: 20
+        role: QUEST_SLOT
+      - slot: 27
+        role: QUEST_SLOT
+      - slot: 36
+        role: QUEST_SLOT
+      - slot: 37
+        role: QUEST_SLOT
+      - slot: 38
+        role: QUEST_SLOT
+      - slot: 39
+        role: QUEST_SLOT
+      - slot: 40
+        role: QUEST_SLOT
+      - slot: 42
+        role: QUEST_SLOT
+      - slot: 41
+        role: QUEST_SLOT
+      - slot: 44
+        role: QUEST_SLOT
+      - slot: 43
+        role: QUEST_SLOT
+      - slot: 45
+        role: NAV_PREV
+      - slot: 49
+        role: NAV_BACK
+      - slot: 53
+        role: NAV_NEXT
+    quests:
+      - id: 1
+        title: Witaj na Wyspie
+        description:
+          - Twoja przygoda właśnie się zaczyna - odbierz swój pierwszy kilof.
+        requirement:
+          type: free
+        rewards:
+          - item: IRON_PICKAXE
+        reward-label: 1x Kilof Wydajnościowy
+      - id: 2
+        title: Zaczynamy
+        description:
+          - Wykop kilofem wystarczająco dużo, by zdobyć swój pierwszy poziom.
+        requirement:
+          type: items
+          items:
+            - item: COBBLESTONE
+              amount: 64
+        rewards:
+          - item: DIRT
+            amount: 16
+        reward-label: 16x Ziemia
+      - id: 3
+        title: Kamienny Fundament
+        description:
+          - Zbierz stack kamienia - podwaliny pod całą resztę wyspy.
+        requirement:
+          type: items
+          items:
+            - item: COBBLESTONE
+              amount: 64
+        rewards:
+          - item: BONE_MEAL
+            amount: 20
+          - item: BIRCH_SAPLING
+        reward-label: 20x Mączka Kostna + Sadzonka Brzozy
+      - id: 4
+        title: Drwal i Siewca
+        description:
+          - Zbierz drewno dębowe i sadzonki brzozy na rozbudowę bazy.
+        requirement:
+          type: items
+          items:
+            - item: OAK_LOG
+              amount: 8
+            - item: BIRCH_SAPLING
+              amount: 6
+        rewards:
+          - item: IRON_AXE
+        reward-label: 1x Ewoluująca Siekiera
+      - id: 5
+        title: Rozpal Ognisko
+        description:
+          - Zbierz węgiel z kopalni i węgiel drzewny z paleniska.
+        requirement:
+          type: items
+          items:
+            - item: COAL
+              amount: 5
+            - item: CHARCOAL
+              amount: 5
+        rewards:
+          - item: CARROT
+            amount: 2
+          - item: MELON_SEEDS
+            amount: 4
+        reward-label: 2x Marchewka + 4x Nasiona Arbuza
+      - id: 6
+        title: Rolniczy Krok
+        description:
+          - Stwórz kamienną motykę - to sygnał, że jesteś gotowy na prawdziwe pole.
+        requirement:
+          type: have-item
+          item:
+            item: STONE_HOE
+        rewards:
+          - item: IRON_HOE
+        reward-label: 1x Ewoluująca Motyka
+      - id: 7
+        title: Plony Wyspy
+        description:
+          - Zbierz pierwsze duże zbiory - arbuza, pszenicy i marchewki.
+        requirement:
+          type: items
+          items:
+            - item: MELON_SLICE
+              amount: 16
+            - item: WHEAT
+              amount: 16
+            - item: CARROT
+              amount: 16
+        rewards:
+          - money: 200
+      - id: 8
+        title: Ciacho na Szczęście
+        description:
+          - Upiecz i zdobądź ciastka - drobna nagroda za słodki gest.
+        requirement:
+          type: items
+          items:
+            - item: COOKIE
+              amount: 32
+        rewards:
+          - crate: basic
+            fallback:
+              - item: CHEST
+        reward-label: Podstawowa Skrzynka + Klucz (słaby drop)
+      - id: 9
+        title: Pierwszy Loch
+        description:
+          - Udaj się do lochu (/tpdun) i pokonaj Władcę Lochu.
+          - Przynieś dowód zwycięstwa - jego serce wciąż bije.
+        requirement:
+          type: items
+          items:
+            - custom: DUNGEON_TROFEUM_WLADCA_LOCHU
+              amount: 1
+        rewards:
+          - item: IRON_SWORD
+        reward-label: 1x Ewoluujący Miecz
+      - id: 10
+        title: Egzamin Początkującego
+        description:
+          - Sprzedaj dowód stoczonych walk z nieumarłymi.
+          - Kamień milowy - pierwszy etap za Tobą!
+        requirement:
+          type: items
+          items:
+            - item: ROTTEN_FLESH
+              amount: 5
+        rewards:
+          - custom: TROFEUM_GLOWA_POCZATKUJACEGO
+          - title: POCZATKUJACY
+        reward-label: 'Trofeum: Głowa Początkującego + Tytuł'
+      - id: 11
+        title: Piaskowy Mozół
+        description:
+          - Zbierz piasek i żwir ręcznie - żmudne zajęcie.
+          - Na szczęście istnieje na to lepszy sposób...
+        requirement:
+          type: items
+          items:
+            - item: SAND
+              amount: 64
+            - item: GRAVEL
+              amount: 64
+        rewards:
+          - custom: GENERATOR_KRUCHY_T1
+          - custom: GENERATOR_KRUCHY_PRZEWODNIK
+        reward-label: 1x Generator Kruchych Surowców + Przewodnik
+      - id: 12
+        title: Zbrojmistrz
+        description:
+          - Wbij swojej siekierze 15 poziom.
+        requirement:
+          type: items
+          items:
+            - item: OAK_LOG
+              amount: 480
+        rewards:
+          - item: IRON_CHESTPLATE
+        reward-label: 1x Żelazny Napierśnik
+      - id: 13
+        title: Nad Wodą
+        description:
+          - Twoja wyspa stoi już na solidnych nogach - czas na hobby.
+          - Zbierz wodorosty rosnące przy brzegu.
+        requirement:
+          type: items
+          items:
+            - item: KELP
+              amount: 32
+        rewards:
+          - item: TORCHFLOWER_SEEDS
+            amount: 8
+        reward-label: 8x Nasiona Kwiatu Pochodni
+      - id: 14
+        title: Pierwsze Zakupy
+        description:
+          - Zgromadź szmaragdy na zakupy w sklepie w gwieździe.
+        requirement:
+          type: items
+          items:
+            - item: EMERALD
+              amount: 10
+        rewards:
+          - item: EXPERIENCE_BOTTLE
+            amount: 10
+        reward-label: 10x Butelka Doświadczenia
+      - id: 15
+        title: Prąd w Ścianach
+        description:
+          - Zbierz redstone pod pierwsze mechanizmy.
+        requirement:
+          type: items
+          items:
+            - item: REDSTONE
+              amount: 32
+        rewards:
+          - item: PISTON
+            amount: 8
+        reward-label: 8x Tłok
+      - id: 16
+        title: Kowal Wyspy
+        description:
+          - Zbierz lapis lazuli na zapłatę dla kowala.
+          - Odblokowuje /warp kowal!
+        requirement:
+          type: items
+          items:
+            - item: LAPIS_LAZULI
+              amount: 32
+        rewards:
+          - item: ANVIL
+          - unlock: kowal
+        reward-label: 1x Kowadło + odblokowanie /warp kowal
+      - id: 17
+        title: Skarbnik
+        description:
+          - Wpłać spory depozyt do banku wyspy.
+        requirement:
+          type: money
+          amount: 5000
+        rewards:
+          - item: GOLD_INGOT
+            amount: 10
+        reward-label: 10x Sztabka Złota (odsetki)
+      - id: 18
+        title: Pierwsza Inwestycja
+        description:
+          - Zainwestuj w prawdziwą infrastrukturę wyspy.
+          - Ten sam Generator Bruku, co w sklepie - tu zdobędziesz go quest'owo.
+        requirement:
+          type: money
+          amount: 8000
+        rewards:
+          - custom: GENERATOR_BRUK_T1
+          - crate: basic
+            fallback:
+              - money: 500
+            silent: true
+        reward-label: 1x Generator Bruku
+      - id: 19
+        title: Kupiec Wyspy
+        description:
+          - Wystaw dowolny przedmiot na Targu (/targ wystaw <cena>).
+          - Ekonomia wyspy to nie tylko sklep w gwieździe.
+        requirement:
+          type: items
+          items:
+            - item: EMERALD
+              amount: 1
+        rewards:
+          - item: DIAMOND
+        reward-label: 1x Diament
+      - id: 20
+        title: Filar Wyspy
+        description:
+          - Udowodnij, że Twoja wyspa stoi na solidnych fundamentach.
+          - Kamień milowy - połowa ścieżki za Tobą!
+        requirement:
+          type: items
+          items:
+            - item: DIAMOND
+              amount: 32
+        rewards:
+          - custom: TROFEUM_GLOWA_GORNIKA
+          - crate: basic
+            fallback:
+              - money: 500
+            silent: true
+        reward-label: 'Trofeum: Głowa Górnika'
+      - id: 21
+        title: Diamentowa Żyła
+        description:
+          - Wbij swojemu kilofowi 30 poziom.
+        requirement:
+          type: items
+          items:
+            - item: COBBLESTONE
+              amount: 1920
+        rewards:
+          - item: DIAMOND_BLOCK
+        reward-label: 1x Blok Diamentu
+      - id: 22
+        title: Obsydianowy Mur
+        description:
+          - Zbierz obsydian pod portal do Netheru.
+        requirement:
+          type: items
+          items:
+            - item: OBSIDIAN
+              amount: 10
+        rewards:
+          - item: FLINT_AND_STEEL
+        reward-label: 1x Krzesiwo
+      - id: 23
+        title: Za Bramą
+        description:
+          - Wejdź do Netheru i zbierz netherrack.
+        requirement:
+          type: items
+          items:
+            - item: NETHERRACK
+              amount: 16
+        rewards:
+          - item: SOUL_TORCH
+            amount: 16
+        reward-label: 16x Duszowa Pochodnia
+      - id: 24
+        title: Łowca Blaze'ów
+        description:
+          - Zapoluj na blaze w Netherowej twierdzy.
+        requirement:
+          type: items
+          items:
+            - item: BLAZE_ROD
+              amount: 8
+        rewards:
+          - money: 1500
+      - id: 25
+        title: Dusza Netheru
+        description:
+          - Zbierz duszowy piasek z Netheru.
+        requirement:
+          type: items
+          items:
+            - item: SOUL_SAND
+              amount: 32
+        rewards:
+          - item: SOUL_LANTERN
+        reward-label: 1x Duszowa Latarnia
+      - id: 26
+        title: Kwarcowy Górnik
+        description:
+          - Wydobądź kwarc netherowy.
+        requirement:
+          type: items
+          items:
+            - item: QUARTZ
+              amount: 32
+        rewards:
+          - item: GLOWSTONE_DUST
+            amount: 16
+        reward-label: 16x Blask Poświaty
+      - id: 27
+        title: Pogromca Ghastów
+        description:
+          - Zapoluj na ghasty i zbierz ich łzy.
+        requirement:
+          type: items
+          items:
+            - item: GHAST_TEAR
+              amount: 4
+        rewards:
+          - item: FIRE_CHARGE
+            amount: 8
+        reward-label: 8x Ognista Kula
+      - id: 28
+        title: Netherytowy Traker
+        description:
+          - Znajdź złom netherytu w głębi Netheru.
+        requirement:
+          type: items
+          items:
+            - item: NETHERITE_SCRAP
+              amount: 4
+        rewards:
+          - item: GOLD_INGOT
+            amount: 4
+        reward-label: 4x Sztabka Złota
+      - id: 29
+        title: Kowal Netherytu
+        description:
+          - Wykuj pierwszą sztabkę netherytu w kuźni.
+        requirement:
+          type: items
+          items:
+            - item: NETHERITE_INGOT
+              amount: 1
+        rewards:
+          - item: NETHERITE_UPGRADE_SMITHING_TEMPLATE
+        reward-label: 1x Szablon Kowalski
+      - id: 30
+        title: Pogromca Netheru
+        description:
+          - Wróć żywy z Netheru z mieczem wbitym na 50 poziom.
+          - Kamień milowy - Nether zdobyty!
+        requirement:
+          type: items
+          items:
+            - item: ROTTEN_FLESH
+              amount: 800
+        rewards:
+          - custom: TROFEUM_GLOWA_WOJOWNIKA_NETHERU
+          - crate: abyss
+            fallback:
+              - money: 500
+            silent: true
+        reward-label: 'Trofeum: Głowa Wojownika Netheru'
+      - id: 31
+        title: Netherytowy Rycerz
+        description:
+          - Wbij swojemu kilofowi 60 poziom.
+        requirement:
+          type: items
+          items:
+            - item: COBBLESTONE
+              amount: 3840
+        rewards:
+          - item: PHANTOM_MEMBRANE
+            amount: 4
+        reward-label: 4x Błona Fantoma
+      - id: 32
+        title: Brama do Endu
+        description:
+          - Zgromadź perły endermana na oczy endera.
+        requirement:
+          type: items
+          items:
+            - item: ENDER_PEARL
+              amount: 12
+        rewards:
+          - item: ENDER_EYE
+            amount: 4
+        reward-label: 4x Oko Endera
+      - id: 33
+        title: Purpurowy Architekt
+        description:
+          - Zbierz purpurowe bloki z miast Endu.
+        requirement:
+          type: items
+          items:
+            - item: PURPUR_BLOCK
+              amount: 32
+        rewards:
+          - item: END_ROD
+            amount: 8
+        reward-label: 8x Pręt Endu
+      - id: 34
+        title: Owoc Chorusu
+        description:
+          - Zbierz owoce chorusu w Endzie.
+        requirement:
+          type: items
+          items:
+            - item: CHORUS_FRUIT
+              amount: 32
+        rewards:
+          - item: EXPERIENCE_BOTTLE
+            amount: 24
+        reward-label: 24x Butelka Doświadczenia
+      - id: 35
+        title: Łowca Shulkerów
+        description:
+          - Pokonaj shulkery w miastach Endu.
+        requirement:
+          type: items
+          items:
+            - item: SHULKER_SHELL
+              amount: 4
+        rewards:
+          - item: SHULKER_BOX
+        reward-label: 1x Shulker Box
+      - id: 36
+        title: Skrzydła Wolności
+        description:
+          - Zbierz błony fantomów na coś specjalnego.
+        requirement:
+          type: items
+          items:
+            - item: PHANTOM_MEMBRANE
+              amount: 4
+        rewards:
+          - item: ELYTRA
+        reward-label: 1x Elytra
+      - id: 37
+        title: Ostatni Krok
+        description:
+          - Przygotuj się na finałową walkę - zbierz złote marchewki.
+        requirement:
+          type: items
+          items:
+            - item: GOLDEN_CARROT
+              amount: 16
+        rewards:
+          - item: GOLDEN_APPLE
+            amount: 4
+        reward-label: 4x Złote Jabłko
+      - id: 38
+        title: Smoczy Oddech
+        description:
+          - Zbierz oddech smoka podczas walki z Enderdragonem.
+        requirement:
+          type: items
+          items:
+            - item: DRAGON_BREATH
+              amount: 8
+        rewards:
+          - item: NETHER_STAR
+        reward-label: 1x Gwiazda Netheru
+      - id: 39
+        title: Mistrz Farmera
+        description:
+          - Udowodnij, że Twoja farma stoi na najwyższym poziomie.
+        requirement:
+          type: items
+          items:
+            - item: MELON_SLICE
+              amount: 64
+        rewards:
+          - item: ENCHANTED_GOLDEN_APPLE
+        reward-label: 1x Notch Apple
+      - id: 40
+        title: Mistrz Wyspy
+        description:
+          - Oddaj zdobytą Gwiazdę Netheru i ukończ ścieżkę!
+        requirement:
+          type: items
+          items:
+            - item: NETHER_STAR
+              amount: 1
+        rewards:
+          - custom: TROFEUM_GLOWA_SMOKA
+          - item: BEACON
+          - crate: darkstar
+            fallback:
+              - money: 500
+            silent: true
+        reward-label: 'Trofeum: Głowa Smoka + Beacon'
+  GORNICTWO:
+    name: Górnictwo
+    icon:
+      item: IRON_PICKAXE
+    description: Zadania w kopalni
+    main-path: false
+    sequential: false
+    after:
+      category: GLOWNA_SCIEZKA
+      quest: 3
+    requires-unlock: null
+    page-layout:
+      - slot: 0
+        role: QUEST_SLOT
+      - slot: 1
+        role: QUEST_SLOT
+      - slot: 2
+        role: QUEST_SLOT
+      - slot: 3
+        role: QUEST_SLOT
+      - slot: 4
+        role: QUEST_SLOT
+      - slot: 5
+        role: QUEST_SLOT
+      - slot: 6
+        role: QUEST_SLOT
+      - slot: 7
+        role: QUEST_SLOT
+      - slot: 8
+        role: QUEST_SLOT
+      - slot: 17
+        role: QUEST_SLOT
+      - slot: 26
+        role: QUEST_SLOT
+      - slot: 23
+        role: QUEST_SLOT
+      - slot: 22
+        role: QUEST_SLOT
+      - slot: 25
+        role: QUEST_SLOT
+      - slot: 24
+        role: QUEST_SLOT
+      - slot: 21
+        role: QUEST_SLOT
+      - slot: 19
+        role: QUEST_SLOT
+      - slot: 18
+        role: QUEST_SLOT
+      - slot: 20
+        role: QUEST_SLOT
+      - slot: 27
+        role: QUEST_SLOT
+      - slot: 36
+        role: QUEST_SLOT
+      - slot: 37
+        role: QUEST_SLOT
+      - slot: 38
+        role: QUEST_SLOT
+      - slot: 39
+        role: QUEST_SLOT
+      - slot: 40
+        role: QUEST_SLOT
+      - slot: 42
+        role: QUEST_SLOT
+      - slot: 41
+        role: QUEST_SLOT
+      - slot: 44
+        role: QUEST_SLOT
+      - slot: 43
+        role: QUEST_SLOT
+      - slot: 45
+        role: NAV_PREV
+      - slot: 49
+        role: NAV_BACK
+      - slot: 53
+        role: NAV_NEXT
+    quests:
+      - id: 1
+        title: Węglowa Żyła
+        description:
+          - Rozgrzej się na start - zbierz węgiel.
+        requirement:
+          type: items
+          items:
+            - item: COAL
+              amount: 64
+        rewards:
+          - money: 300
+      - id: 2
+        title: Miedziany Początek
+        description:
+          - Miedź nie jest efektowna, ale dobrze się sprzedaje.
+        requirement:
+          type: items
+          items:
+            - item: RAW_COPPER
+              amount: 48
+        rewards:
+          - money: 400
+      - id: 3
+        title: Rudonośna Żyła
+        description:
+          - Wykop więcej surowego żelaza niż potrzebujesz na własny użytek.
+        requirement:
+          type: items
+          items:
+            - item: RAW_IRON
+              amount: 48
+        rewards:
+          - money: 700
+      - id: 4
+        title: Złota Gorączka
+        description:
+          - Złoto w Overworldzie jest rzadsze niż żelazo - warto po nie zejść głębiej.
+        requirement:
+          type: items
+          items:
+            - item: RAW_GOLD
+              amount: 32
+        rewards:
+          - money: 900
+      - id: 5
+        title: Prąd pod Ziemią
+        description:
+          - Zbierz redstone na własne mechanizmy - to nie jest ten sam depozyt co w Głównej Ścieżce.
+        requirement:
+          type: items
+          items:
+            - item: REDSTONE
+              amount: 48
+        rewards:
+          - item: REDSTONE_BLOCK
+            amount: 4
+        reward-label: 4x Blok Redstone
+      - id: 6
+        title: Lazurowa Żyła
+        description:
+          - Zbierz lapis - starczy na więcej niż jeden stół zaklęć.
+        requirement:
+          type: items
+          items:
+            - item: LAPIS_LAZULI
+              amount: 48
+        rewards:
+          - item: EXPERIENCE_BOTTLE
+            amount: 20
+        reward-label: 20x Butelka Doświadczenia
+      - id: 7
+        title: Ametystowa Jaskinia
+        description:
+          - Znajdź geodę ametystu i zbierz z niej kryształy.
+        requirement:
+          type: items
+          items:
+            - item: AMETHYST_SHARD
+              amount: 20
+        rewards:
+          - money: 1200
+      - id: 8
+        title: Kwarcowe Podziemia
+        description:
+          - Nether ma nie tylko blaze - kwarc też się przyda.
+        requirement:
+          type: items
+          items:
+            - item: QUARTZ
+              amount: 48
+        rewards:
+          - money: 1000
+      - id: 9
+        title: Diamentowe Oko
+        description:
+          - Osiem diamentów - solidny dowód, że umiesz już kopać głęboko.
+        requirement:
+          type: items
+          items:
+            - item: DIAMOND
+              amount: 8
+        rewards:
+          - money: 2500
+      - id: 10
+        title: Skarb Otchłani
+        description:
+          - Trzydzieści dwa diamenty naraz - to już poważny wynik.
+        requirement:
+          type: items
+          items:
+            - item: DIAMOND
+              amount: 32
+        rewards:
+          - item: DIAMOND_BLOCK
+            amount: 2
+        reward-label: 2x Blok Diamentu
+      - id: 11
+        title: Starożytny Ślad
+        description:
+          - Złom netherytu trzeba faktycznie wykopać - w sklepie już go nie kupisz.
+        requirement:
+          type: items
+          items:
+            - item: NETHERITE_SCRAP
+              amount: 2
+        rewards:
+          - money: 12000
+      - id: 12
+        title: Mistrz Kopalni
+        description:
+          - Ostatni sprawdzian - pokaż, że Twoja kopalnia stoi na solidnych fundamentach.
+          - Wymaga żelaza, złota i diamentów naraz.
+        requirement:
+          type: items
+          items:
+            - item: RAW_IRON
+              amount: 64
+            - item: RAW_GOLD
+              amount: 64
+            - item: DIAMOND
+              amount: 16
+        rewards:
+          - item: NETHERITE_BLOCK
+        reward-label: 1x Blok Netherytu
+  HODOWLA:
+    name: Hodowla
+    icon:
+      item: WHEAT
+    description: Zadania rolnicze
+    main-path: false
+    sequential: false
+    after:
+      category: GLOWNA_SCIEZKA
+      quest: 7
+    requires-unlock: null
+    page-layout:
+      - slot: 0
+        role: QUEST_SLOT
+      - slot: 1
+        role: QUEST_SLOT
+      - slot: 2
+        role: QUEST_SLOT
+      - slot: 3
+        role: QUEST_SLOT
+      - slot: 4
+        role: QUEST_SLOT
+      - slot: 5
+        role: QUEST_SLOT
+      - slot: 6
+        role: QUEST_SLOT
+      - slot: 7
+        role: QUEST_SLOT
+      - slot: 8
+        role: QUEST_SLOT
+      - slot: 17
+        role: QUEST_SLOT
+      - slot: 26
+        role: QUEST_SLOT
+      - slot: 23
+        role: QUEST_SLOT
+      - slot: 22
+        role: QUEST_SLOT
+      - slot: 25
+        role: QUEST_SLOT
+      - slot: 24
+        role: QUEST_SLOT
+      - slot: 21
+        role: QUEST_SLOT
+      - slot: 19
+        role: QUEST_SLOT
+      - slot: 18
+        role: QUEST_SLOT
+      - slot: 20
+        role: QUEST_SLOT
+      - slot: 27
+        role: QUEST_SLOT
+      - slot: 36
+        role: QUEST_SLOT
+      - slot: 37
+        role: QUEST_SLOT
+      - slot: 38
+        role: QUEST_SLOT
+      - slot: 39
+        role: QUEST_SLOT
+      - slot: 40
+        role: QUEST_SLOT
+      - slot: 42
+        role: QUEST_SLOT
+      - slot: 41
+        role: QUEST_SLOT
+      - slot: 44
+        role: QUEST_SLOT
+      - slot: 43
+        role: QUEST_SLOT
+      - slot: 45
+        role: NAV_PREV
+      - slot: 49
+        role: NAV_BACK
+      - slot: 53
+        role: NAV_NEXT
+    quests:
+      - id: 1
+        title: Zbiory 1
+        description:
+          - Rozkręć swoje pole - zacznij od marchewki.
+        requirement:
+          type: items
+          items:
+            - item: CARROT
+              amount: 32
+        rewards:
+          - item: EMERALD
+            amount: 5
+        reward-label: 5x Szmaragd
+      - id: 2
+        title: Zbiory 2
+        description:
+          - Pszenica to podstawa każdej dobrej farmy.
+        requirement:
+          type: items
+          items:
+            - item: WHEAT
+              amount: 64
+        rewards:
+          - item: GOLD_INGOT
+            amount: 10
+        reward-label: 10x Złoto
+      - id: 3
+        title: Zbiory 3
+        description:
+          - Ziemniaki rosną szybko - zbierz spory zapas.
+        requirement:
+          type: items
+          items:
+            - item: POTATO
+              amount: 64
+        rewards:
+          - item: IRON_INGOT
+            amount: 32
+        reward-label: 32x Żelazo
+      - id: 4
+        title: Burakowe Pole
+        description:
+          - Buraki przydają się do farb i zup - zbierz ich sporo.
+        requirement:
+          type: items
+          items:
+            - item: BEETROOT
+              amount: 48
+        rewards:
+          - item: EMERALD
+            amount: 8
+        reward-label: 8x Szmaragd
+      - id: 5
+        title: Dyniowy Zbiór
+        description:
+          - Dynie dobrze się sprzedają - zbuduj z nich niezłą farmę.
+        requirement:
+          type: items
+          items:
+            - item: PUMPKIN
+              amount: 32
+        rewards:
+          - money: 1500
+      - id: 6
+        title: Mistrz Farmy
+        description:
+          - Wykorzystaj złote marchewki - dowód, że Twoja farma jest w pełni samowystarczalna.
+        requirement:
+          type: items
+          items:
+            - item: GOLDEN_CARROT
+              amount: 8
+        rewards:
+          - item: HONEY_BOTTLE
+            amount: 12
+        reward-label: 12x Butelka Miodu
+  LOWCA:
+    name: Łowca
+    icon:
+      item: BOW
+    description: Zadania z potworami
+    main-path: false
+    sequential: false
+    after:
+      category: GLOWNA_SCIEZKA
+      quest: 9
+    requires-unlock: null
+    page-layout:
+      - slot: 0
+        role: QUEST_SLOT
+      - slot: 1
+        role: QUEST_SLOT
+      - slot: 2
+        role: QUEST_SLOT
+      - slot: 3
+        role: QUEST_SLOT
+      - slot: 4
+        role: QUEST_SLOT
+      - slot: 5
+        role: QUEST_SLOT
+      - slot: 6
+        role: QUEST_SLOT
+      - slot: 7
+        role: QUEST_SLOT
+      - slot: 8
+        role: QUEST_SLOT
+      - slot: 17
+        role: QUEST_SLOT
+      - slot: 26
+        role: QUEST_SLOT
+      - slot: 23
+        role: QUEST_SLOT
+      - slot: 22
+        role: QUEST_SLOT
+      - slot: 25
+        role: QUEST_SLOT
+      - slot: 24
+        role: QUEST_SLOT
+      - slot: 21
+        role: QUEST_SLOT
+      - slot: 19
+        role: QUEST_SLOT
+      - slot: 18
+        role: QUEST_SLOT
+      - slot: 20
+        role: QUEST_SLOT
+      - slot: 27
+        role: QUEST_SLOT
+      - slot: 36
+        role: QUEST_SLOT
+      - slot: 37
+        role: QUEST_SLOT
+      - slot: 38
+        role: QUEST_SLOT
+      - slot: 39
+        role: QUEST_SLOT
+      - slot: 40
+        role: QUEST_SLOT
+      - slot: 42
+        role: QUEST_SLOT
+      - slot: 41
+        role: QUEST_SLOT
+      - slot: 44
+        role: QUEST_SLOT
+      - slot: 43
+        role: QUEST_SLOT
+      - slot: 45
+        role: NAV_PREV
+      - slot: 49
+        role: NAV_BACK
+      - slot: 53
+        role: NAV_NEXT
+    quests:
+      - id: 1
+        title: Początkujący
+        description:
+          - Nieumarli w nocy nie odpuszczają - obróć to na swoją korzyść.
+        requirement:
+          type: items
+          items:
+            - item: ROTTEN_FLESH
+              amount: 32
+        rewards:
+          - item: COOKED_BEEF
+            amount: 16
+        reward-label: 16x Pieczona Wołowina
+      - id: 2
+        title: Strzelec
+        description:
+          - Kości ze szkieletów przydadzą się na coś więcej niż mączkę kostną.
+        requirement:
+          type: items
+          items:
+            - item: BONE
+              amount: 16
+        rewards:
+          - item: BOW
+        reward-label: 1x Łuk
+      - id: 3
+        title: Nocny Marek
+        description:
+          - Pajęczyny z pająków są zaskakująco poszukiwane.
+        requirement:
+          type: items
+          items:
+            - item: STRING
+              amount: 10
+        rewards:
+          - item: EXPERIENCE_BOTTLE
+            amount: 16
+        reward-label: 16x Butelka EXP
+      - id: 4
+        title: Prochowy Zbieracz
+        description:
+          - Creepery wybuchają prochem, nie tylko kraterami.
+        requirement:
+          type: items
+          items:
+            - item: GUNPOWDER
+              amount: 24
+        rewards:
+          - money: 800
+      - id: 5
+        title: Pajęcze Oko
+        description:
+          - Zbierz oczy pająków - podstawa niejednej mikstury.
+        requirement:
+          type: items
+          items:
+            - item: SPIDER_EYE
+              amount: 12
+        rewards:
+          - item: GLASS_BOTTLE
+            amount: 16
+        reward-label: 16x Pusta Butelka
+      - id: 6
+        title: Nocna Zjawa
+        description:
+          - Fantomy nawiedzają tych, co za długo nie śpią - upoluj kilka.
+        requirement:
+          type: items
+          items:
+            - item: PHANTOM_MEMBRANE
+              amount: 6
+        rewards:
+          - item: ELYTRA
+        reward-label: 1x Elytra
+  DRWAL:
+    name: Drwal
+    icon:
+      item: OAK_LOG
+    description: Zadania z drewnem
+    main-path: false
+    sequential: false
+    after: null
+    requires-unlock: null
+    page-layout:
+      - slot: 0
+        role: QUEST_SLOT
+      - slot: 1
+        role: QUEST_SLOT
+      - slot: 2
+        role: QUEST_SLOT
+      - slot: 3
+        role: QUEST_SLOT
+      - slot: 4
+        role: QUEST_SLOT
+      - slot: 5
+        role: QUEST_SLOT
+      - slot: 6
+        role: QUEST_SLOT
+      - slot: 7
+        role: QUEST_SLOT
+      - slot: 8
+        role: QUEST_SLOT
+      - slot: 17
+        role: QUEST_SLOT
+      - slot: 26
+        role: QUEST_SLOT
+      - slot: 23
+        role: QUEST_SLOT
+      - slot: 22
+        role: QUEST_SLOT
+      - slot: 25
+        role: QUEST_SLOT
+      - slot: 24
+        role: QUEST_SLOT
+      - slot: 21
+        role: QUEST_SLOT
+      - slot: 19
+        role: QUEST_SLOT
+      - slot: 18
+        role: QUEST_SLOT
+      - slot: 20
+        role: QUEST_SLOT
+      - slot: 27
+        role: QUEST_SLOT
+      - slot: 36
+        role: QUEST_SLOT
+      - slot: 37
+        role: QUEST_SLOT
+      - slot: 38
+        role: QUEST_SLOT
+      - slot: 39
+        role: QUEST_SLOT
+      - slot: 40
+        role: QUEST_SLOT
+      - slot: 42
+        role: QUEST_SLOT
+      - slot: 41
+        role: QUEST_SLOT
+      - slot: 44
+        role: QUEST_SLOT
+      - slot: 43
+        role: QUEST_SLOT
+      - slot: 45
+        role: NAV_PREV
+      - slot: 49
+        role: NAV_BACK
+      - slot: 53
+        role: NAV_NEXT
+    quests: []
+  RYBAK:
+    name: Rybak
+    icon:
+      item: FISHING_ROD
+    description: Zadania wędkarskie
+    main-path: false
+    sequential: false
+    after:
+      category: GLOWNA_SCIEZKA
+      quest: 13
+    requires-unlock: null
+    page-layout:
+      - slot: 0
+        role: QUEST_SLOT
+      - slot: 1
+        role: QUEST_SLOT
+      - slot: 2
+        role: QUEST_SLOT
+      - slot: 3
+        role: QUEST_SLOT
+      - slot: 4
+        role: QUEST_SLOT
+      - slot: 5
+        role: QUEST_SLOT
+      - slot: 6
+        role: QUEST_SLOT
+      - slot: 7
+        role: QUEST_SLOT
+      - slot: 8
+        role: QUEST_SLOT
+      - slot: 17
+        role: QUEST_SLOT
+      - slot: 26
+        role: QUEST_SLOT
+      - slot: 23
+        role: QUEST_SLOT
+      - slot: 22
+        role: QUEST_SLOT
+      - slot: 25
+        role: QUEST_SLOT
+      - slot: 24
+        role: QUEST_SLOT
+      - slot: 21
+        role: QUEST_SLOT
+      - slot: 19
+        role: QUEST_SLOT
+      - slot: 18
+        role: QUEST_SLOT
+      - slot: 20
+        role: QUEST_SLOT
+      - slot: 27
+        role: QUEST_SLOT
+      - slot: 36
+        role: QUEST_SLOT
+      - slot: 37
+        role: QUEST_SLOT
+      - slot: 38
+        role: QUEST_SLOT
+      - slot: 39
+        role: QUEST_SLOT
+      - slot: 40
+        role: QUEST_SLOT
+      - slot: 42
+        role: QUEST_SLOT
+      - slot: 41
+        role: QUEST_SLOT
+      - slot: 44
+        role: QUEST_SLOT
+      - slot: 43
+        role: QUEST_SLOT
+      - slot: 45
+        role: NAV_PREV
+      - slot: 49
+        role: NAV_BACK
+      - slot: 53
+        role: NAV_NEXT
+    quests:
+      - id: 1
+        title: Pierwszy Połów
+        description:
+          - Złów i przynieś swoje pierwsze ryby zwykłą wędką.
+        requirement:
+          type: items
+          items:
+            - item: COD
+              amount: 5
+        rewards:
+          - item: EMERALD
+            amount: 5
+        reward-label: 5x Szmaragd
+      - id: 2
+        title: W Głąb Wody
+        description:
+          - Łów dalej - tym razem coś lepszego.
+        requirement:
+          type: items
+          items:
+            - item: SALMON
+              amount: 8
+        rewards:
+          - money: 500
+      - id: 3
+        title: Kolekcjoner Łusek
+        description:
+          - Złów coś rzadszego niż zwykłe ryby.
+        requirement:
+          type: items
+          items:
+            - item: TROPICAL_FISH
+              amount: 1
+        rewards:
+          - money: 350
+      - id: 4
+        title: Sekret Kowala
+        description:
+          - Miejscowy kowal zna sekret wędek, których nie da się kupić.
+          - Połącz tę recepturę ze zwykłą wędką w kowadle.
+        requirement:
+          type: free
+        rewards:
+          - custom: FISHING_RECIPE_NIEBIANSKA
+        reward-label: 'Receptura: Niebiańska Wędka'
+      - id: 5
+        title: Rybak Niebios
+        description:
+          - Wykuj Niebiańską Wędkę i złów nią coś,
+          - czego nie da się złowić w wodzie.
+        requirement:
+          type: items
+          items:
+            - item: SALMON
+              amount: 3
+        rewards:
+          - item: EXPERIENCE_BOTTLE
+            amount: 32
+        reward-label: 32x Butelka Doświadczenia
+      - id: 6
+        title: Więcej niż Ryby
+        description:
+          - Łów dalej w powietrzu - trafiają się coraz ciekawsze gatunki.
+        requirement:
+          type: items
+          items:
+            - item: TROPICAL_FISH
+              amount: 2
+        rewards:
+          - money: 1200
+      - id: 7
+        title: Szept Kosmosu
+        description:
+          - Wśród gwiazd krąży plotka o wędce, która przyciąga jeszcze rzadsze ryby.
+        requirement:
+          type: free
+        rewards:
+          - custom: FISHING_RECIPE_KOSMICZNA
+        reward-label: 'Receptura: Wędka Kosmiczna DARKSTAR'
+      - id: 8
+        title: Mistrz Wędki
+        description:
+          - Złów legendarną Iskrę Ciemnej Gwiazdy Wędką Kosmiczną DARKSTAR.
+          - Ostatni krok ścieżki wędkarskiej!
+        requirement:
+          type: items
+          items:
+            - item: COD
+              amount: 1
+        rewards:
+          - custom: TROFEUM_GLOWA_RYBAKA_OTCHLANI
+        reward-label: 'Trofeum: Głowa Rybaka Otchłani'
+  ALCHEMIK:
+    name: Alchemik
+    icon:
+      item: BREWING_STAND
+    description: Warzenie mikstur
+    main-path: false
+    sequential: false
+    after: null
+    requires-unlock: null
+    page-layout:
+      - slot: 0
+        role: QUEST_SLOT
+      - slot: 1
+        role: QUEST_SLOT
+      - slot: 2
+        role: QUEST_SLOT
+      - slot: 3
+        role: QUEST_SLOT
+      - slot: 4
+        role: QUEST_SLOT
+      - slot: 5
+        role: QUEST_SLOT
+      - slot: 6
+        role: QUEST_SLOT
+      - slot: 7
+        role: QUEST_SLOT
+      - slot: 8
+        role: QUEST_SLOT
+      - slot: 17
+        role: QUEST_SLOT
+      - slot: 26
+        role: QUEST_SLOT
+      - slot: 23
+        role: QUEST_SLOT
+      - slot: 22
+        role: QUEST_SLOT
+      - slot: 25
+        role: QUEST_SLOT
+      - slot: 24
+        role: QUEST_SLOT
+      - slot: 21
+        role: QUEST_SLOT
+      - slot: 19
+        role: QUEST_SLOT
+      - slot: 18
+        role: QUEST_SLOT
+      - slot: 20
+        role: QUEST_SLOT
+      - slot: 27
+        role: QUEST_SLOT
+      - slot: 36
+        role: QUEST_SLOT
+      - slot: 37
+        role: QUEST_SLOT
+      - slot: 38
+        role: QUEST_SLOT
+      - slot: 39
+        role: QUEST_SLOT
+      - slot: 40
+        role: QUEST_SLOT
+      - slot: 42
+        role: QUEST_SLOT
+      - slot: 41
+        role: QUEST_SLOT
+      - slot: 44
+        role: QUEST_SLOT
+      - slot: 43
+        role: QUEST_SLOT
+      - slot: 45
+        role: NAV_PREV
+      - slot: 49
+        role: NAV_BACK
+      - slot: 53
+        role: NAV_NEXT
+    quests: []
+  KUCHARZ:
+    name: Kucharz
+    icon:
+      item: COOKED_BEEF
+    description: Zadania kulinarne
+    main-path: false
+    sequential: false
+    after: null
+    requires-unlock: null
+    page-layout:
+      - slot: 0
+        role: QUEST_SLOT
+      - slot: 1
+        role: QUEST_SLOT
+      - slot: 2
+        role: QUEST_SLOT
+      - slot: 3
+        role: QUEST_SLOT
+      - slot: 4
+        role: QUEST_SLOT
+      - slot: 5
+        role: QUEST_SLOT
+      - slot: 6
+        role: QUEST_SLOT
+      - slot: 7
+        role: QUEST_SLOT
+      - slot: 8
+        role: QUEST_SLOT
+      - slot: 17
+        role: QUEST_SLOT
+      - slot: 26
+        role: QUEST_SLOT
+      - slot: 23
+        role: QUEST_SLOT
+      - slot: 22
+        role: QUEST_SLOT
+      - slot: 25
+        role: QUEST_SLOT
+      - slot: 24
+        role: QUEST_SLOT
+      - slot: 21
+        role: QUEST_SLOT
+      - slot: 19
+        role: QUEST_SLOT
+      - slot: 18
+        role: QUEST_SLOT
+      - slot: 20
+        role: QUEST_SLOT
+      - slot: 27
+        role: QUEST_SLOT
+      - slot: 36
+        role: QUEST_SLOT
+      - slot: 37
+        role: QUEST_SLOT
+      - slot: 38
+        role: QUEST_SLOT
+      - slot: 39
+        role: QUEST_SLOT
+      - slot: 40
+        role: QUEST_SLOT
+      - slot: 42
+        role: QUEST_SLOT
+      - slot: 41
+        role: QUEST_SLOT
+      - slot: 44
+        role: QUEST_SLOT
+      - slot: 43
+        role: QUEST_SLOT
+      - slot: 45
+        role: NAV_PREV
+      - slot: 49
+        role: NAV_BACK
+      - slot: 53
+        role: NAV_NEXT
+    quests: []
+  BUDOWNICZY:
+    name: Budowniczy
+    icon:
+      item: BRICKS
+    description: Budowa wyspy
+    main-path: false
+    sequential: false
+    after: null
+    requires-unlock: null
+    page-layout:
+      - slot: 0
+        role: QUEST_SLOT
+      - slot: 1
+        role: QUEST_SLOT
+      - slot: 2
+        role: QUEST_SLOT
+      - slot: 3
+        role: QUEST_SLOT
+      - slot: 4
+        role: QUEST_SLOT
+      - slot: 5
+        role: QUEST_SLOT
+      - slot: 6
+        role: QUEST_SLOT
+      - slot: 7
+        role: QUEST_SLOT
+      - slot: 8
+        role: QUEST_SLOT
+      - slot: 17
+        role: QUEST_SLOT
+      - slot: 26
+        role: QUEST_SLOT
+      - slot: 23
+        role: QUEST_SLOT
+      - slot: 22
+        role: QUEST_SLOT
+      - slot: 25
+        role: QUEST_SLOT
+      - slot: 24
+        role: QUEST_SLOT
+      - slot: 21
+        role: QUEST_SLOT
+      - slot: 19
+        role: QUEST_SLOT
+      - slot: 18
+        role: QUEST_SLOT
+      - slot: 20
+        role: QUEST_SLOT
+      - slot: 27
+        role: QUEST_SLOT
+      - slot: 36
+        role: QUEST_SLOT
+      - slot: 37
+        role: QUEST_SLOT
+      - slot: 38
+        role: QUEST_SLOT
+      - slot: 39
+        role: QUEST_SLOT
+      - slot: 40
+        role: QUEST_SLOT
+      - slot: 42
+        role: QUEST_SLOT
+      - slot: 41
+        role: QUEST_SLOT
+      - slot: 44
+        role: QUEST_SLOT
+      - slot: 43
+        role: QUEST_SLOT
+      - slot: 45
+        role: NAV_PREV
+      - slot: 49
+        role: NAV_BACK
+      - slot: 53
+        role: NAV_NEXT
+    quests: []
+  MAG:
+    name: Mag
+    icon:
+      item: ENCHANTING_TABLE
+    description: Zaklęcia
+    main-path: false
+    sequential: false
+    after: null
+    requires-unlock: null
+    page-layout:
+      - slot: 0
+        role: QUEST_SLOT
+      - slot: 1
+        role: QUEST_SLOT
+      - slot: 2
+        role: QUEST_SLOT
+      - slot: 3
+        role: QUEST_SLOT
+      - slot: 4
+        role: QUEST_SLOT
+      - slot: 5
+        role: QUEST_SLOT
+      - slot: 6
+        role: QUEST_SLOT
+      - slot: 7
+        role: QUEST_SLOT
+      - slot: 8
+        role: QUEST_SLOT
+      - slot: 17
+        role: QUEST_SLOT
+      - slot: 26
+        role: QUEST_SLOT
+      - slot: 23
+        role: QUEST_SLOT
+      - slot: 22
+        role: QUEST_SLOT
+      - slot: 25
+        role: QUEST_SLOT
+      - slot: 24
+        role: QUEST_SLOT
+      - slot: 21
+        role: QUEST_SLOT
+      - slot: 19
+        role: QUEST_SLOT
+      - slot: 18
+        role: QUEST_SLOT
+      - slot: 20
+        role: QUEST_SLOT
+      - slot: 27
+        role: QUEST_SLOT
+      - slot: 36
+        role: QUEST_SLOT
+      - slot: 37
+        role: QUEST_SLOT
+      - slot: 38
+        role: QUEST_SLOT
+      - slot: 39
+        role: QUEST_SLOT
+      - slot: 40
+        role: QUEST_SLOT
+      - slot: 42
+        role: QUEST_SLOT
+      - slot: 41
+        role: QUEST_SLOT
+      - slot: 44
+        role: QUEST_SLOT
+      - slot: 43
+        role: QUEST_SLOT
+      - slot: 45
+        role: NAV_PREV
+      - slot: 49
+        role: NAV_BACK
+      - slot: 53
+        role: NAV_NEXT
+    quests: []
+  ODKRYWCA:
+    name: Odkrywca
+    icon:
+      item: COMPASS
+    description: Eksploracja mapy
+    main-path: false
+    sequential: false
+    after: null
+    requires-unlock: null
+    page-layout:
+      - slot: 0
+        role: QUEST_SLOT
+      - slot: 1
+        role: QUEST_SLOT
+      - slot: 2
+        role: QUEST_SLOT
+      - slot: 3
+        role: QUEST_SLOT
+      - slot: 4
+        role: QUEST_SLOT
+      - slot: 5
+        role: QUEST_SLOT
+      - slot: 6
+        role: QUEST_SLOT
+      - slot: 7
+        role: QUEST_SLOT
+      - slot: 8
+        role: QUEST_SLOT
+      - slot: 17
+        role: QUEST_SLOT
+      - slot: 26
+        role: QUEST_SLOT
+      - slot: 23
+        role: QUEST_SLOT
+      - slot: 22
+        role: QUEST_SLOT
+      - slot: 25
+        role: QUEST_SLOT
+      - slot: 24
+        role: QUEST_SLOT
+      - slot: 21
+        role: QUEST_SLOT
+      - slot: 19
+        role: QUEST_SLOT
+      - slot: 18
+        role: QUEST_SLOT
+      - slot: 20
+        role: QUEST_SLOT
+      - slot: 27
+        role: QUEST_SLOT
+      - slot: 36
+        role: QUEST_SLOT
+      - slot: 37
+        role: QUEST_SLOT
+      - slot: 38
+        role: QUEST_SLOT
+      - slot: 39
+        role: QUEST_SLOT
+      - slot: 40
+        role: QUEST_SLOT
+      - slot: 42
+        role: QUEST_SLOT
+      - slot: 41
+        role: QUEST_SLOT
+      - slot: 44
+        role: QUEST_SLOT
+      - slot: 43
+        role: QUEST_SLOT
+      - slot: 45
+        role: NAV_PREV
+      - slot: 49
+        role: NAV_BACK
+      - slot: 53
+        role: NAV_NEXT
+    quests: []
+  RZEZNIK:
+    name: Rzeźnik
+    icon:
+      item: PORKCHOP
+    description: Zdobywanie mięsa
+    main-path: false
+    sequential: false
+    after: null
+    requires-unlock: null
+    page-layout:
+      - slot: 0
+        role: QUEST_SLOT
+      - slot: 1
+        role: QUEST_SLOT
+      - slot: 2
+        role: QUEST_SLOT
+      - slot: 3
+        role: QUEST_SLOT
+      - slot: 4
+        role: QUEST_SLOT
+      - slot: 5
+        role: QUEST_SLOT
+      - slot: 6
+        role: QUEST_SLOT
+      - slot: 7
+        role: QUEST_SLOT
+      - slot: 8
+        role: QUEST_SLOT
+      - slot: 17
+        role: QUEST_SLOT
+      - slot: 26
+        role: QUEST_SLOT
+      - slot: 23
+        role: QUEST_SLOT
+      - slot: 22
+        role: QUEST_SLOT
+      - slot: 25
+        role: QUEST_SLOT
+      - slot: 24
+        role: QUEST_SLOT
+      - slot: 21
+        role: QUEST_SLOT
+      - slot: 19
+        role: QUEST_SLOT
+      - slot: 18
+        role: QUEST_SLOT
+      - slot: 20
+        role: QUEST_SLOT
+      - slot: 27
+        role: QUEST_SLOT
+      - slot: 36
+        role: QUEST_SLOT
+      - slot: 37
+        role: QUEST_SLOT
+      - slot: 38
+        role: QUEST_SLOT
+      - slot: 39
+        role: QUEST_SLOT
+      - slot: 40
+        role: QUEST_SLOT
+      - slot: 42
+        role: QUEST_SLOT
+      - slot: 41
+        role: QUEST_SLOT
+      - slot: 44
+        role: QUEST_SLOT
+      - slot: 43
+        role: QUEST_SLOT
+      - slot: 45
+        role: NAV_PREV
+      - slot: 49
+        role: NAV_BACK
+      - slot: 53
+        role: NAV_NEXT
+    quests: []
+  OGRODNIK:
+    name: Ogrodnik
+    icon:
+      item: OAK_SAPLING
+    description: Sadzenie drzew
+    main-path: false
+    sequential: false
+    after: null
+    requires-unlock: null
+    page-layout:
+      - slot: 0
+        role: QUEST_SLOT
+      - slot: 1
+        role: QUEST_SLOT
+      - slot: 2
+        role: QUEST_SLOT
+      - slot: 3
+        role: QUEST_SLOT
+      - slot: 4
+        role: QUEST_SLOT
+      - slot: 5
+        role: QUEST_SLOT
+      - slot: 6
+        role: QUEST_SLOT
+      - slot: 7
+        role: QUEST_SLOT
+      - slot: 8
+        role: QUEST_SLOT
+      - slot: 17
+        role: QUEST_SLOT
+      - slot: 26
+        role: QUEST_SLOT
+      - slot: 23
+        role: QUEST_SLOT
+      - slot: 22
+        role: QUEST_SLOT
+      - slot: 25
+        role: QUEST_SLOT
+      - slot: 24
+        role: QUEST_SLOT
+      - slot: 21
+        role: QUEST_SLOT
+      - slot: 19
+        role: QUEST_SLOT
+      - slot: 18
+        role: QUEST_SLOT
+      - slot: 20
+        role: QUEST_SLOT
+      - slot: 27
+        role: QUEST_SLOT
+      - slot: 36
+        role: QUEST_SLOT
+      - slot: 37
+        role: QUEST_SLOT
+      - slot: 38
+        role: QUEST_SLOT
+      - slot: 39
+        role: QUEST_SLOT
+      - slot: 40
+        role: QUEST_SLOT
+      - slot: 42
+        role: QUEST_SLOT
+      - slot: 41
+        role: QUEST_SLOT
+      - slot: 44
+        role: QUEST_SLOT
+      - slot: 43
+        role: QUEST_SLOT
+      - slot: 45
+        role: NAV_PREV
+      - slot: 49
+        role: NAV_BACK
+      - slot: 53
+        role: NAV_NEXT
+    quests: []
+  JUBILER:
+    name: Jubiler
+    icon:
+      item: DIAMOND
+    description: Cenne kruszce
+    main-path: false
+    sequential: false
+    after: null
+    requires-unlock: null
+    page-layout:
+      - slot: 0
+        role: QUEST_SLOT
+      - slot: 1
+        role: QUEST_SLOT
+      - slot: 2
+        role: QUEST_SLOT
+      - slot: 3
+        role: QUEST_SLOT
+      - slot: 4
+        role: QUEST_SLOT
+      - slot: 5
+        role: QUEST_SLOT
+      - slot: 6
+        role: QUEST_SLOT
+      - slot: 7
+        role: QUEST_SLOT
+      - slot: 8
+        role: QUEST_SLOT
+      - slot: 17
+        role: QUEST_SLOT
+      - slot: 26
+        role: QUEST_SLOT
+      - slot: 23
+        role: QUEST_SLOT
+      - slot: 22
+        role: QUEST_SLOT
+      - slot: 25
+        role: QUEST_SLOT
+      - slot: 24
+        role: QUEST_SLOT
+      - slot: 21
+        role: QUEST_SLOT
+      - slot: 19
+        role: QUEST_SLOT
+      - slot: 18
+        role: QUEST_SLOT
+      - slot: 20
+        role: QUEST_SLOT
+      - slot: 27
+        role: QUEST_SLOT
+      - slot: 36
+        role: QUEST_SLOT
+      - slot: 37
+        role: QUEST_SLOT
+      - slot: 38
+        role: QUEST_SLOT
+      - slot: 39
+        role: QUEST_SLOT
+      - slot: 40
+        role: QUEST_SLOT
+      - slot: 42
+        role: QUEST_SLOT
+      - slot: 41
+        role: QUEST_SLOT
+      - slot: 44
+        role: QUEST_SLOT
+      - slot: 43
+        role: QUEST_SLOT
+      - slot: 45
+        role: NAV_PREV
+      - slot: 49
+        role: NAV_BACK
+      - slot: 53
+        role: NAV_NEXT
+    quests: []
+  ZLODZIEJ:
+    name: Złodziej
+    icon:
+      item: GOLD_NUGGET
+    description: Kradzież (Zadania)
+    main-path: false
+    sequential: false
+    after: null
+    requires-unlock: null
+    page-layout:
+      - slot: 0
+        role: QUEST_SLOT
+      - slot: 1
+        role: QUEST_SLOT
+      - slot: 2
+        role: QUEST_SLOT
+      - slot: 3
+        role: QUEST_SLOT
+      - slot: 4
+        role: QUEST_SLOT
+      - slot: 5
+        role: QUEST_SLOT
+      - slot: 6
+        role: QUEST_SLOT
+      - slot: 7
+        role: QUEST_SLOT
+      - slot: 8
+        role: QUEST_SLOT
+      - slot: 17
+        role: QUEST_SLOT
+      - slot: 26
+        role: QUEST_SLOT
+      - slot: 23
+        role: QUEST_SLOT
+      - slot: 22
+        role: QUEST_SLOT
+      - slot: 25
+        role: QUEST_SLOT
+      - slot: 24
+        role: QUEST_SLOT
+      - slot: 21
+        role: QUEST_SLOT
+      - slot: 19
+        role: QUEST_SLOT
+      - slot: 18
+        role: QUEST_SLOT
+      - slot: 20
+        role: QUEST_SLOT
+      - slot: 27
+        role: QUEST_SLOT
+      - slot: 36
+        role: QUEST_SLOT
+      - slot: 37
+        role: QUEST_SLOT
+      - slot: 38
+        role: QUEST_SLOT
+      - slot: 39
+        role: QUEST_SLOT
+      - slot: 40
+        role: QUEST_SLOT
+      - slot: 42
+        role: QUEST_SLOT
+      - slot: 41
+        role: QUEST_SLOT
+      - slot: 44
+        role: QUEST_SLOT
+      - slot: 43
+        role: QUEST_SLOT
+      - slot: 45
+        role: NAV_PREV
+      - slot: 49
+        role: NAV_BACK
+      - slot: 53
+        role: NAV_NEXT
+    quests: []
+  INZYNIER:
+    name: Inżynier
+    icon:
+      item: REDSTONE
+    description: Mechanizmy
+    main-path: false
+    sequential: false
+    after: null
+    requires-unlock: null
+    page-layout:
+      - slot: 0
+        role: QUEST_SLOT
+      - slot: 1
+        role: QUEST_SLOT
+      - slot: 2
+        role: QUEST_SLOT
+      - slot: 3
+        role: QUEST_SLOT
+      - slot: 4
+        role: QUEST_SLOT
+      - slot: 5
+        role: QUEST_SLOT
+      - slot: 6
+        role: QUEST_SLOT
+      - slot: 7
+        role: QUEST_SLOT
+      - slot: 8
+        role: QUEST_SLOT
+      - slot: 17
+        role: QUEST_SLOT
+      - slot: 26
+        role: QUEST_SLOT
+      - slot: 23
+        role: QUEST_SLOT
+      - slot: 22
+        role: QUEST_SLOT
+      - slot: 25
+        role: QUEST_SLOT
+      - slot: 24
+        role: QUEST_SLOT
+      - slot: 21
+        role: QUEST_SLOT
+      - slot: 19
+        role: QUEST_SLOT
+      - slot: 18
+        role: QUEST_SLOT
+      - slot: 20
+        role: QUEST_SLOT
+      - slot: 27
+        role: QUEST_SLOT
+      - slot: 36
+        role: QUEST_SLOT
+      - slot: 37
+        role: QUEST_SLOT
+      - slot: 38
+        role: QUEST_SLOT
+      - slot: 39
+        role: QUEST_SLOT
+      - slot: 40
+        role: QUEST_SLOT
+      - slot: 42
+        role: QUEST_SLOT
+      - slot: 41
+        role: QUEST_SLOT
+      - slot: 44
+        role: QUEST_SLOT
+      - slot: 43
+        role: QUEST_SLOT
+      - slot: 45
+        role: NAV_PREV
+      - slot: 49
+        role: NAV_BACK
+      - slot: 53
+        role: NAV_NEXT
+    quests: []
+  QUESTY_SPECJALNE:
+    name: Questy Specjalne
+    icon:
+      item: NETHER_STAR
+    description: Trudne wyzwania dla weteranów
+    main-path: false
+    sequential: false
+    after:
+      category: GLOWNA_SCIEZKA
+      quest: 30
+    requires-unlock: null
+    page-layout:
+      - slot: 0
+        role: QUEST_SLOT
+      - slot: 1
+        role: QUEST_SLOT
+      - slot: 2
+        role: QUEST_SLOT
+      - slot: 3
+        role: QUEST_SLOT
+      - slot: 4
+        role: QUEST_SLOT
+      - slot: 5
+        role: QUEST_SLOT
+      - slot: 6
+        role: QUEST_SLOT
+      - slot: 7
+        role: QUEST_SLOT
+      - slot: 8
+        role: QUEST_SLOT
+      - slot: 17
+        role: QUEST_SLOT
+      - slot: 26
+        role: QUEST_SLOT
+      - slot: 23
+        role: QUEST_SLOT
+      - slot: 22
+        role: QUEST_SLOT
+      - slot: 25
+        role: QUEST_SLOT
+      - slot: 24
+        role: QUEST_SLOT
+      - slot: 21
+        role: QUEST_SLOT
+      - slot: 19
+        role: QUEST_SLOT
+      - slot: 18
+        role: QUEST_SLOT
+      - slot: 20
+        role: QUEST_SLOT
+      - slot: 27
+        role: QUEST_SLOT
+      - slot: 36
+        role: QUEST_SLOT
+      - slot: 37
+        role: QUEST_SLOT
+      - slot: 38
+        role: QUEST_SLOT
+      - slot: 39
+        role: QUEST_SLOT
+      - slot: 40
+        role: QUEST_SLOT
+      - slot: 42
+        role: QUEST_SLOT
+      - slot: 41
+        role: QUEST_SLOT
+      - slot: 44
+        role: QUEST_SLOT
+      - slot: 43
+        role: QUEST_SLOT
+      - slot: 45
+        role: NAV_PREV
+      - slot: 49
+        role: NAV_BACK
+      - slot: 53
+        role: NAV_NEXT
+    quests:
+      - id: 1
+        title: Górski Kolos
+        description:
+          - Dla prawdziwych weteranów kopalni.
+        requirement:
+          type: items
+          items:
+            - item: DIAMOND
+              amount: 64
+        rewards:
+          - item: NETHERITE_INGOT
+        reward-label: 1x Sztabka Netherytu
+      - id: 2
+        title: Wojownik Otchłani
+        description:
+          - Poluj na eliksir mocy w Netherze.
+        requirement:
+          type: items
+          items:
+            - item: WITHER_SKELETON_SKULL
+              amount: 4
+        rewards:
+          - item: TOTEM_OF_UNDYING
+        reward-label: 1x Totem Nieśmiertelności
+      - id: 3
+        title: Skarb Smoka
+        description:
+          - Pokonaj Smoka Endera.
+        requirement:
+          type: items
+          items:
+            - item: DRAGON_BREATH
+              amount: 16
+        rewards:
+          - item: NETHER_STAR
+        reward-label: 1x Gwiazda Netheru
+      - id: 4
+        title: Klient Sklepu
+        description:
+          - Zaopatrz się solidnie w sklepie serwerowym.
+        requirement:
+          type: items
+          items:
+            - item: DIAMOND
+              amount: 32
+        rewards:
+          - money: 500
+      - id: 5
+        title: Hurtownik
+        description:
+          - Sprzedaj sklepowi górę bruku - naturalny efekt uboczny górnictwa.
+        requirement:
+          type: items
+          items:
+            - item: COBBLESTONE
+              amount: 1728
+        rewards:
+          - money: 300
+      - id: 6
+        title: Handlarz Uliczny
+        description:
+          - Wystaw towar na Targu graczy kilka razy - nieważne co, ważna praktyka.
+        requirement:
+          type: items
+          items:
+            - item: EMERALD
+              amount: 5
+        rewards:
+          - money: 400

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { QUEST_TEMPLATES, templateFor } from "./questTemplates";
 import {
   addCategory,
   emptyQuest,
@@ -162,5 +163,30 @@ describe("questsYaml", () => {
     const f = parseQuestsYaml("");
     expect(f.categories).toEqual([]);
     expect(f.settings.icons.locked).toEqual({ item: "GRAY_DYE" });
+  });
+});
+
+
+describe("quest templates", () => {
+  it("small templates: 6 categories, Main Path 10 quests, no warnings", () => {
+    for (const id of ["small-en", "small-pl"] as const) {
+      const f = parseQuestsYaml(QUEST_TEMPLATES.find((t) => t.id === id)!.text);
+      expect(f.categories.map((c) => c.id)).toEqual(["main_path", "mining", "farming", "hunting", "fishing", "woodcutting"]);
+      expect(f.categories[0].quests).toHaveLength(10);
+      expect(validateQuests(f)).toEqual([]);
+    }
+    expect(templateFor("pl")).toBe(QUEST_TEMPLATES[1].text);
+    expect(templateFor("en")).toBe(QUEST_TEMPLATES[0].text);
+  });
+
+  it("big template: 17 categories, only the 4 simple requirement types, kowal unlock on #16", () => {
+    const f = parseQuestsYaml(QUEST_TEMPLATES.find((t) => t.id === "big-pl")!.text);
+    expect(f.categories).toHaveLength(17);
+    const types = new Set(f.categories.flatMap((c) => c.quests.map((q) => q.requirement.type)));
+    for (const t of types) expect(["free", "items", "money", "have-item"]).toContain(t);
+    const q16 = f.categories.find((c) => c.id === "GLOWNA_SCIEZKA")!.quests.find((q) => q.id === 16)!;
+    expect(q16.rewards.some((r) => r.type === "unlock" && r.value === "kowal")).toBe(true);
+    const rewardTypes = new Set(f.categories.flatMap((c) => c.quests.flatMap((q) => q.rewards.map((r) => r.type))));
+    for (const t of rewardTypes) expect(["money", "item", "custom", "crate", "title", "unlock"]).toContain(t);
   });
 });
