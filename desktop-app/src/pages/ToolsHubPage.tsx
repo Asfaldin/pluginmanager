@@ -2,6 +2,7 @@ import {
   Award,
   Axe,
   Boxes,
+  Coins,
   Compass,
   FileText,
   Fish,
@@ -51,6 +52,12 @@ const TOOL_GROUPS: ToolGroup[] = [
         title: "Kreator itemów sklepu",
         description: "Buduj pozycje sklepu (mainplugins-shop): materiał, slot, ceny, lore.",
         icon: Hammer,
+      },
+      {
+        to: "/market",
+        title: "Targ graczy",
+        description: "Gracze wystawiają przedmioty za swoją cenę: limity ofert, wygasanie, skrzynka „Do odebrania”, podatek, wygląd menu.",
+        icon: Coins,
       },
       {
         to: "/customitems",

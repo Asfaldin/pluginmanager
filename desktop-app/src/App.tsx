@@ -19,6 +19,7 @@ import GeneratorsPage from "./pages/GeneratorsPage";
 import HudPage from "./pages/HudPage";
 import IslandsPage from "./pages/IslandsPage";
 import ItemBuilderPage from "./pages/ItemBuilderPage";
+import MarketPage from "./pages/MarketPage";
 import MenuGuiPage from "./pages/MenuGuiPage";
 import QuestsPage from "./pages/QuestsPage";
 import RanksPage from "./pages/RanksPage";
@@ -78,6 +79,7 @@ function Gate() {
               <Route path="schematics" element={<SchematicsPage />} />
               <Route path="tools" element={<ToolsHubPage />} />
               <Route path="crates" element={<CrateEditorPage />} />
+              <Route path="market" element={<MarketPage />} />
               <Route path="spawn" element={<SpawnWarpsPage />} />
               <Route path="deploy" element={<DeployPage />} />
               <Route path="customitems" element={<CustomItemsPage />} />
