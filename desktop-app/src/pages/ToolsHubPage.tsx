@@ -49,8 +49,8 @@ const TOOL_GROUPS: ToolGroup[] = [
     tools: [
       {
         to: "/items",
-        title: "Kreator itemów sklepu",
-        description: "Buduj pozycje sklepu (mainplugins-shop): materiał, slot, ceny, lore.",
+        title: "Sklep",
+        description: "Kategorie i przedmioty sklepu serwerowego: ceny kupna i skupu, paczki, rotacja, ceny dynamiczne, wygląd menu. Szablony Mały i Duży.",
         icon: Hammer,
       },
       {

@@ -18,7 +18,6 @@ import FishingPage from "./pages/FishingPage";
 import GeneratorsPage from "./pages/GeneratorsPage";
 import HudPage from "./pages/HudPage";
 import IslandsPage from "./pages/IslandsPage";
-import ItemBuilderPage from "./pages/ItemBuilderPage";
 import MarketPage from "./pages/MarketPage";
 import MenuGuiPage from "./pages/MenuGuiPage";
 import QuestsPage from "./pages/QuestsPage";
@@ -29,6 +28,7 @@ import SchematicsPage from "./pages/SchematicsPage";
 import ServersPage from "./pages/ServersPage";
 import SettingsPage from "./pages/SettingsPage";
 import PluginDetailPage from "./pages/PluginDetailPage";
+import ShopEditorPage from "./pages/ShopEditorPage";
 import ShopPage from "./pages/ShopPage";
 import SpawnersPage from "./pages/SpawnersPage";
 import SpawnWarpsPage from "./pages/SpawnWarpsPage";
@@ -73,7 +73,7 @@ function Gate() {
               <Route path="shop/:kind/:id" element={<PluginDetailPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="config" element={<ConfigEditorPage />} />
-              <Route path="items" element={<ItemBuilderPage />} />
+              <Route path="items" element={<ShopEditorPage />} />
               <Route path="announcements" element={<AnnouncementsPage />} />
               <Route path="resourcepack" element={<ResourcePackPage />} />
               <Route path="schematics" element={<SchematicsPage />} />

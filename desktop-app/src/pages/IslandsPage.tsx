@@ -788,7 +788,7 @@ function IslandConfigForm({
                 <input type="number" value={t.cenaWSklepie} onChange={(e) => updateSpawnerType(i, { cenaWSklepie: Number(e.target.value) })} />
               </label>
               <p className="muted small">
-                Musi się zgadzać z buy-price w categories/spawnery.yml (Kreator sklepu) - nic ich nie synchronizuje automatycznie.
+                Musi się zgadzać z ceną pozycji „custom: spawner_{t.id.toLowerCase()}” na stronie Sklep - nic ich nie synchronizuje automatycznie.
               </p>
             </div>
           ))}

@@ -90,58 +90,9 @@ export interface RemoteEntry {
   size: number;
 }
 
-// Mirrors mainplugins-shop's category YAML entry shape exactly (material,
-// slot, display-name, amount, buy-price, sell-price, sell-amount, custom-id,
-// lore) - the format ShopManager.wczytajSklepZFolderow() actually parses.
-export interface ShopItem {
-  material: string;
-  slot: number;
-  displayName: string;
-  amount: number;
-  buyPrice: number;
-  sellPrice: number | null;
-  sellAmount: number | null;
-  customId: string;
-  lore: string[];
-}
-
 export interface PackMeta {
   pack_format: number;
   description: string;
-}
-
-// Mirrors mainplugins-shop's sklep-gui.yml exactly - pure GUI layout/size for
-// the shop's 4 screens, independent of item content (categories/*.yml).
-export type ShopSlotRole =
-  | "CATEGORY_SLOT"
-  | "ITEM_SLOT"
-  | "AMOUNT_SLOT"
-  | "NAV_BACK"
-  | "NAV_PREV"
-  | "NAV_NEXT"
-  | "EXIT"
-  | "SEARCH"
-  | "SORT"
-  | "FILLER";
-
-export interface ShopSlotEntry {
-  slot: number;
-  role: ShopSlotRole;
-  material?: string;
-  amount?: number;
-}
-
-export interface ShopScreen {
-  size: number;
-  layout: ShopSlotEntry[];
-}
-
-export interface ShopGuiContent {
-  categoryOrder: string[];
-  mainMenu: ShopScreen;
-  categoryPage: ShopScreen;
-  buyPicker: ShopScreen;
-  searchResults: ShopScreen;
 }
 
 export interface TextureStatus {
