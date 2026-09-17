@@ -458,6 +458,22 @@ export default function ShopEditorPage() {
     );
   }
 
+  /** Mnożnik z pliku -> procent zmiany pokazywany w aplikacji (0.5 -> 50, 1.5 -> 50). */
+  function pct(multiplier: number) {
+    return Math.abs(Math.round((multiplier - 1) * 100));
+  }
+
+  /** Procent zmiany -> mnożnik do pliku (-50 -> 0.5, +50 -> 1.5). */
+  function fromPct(percent: number) {
+    return Math.round((1 + percent / 100) * 100) / 100;
+  }
+
+  /** Mnożnik -> "+50" / "-20" (tak samo jak /@shop event). */
+  function signedPct(multiplier: number) {
+    const p = Math.round((multiplier - 1) * 100);
+    return (p >= 0 ? "+" : "") + p;
+  }
+
   function numberInput(value: number | null, onChange: (n: number) => void, step = "0.01", min = 0) {
     return (
       <input
@@ -602,7 +618,7 @@ export default function ShopEditorPage() {
               checked={r?.enabled ?? false}
               onChange={(e) =>
                 updateCategory(c.id, {
-                  rotation: r ? { ...r, enabled: e.target.checked } : { enabled: true, show: 5, everyDays: 14, pool: [], raw: {} },
+                  rotation: r ? { ...r, enabled: e.target.checked } : { enabled: true, show: 5, everyDays: 14, announce: true, pool: [], raw: {} },
                 })
               }
             />
@@ -619,6 +635,14 @@ export default function ShopEditorPage() {
               </label>
               <label>
                 Co ile dni nowa oferta {numberInput(r.everyDays, (n) => updateCategory(c.id, { rotation: { ...r, everyDays: Math.max(1, Math.floor(n)) } }), "1", 1)}
+              </label>
+              <label className="checkbox">
+                <input
+                  type="checkbox"
+                  checked={r.announce}
+                  onChange={(e) => updateCategory(c.id, { rotation: { ...r, announce: e.target.checked } })}
+                />
+                Ogłoś na czacie, gdy oferta się zmieni
               </label>
               <p className="muted small">Pula ma {r.pool.length} pozycji - edytujesz je na liście w środku, pod zwykłymi pozycjami.</p>
             </>
@@ -764,12 +788,12 @@ export default function ShopEditorPage() {
                 Co ile minut przeliczać {numberInput(d.cycleMinutes, (n) => setDyn({ cycleMinutes: Math.max(1, Math.floor(n)) }), "1", 1)}
               </label>
               <label>
-                Najniższy skup (część zwykłej ceny) {numberInput(d.minMultiplier, (n) => setDyn({ minMultiplier: n }), "0.05")}
-                <span className="muted small">np. 0.5 = połowa</span>
+                Skup może spaść najwyżej o (%) {numberInput(pct(d.minMultiplier), (n) => setDyn({ minMultiplier: fromPct(-Math.abs(n)) }), "5")}
+                <span className="muted small">50 = skup spadnie najwyżej do połowy zwykłej ceny</span>
               </label>
               <label>
-                Najwyższy skup (część zwykłej ceny) {numberInput(d.maxMultiplier, (n) => setDyn({ maxMultiplier: n }), "0.05")}
-                <span className="muted small">np. 1.5 = półtora raza</span>
+                Skup może wzrosnąć najwyżej o (%) {numberInput(pct(d.maxMultiplier), (n) => setDyn({ maxMultiplier: fromPct(Math.abs(n)) }), "5")}
+                <span className="muted small">50 = skup urośnie najwyżej do półtora raza zwykłej ceny</span>
               </label>
               <label>
                 Co ile dni wszystkie ceny wracają do normy {numberInput(d.resetDays, (n) => setDyn({ resetDays: Math.max(1, Math.floor(n)) }), "1", 1)}
@@ -777,6 +801,10 @@ export default function ShopEditorPage() {
               <label>
                 Skup najwyżej taka część ceny kupna {numberInput(d.maxSellShare, (n) => setDyn({ maxSellShare: Math.min(1, n) }), "0.05")}
                 <span className="muted small">0.9 = skup nigdy nie da więcej niż 90% ceny kupna</span>
+              </label>
+              <label className="checkbox">
+                <input type="checkbox" checked={d.announceEvents} onChange={(e) => setDyn({ announceEvents: e.target.checked })} />
+                Ogłoś na czacie, gdy zaczyna się albo kończy event (/@shop event)
               </label>
             </>
           )}
@@ -856,7 +884,7 @@ export default function ShopEditorPage() {
                       <td>{s.transakcji}</td>
                       <td>{s.sztukDzis}</td>
                       <td>{money(s.wyplaconoDzis)}</td>
-                      <td>{m == null ? "100%" : `${Math.round(m * 100)}%${m > 1.02 ? " ▲" : m < 0.98 ? " ▼" : ""}`}</td>
+                      <td>{m == null ? "0%" : `${signedPct(m)}%${m > 1.02 ? " ▲" : m < 0.98 ? " ▼" : ""}`}</td>
                     </tr>
                   );
                 })}

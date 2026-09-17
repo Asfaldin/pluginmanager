@@ -23,6 +23,7 @@ export interface RotationDraft {
   enabled: boolean;
   show: number;
   everyDays: number;
+  announce: boolean;
   pool: ShopItemDraft[];
   raw: Obj;
 }
@@ -55,6 +56,7 @@ export interface DynamicDraft {
   maxMultiplier: number;
   resetDays: number;
   maxSellShare: number;
+  announceEvents: boolean;
 }
 
 export interface ShopSettingsDraft {
@@ -144,7 +146,7 @@ export function defaultMenus(): Record<string, MenuScreenDraft> {
 }
 
 export function defaultDynamic(): DynamicDraft {
-  return { enabled: true, cycleMinutes: 60, minMultiplier: 0.5, maxMultiplier: 1.5, resetDays: 14, maxSellShare: 0.9 };
+  return { enabled: true, cycleMinutes: 60, minMultiplier: 0.5, maxMultiplier: 1.5, resetDays: 14, maxSellShare: 0.9, announceEvents: true };
 }
 
 export function defaultSettings(): ShopSettingsDraft {
@@ -211,6 +213,7 @@ export function parseShopSettings(text: string): ShopSettingsDraft {
       maxMultiplier: num(dyn["max-multiplier"], d.dynamic.maxMultiplier),
       resetDays: num(dyn["reset-days"], d.dynamic.resetDays),
       maxSellShare: num(dyn["max-sell-share"], d.dynamic.maxSellShare),
+      announceEvents: typeof dyn["announce-events"] === "boolean" ? (dyn["announce-events"] as boolean) : d.dynamic.announceEvents,
     },
     statsEnabled: typeof obj(raw.stats).enabled === "boolean" ? Boolean(obj(raw.stats).enabled) : d.statsEnabled,
     menus,
@@ -248,6 +251,7 @@ export function serializeShopSettings(s: ShopSettingsDraft): string {
       "max-multiplier": s.dynamic.maxMultiplier,
       "reset-days": s.dynamic.resetDays,
       "max-sell-share": s.dynamic.maxSellShare,
+      "announce-events": s.dynamic.announceEvents,
     },
     stats: { ...obj(s.raw.stats), enabled: s.statsEnabled },
     menus,
@@ -310,8 +314,9 @@ export function parseCategory(id: string, text: string): CategoryDraft {
           enabled: typeof rot.enabled === "boolean" ? rot.enabled : true,
           show: Math.max(1, num(rot.show, 5)),
           everyDays: Math.max(1, num(rot["every-days"], 14)),
+          announce: typeof rot.announce === "boolean" ? rot.announce : true,
           pool: Array.isArray(rot.pool) ? rot.pool.map(parseItem) : [],
-          raw: without(rot, ["enabled", "show", "every-days", "pool"]),
+          raw: without(rot, ["enabled", "show", "every-days", "announce", "pool"]),
         }
       : null,
     raw: without(raw, ["name", "icon", "items", "rotation"]),
