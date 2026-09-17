@@ -16,6 +16,7 @@ export interface MarketConfig {
   maxPrice: number;
   expireDays: number;
   mailbox: boolean;
+  taxEnabled: boolean;
   taxPercent: number;
   title: string;
   background: string;
@@ -57,7 +58,8 @@ export function defaultMarket(): MarketConfig {
     maxPrice: 10000000,
     expireDays: 7,
     mailbox: true,
-    taxPercent: 0,
+    taxEnabled: false,
+    taxPercent: 5,
     title: "",
     background: "GRAY_STAINED_GLASS_PANE",
     buttons: structuredClone(DEFAULT_BUTTONS),
@@ -92,7 +94,10 @@ export function parseMarketYaml(text: string): MarketConfig {
     maxPrice: num(raw["max-price"], d.maxPrice),
     expireDays: num(raw["expire-days"], d.expireDays),
     mailbox: typeof raw.mailbox === "boolean" ? raw.mailbox : d.mailbox,
-    taxPercent: num(raw["tax-percent"], d.taxPercent),
+    // Stare pliki mialy samo tax-percent (0 = brak podatku) - czytamy oba zapisy.
+    taxEnabled:
+      typeof obj(raw.tax).enabled === "boolean" ? (obj(raw.tax).enabled as boolean) : num(raw["tax-percent"], 0) > 0,
+    taxPercent: num(obj(raw.tax).percent, num(raw["tax-percent"], d.taxPercent)),
     title: typeof menu.title === "string" ? menu.title : d.title,
     background: typeof menu.background === "string" ? menu.background : d.background,
     buttons,
@@ -112,7 +117,7 @@ export function serializeMarketYaml(c: MarketConfig): string {
     "max-price": c.maxPrice,
     "expire-days": c.expireDays,
     mailbox: c.mailbox,
-    "tax-percent": c.taxPercent,
+    tax: { enabled: c.taxEnabled, percent: c.taxPercent },
     menu: { ...menu, title: c.title, background: c.background, buttons },
   };
   return HEADER + yaml.dump(out, { lineWidth: -1, noRefs: true, flowLevel: 3 });

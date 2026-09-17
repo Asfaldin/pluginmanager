@@ -265,8 +265,16 @@ export default function MarketPage() {
             Włączona: wygasłe oferty i kupione przedmioty, które nie mieszczą się w ekwipunku, czekają w przycisku „Do odebrania”.
             Wyłączona: takie przedmioty wypadają pod nogi, a wygasłe oferty wracają przy następnym wejściu gracza.
           </p>
-          {numberField("Podatek od sprzedaży (%)", file.taxPercent, (n) => set({ taxPercent: Math.min(100, n) }),
-            "Część ceny, której sprzedający nie dostaje (np. 5 = dostaje 95%). Zabiera nadmiar pieniędzy z serwera.")}
+          <label className="checkbox">
+            <input type="checkbox" checked={file.taxEnabled} onChange={(e) => set({ taxEnabled: e.target.checked })} />
+            Pobieraj podatek od sprzedaży
+          </label>
+          <p className="muted small" style={{ marginTop: 0 }}>
+            Część ceny, której sprzedający nie dostaje (np. 5% = dostaje 95%). Zabiera nadmiar pieniędzy z serwera.
+            Wyłączona - sprzedający dostaje całą kwotę, a procent obok zostaje zapamiętany na później.
+          </p>
+          {numberField("Podatek (%)", file.taxPercent, (n) => set({ taxPercent: Math.min(100, n) }),
+            file.taxEnabled ? "" : "Podatek jest teraz wyłączony - ta liczba nic nie robi.")}
         </Fold>
         <Fold title="Wygląd menu" open>
           <label>
