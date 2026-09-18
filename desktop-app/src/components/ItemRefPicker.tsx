@@ -1,5 +1,7 @@
 import { useId } from "react";
 import type { ItemRef } from "../lib/cratesYaml";
+import { getIconPackDir } from "../lib/materialIcons";
+import MaterialIcon from "./MaterialIcon";
 
 interface Props {
   value: ItemRef;
@@ -9,14 +11,18 @@ interface Props {
   showAmount?: boolean;
   /** Górna granica ilości (domyślnie 64 - stack). */
   maxAmount?: number;
+  /** Paczka tekstur na ikonki; bez tego bierzemy tę wspólną, ustawioną raz dla całej aplikacji. */
+  iconPackDir?: string;
 }
 
 /** Wybór przedmiotu: zwykły item Minecrafta albo custom item z katalogu (items/). */
-export default function ItemRefPicker({ value, onChange, materials, customIds, showAmount, maxAmount }: Props) {
+export default function ItemRefPicker({ value, onChange, materials, customIds, showAmount, maxAmount, iconPackDir }: Props) {
   const listId = useId();
   const custom = value.custom != null;
+  const pack = iconPackDir ?? getIconPackDir();
   return (
-    <div className="row">
+    <div className="row" style={{ alignItems: "center" }}>
+      {custom ? <span className="ci-badge">custom</span> : <MaterialIcon material={value.item ?? ""} iconPackDir={pack} />}
       <select
         value={custom ? "custom" : "item"}
         onChange={(e) =>

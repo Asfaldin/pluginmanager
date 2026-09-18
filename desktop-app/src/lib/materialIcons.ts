@@ -33,6 +33,44 @@ const MATERIAL_NAME_EXCEPTIONS: Record<string, string> = {
   MAGMA_BLOCK: "magma",
 };
 
+// Materials where the generic "_top before _side" fallback picks the worse
+// face. Grass block's top is the greyscale biome-tinted one, while its side
+// (dirt with the green fringe baked in) already looks like the real block.
+const PREFERRED_TEXTURES: Record<string, string> = {
+  GRASS_BLOCK: "assets/minecraft/textures/block/grass_block_side.png",
+};
+
+// Vanilla ships some textures in greyscale and colours them in-game, where the
+// shade depends on the biome (grass, leaves, vines, lily pads). Shown raw they
+// look like grey static, so we repaint them with the colour Minecraft uses in a
+// normal plains/forest biome. MaterialIcon only applies this when the texture
+// really is greyscale, so a pack shipping its own coloured version is untouched.
+const GRASS_TINT = "#79c05a";
+const FOLIAGE_TINT = "#59c93c";
+
+const MATERIAL_TINTS: Record<string, string> = {
+  GRASS_BLOCK: GRASS_TINT,
+  SHORT_GRASS: GRASS_TINT,
+  TALL_GRASS: GRASS_TINT,
+  FERN: GRASS_TINT,
+  LARGE_FERN: GRASS_TINT,
+  SUGAR_CANE: GRASS_TINT,
+  SEAGRASS: GRASS_TINT,
+  TALL_SEAGRASS: GRASS_TINT,
+  VINE: FOLIAGE_TINT,
+  LILY_PAD: "#71c35c",
+  // Spruce and birch keep a fixed shade of their own in every biome.
+  SPRUCE_LEAVES: "#619961",
+  BIRCH_LEAVES: "#80a755",
+};
+
+/** Colour to repaint a greyscale vanilla texture with, if this material has one. */
+export function tintForMaterial(material: string): string | undefined {
+  const exact = MATERIAL_TINTS[material];
+  if (exact) return exact;
+  return material.endsWith("_LEAVES") ? FOLIAGE_TINT : undefined;
+}
+
 /**
  * Candidate texture paths for a material, in priority order. Many blocks
  * (grass, logs, machines like dispenser/grindstone) don't have one single
@@ -51,6 +89,8 @@ export function textureRelPathsForMaterial(material: string): string[] {
     `assets/minecraft/textures/item/${lower}.png`,
     `assets/minecraft/textures/block/${lower}.png`,
   ];
+  const preferred = PREFERRED_TEXTURES[material];
+  if (preferred) paths.unshift(preferred);
   // Szybki nie mają własnej tekstury przedmiotu - w ekwipunku wyglądają jak całe szkło w tym kolorze
   // (bez tego łapało się *_pane_top.png, czyli sama cienka krawędź).
   if (lower.endsWith("_pane")) paths.push(`assets/minecraft/textures/block/${lower.slice(0, -"_pane".length)}.png`);

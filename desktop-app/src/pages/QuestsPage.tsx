@@ -443,7 +443,7 @@ export default function QuestsPage() {
             <MinecraftTextInput value={c.description} onChange={(v) => updateCategory(c.id, { description: v })} placeholder="Krótki opis" />
           </label>
           <div className="ci-section-title">Ikona</div>
-          <ItemRefPicker value={c.icon} onChange={(r) => updateCategory(c.id, { icon: r })} materials={allMaterials} customIds={customIds} />
+          <ItemRefPicker value={c.icon} onChange={(r) => updateCategory(c.id, { icon: r })} materials={allMaterials} customIds={customIds} iconPackDir={iconPackDir} />
           <label className="checkbox">
             <input type="checkbox" checked={c.glow} onChange={(e) => updateCategory(c.id, { glow: e.target.checked })} />
             Blask na ikonce (ikonka mieni się jak zaklęty przedmiot)
@@ -522,7 +522,7 @@ export default function QuestsPage() {
               value={r.item}
               onChange={(it) => onChange({ type: "have-item", item: it })}
               materials={allMaterials}
-              customIds={customIds}
+              customIds={customIds} iconPackDir={iconPackDir}
               showAmount
               maxAmount={MAX_REQUIRED}
             />
@@ -537,7 +537,7 @@ export default function QuestsPage() {
                   value={{ ...it, amount: it.amount ?? 1 }}
                   onChange={(n) => onChange({ type: "items", items: r.items.map((x, xi) => (xi === ii ? n : x)) })}
                   materials={allMaterials}
-                  customIds={customIds}
+                  customIds={customIds} iconPackDir={iconPackDir}
                   showAmount
                   maxAmount={MAX_REQUIRED}
                 />
@@ -641,7 +641,7 @@ export default function QuestsPage() {
           {/* Podgląd, jak przedmiot wygląda w grze - w polu jak w ekwipunku. */}
           <span className="quest-look-icon">{iconOf(value)}</span>
           <div className="quest-look-picker">
-            <ItemRefPicker value={value} onChange={onChange} materials={allMaterials} customIds={customIds} />
+            <ItemRefPicker value={value} onChange={onChange} materials={allMaterials} customIds={customIds} iconPackDir={iconPackDir} />
           </div>
         </div>
       </div>

@@ -298,7 +298,7 @@ export default function CrateEditorPage() {
             <MinecraftTextInput value={c.name} onChange={(v) => updateCrate(c.id, { name: v })} placeholder="&6&lNazwa skrzynki" />
           </label>
           <div className="ci-section-title">Wygląd (przedmiot)</div>
-          <ItemRefPicker value={c.item} onChange={(r) => updateCrate(c.id, { item: r })} materials={allMaterials} customIds={customIds} />
+          <ItemRefPicker value={c.item} onChange={(r) => updateCrate(c.id, { item: r })} materials={allMaterials} customIds={customIds} iconPackDir={iconPackDir} />
           <div className="ci-section-title" style={{ marginTop: "0.8rem" }}>
             Postawione skrzynki <span style={{ textTransform: "none", fontWeight: 400 }}>(wspólne dla wszystkich skrzynek)</span>
           </div>
@@ -402,7 +402,7 @@ export default function CrateEditorPage() {
             value={p.icon}
             onChange={(r) => setPrize({ icon: r })}
             materials={allMaterials}
-            customIds={customIds}
+            customIds={customIds} iconPackDir={iconPackDir}
             showAmount
           />
         </Fold>
@@ -456,7 +456,7 @@ export default function CrateEditorPage() {
             <MinecraftTextInput value={k.name} onChange={(v) => updateKey(k.id, { name: v })} placeholder="&e&lNazwa klucza" />
           </label>
           <div className="ci-section-title">Wygląd (przedmiot)</div>
-          <ItemRefPicker value={k.item} onChange={(r) => updateKey(k.id, { item: r })} materials={allMaterials} customIds={customIds} />
+          <ItemRefPicker value={k.item} onChange={(r) => updateKey(k.id, { item: r })} materials={allMaterials} customIds={customIds} iconPackDir={iconPackDir} />
         </Fold>
         <Fold title="Opis przedmiotu w ekwipunku">
           <LoreEditor value={k.lore} onChange={(l) => updateKey(k.id, { lore: l })} />
