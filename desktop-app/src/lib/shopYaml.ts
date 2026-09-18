@@ -2,7 +2,7 @@ import * as yaml from "js-yaml";
 import type { ItemRef } from "./itemRef";
 
 // Sklep (mainplugins-shop): shop.yml + categories/<id>.yml. Czysta logika bez serwera - testy w shopYaml.test.ts.
-// Ceny w plikach są za paczkę (amount / sell-amount sztuk); aplikacja pokazuje je domyślnie za sztukę.
+// Ceny w plikach są za stack (amount / sell-amount sztuk); aplikacja pokazuje je domyślnie za sztukę.
 // Nieznane pola zostają w `raw` i wracają do pliku przy zapisie.
 
 type Obj = Record<string, unknown>;
@@ -344,17 +344,112 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-/** Cena paczki -> cena za sztukę (2 miejsca). */
+/** Cena stacka -> cena za sztukę (2 miejsca). */
 export function perPiece(price: number | null, lot: number): number | null {
   return price == null ? null : round2(price / Math.max(1, lot));
 }
 
-/** Cena za sztukę -> cena paczki (2 miejsca). */
+/** Cena za sztukę -> cena stacka (2 miejsca). */
 export function fromPerPiece(piece: number | null, lot: number): number | null {
   return piece == null ? null : round2(piece * Math.max(1, lot));
 }
 
-/** Czy pozycja sprzedaje się w paczkach (inaczej aplikacja pokazuje tylko ceny za sztukę). */
+/**
+ * Układa przedmioty po cenie za sztukę (w pliku jest za stack): "asc" od najtańszego,
+ * "desc" od najdroższego. Przedmioty bez takiej ceny zawsze lądują na końcu - w obie
+ * strony, bo brak ceny to nie jest "zero". Kolejność w kategorii to kolejność w menu
+ * sklepu, więc to zmienia też wygląd w grze.
+ */
+export function sortItems(items: ShopItemDraft[], by: "buy" | "sell", dir: "asc" | "desc" = "asc"): ShopItemDraft[] {
+  const price = (i: ShopItemDraft) =>
+    by === "buy" ? perPiece(i.buy, i.amount) : perPiece(i.sell, i.sellAmount);
+  return [...items].sort((a, b) => {
+    const pa = price(a);
+    const pb = price(b);
+    if (pa == null && pb == null) return 0;
+    if (pa == null) return 1;
+    if (pb == null) return -1;
+    return dir === "asc" ? pa - pb : pb - pa;
+  });
+}
+
+/**
+ * Rozpoznaje, jak lista jest już ułożona (pliki od nas przychodzą ułożone po cenie),
+ * żeby aplikacja pokazała od razu właściwą strzałkę. null = kolejność własna.
+ */
+export function detectSort(items: ShopItemDraft[]): { by: "buy" | "sell"; dir: "asc" | "desc" } | null {
+  if (items.length < 2) return null;
+  const same = (a: ShopItemDraft[], b: ShopItemDraft[]) => a.every((it, i) => it === b[i]);
+  for (const by of ["buy", "sell"] as const) {
+    // Sama lista bez tej ceny (np. nikt nie skupuje) pasuje do każdej kolejności - nic nam nie mówi.
+    const withPrice = items.filter((i) => (by === "buy" ? i.buy : i.sell) != null);
+    if (withPrice.length < 2) continue;
+    for (const dir of ["asc", "desc"] as const) {
+      if (same(items, sortItems(items, by, dir))) return { by, dir };
+    }
+  }
+  return null;
+}
+
+export type PriceFilter = "all" | "buy" | "sell" | "both";
+
+/** Czy przedmiot pasuje do filtra: "buy" = tylko do kupienia, "sell" = tylko do sprzedania. */
+export function matchesPriceFilter(i: ShopItemDraft, filter: PriceFilter): boolean {
+  switch (filter) {
+    case "buy":
+      return i.buy != null && i.sell == null;
+    case "sell":
+      return i.sell != null && i.buy == null;
+    case "both":
+      return i.buy != null && i.sell != null;
+    default:
+      return true;
+  }
+}
+
+// ---------- pula rotacji ----------
+
+/**
+ * Przenosi wskazane pozycje ze stałej listy kategorii do puli rotacji - pozycja
+ * przestaje być dostępna zawsze i pojawia się tylko wtedy, gdy sklep ją wylosuje.
+ * Kategoria bez rotacji wraca bez zmian.
+ */
+export function moveToPool(c: CategoryDraft, indexes: number[]): CategoryDraft {
+  if (!c.rotation) return c;
+  const taken = new Set(indexes);
+  const moved = c.items.filter((_, i) => taken.has(i));
+  if (moved.length === 0) return c;
+  return {
+    ...c,
+    items: c.items.filter((_, i) => !taken.has(i)),
+    rotation: { ...c.rotation, pool: [...c.rotation.pool, ...moved] },
+  };
+}
+
+/** Wyjmuje wskazane przedmioty z puli z powrotem na stałą listę (cofnięcie przeniesienia). */
+export function moveBackFromPool(c: CategoryDraft, indexes: number[]): CategoryDraft {
+  if (!c.rotation) return c;
+  const taken = new Set(indexes);
+  const moved = c.rotation.pool.filter((_, i) => taken.has(i));
+  if (moved.length === 0) return c;
+  return {
+    ...c,
+    items: [...c.items, ...moved],
+    rotation: { ...c.rotation, pool: c.rotation.pool.filter((_, i) => !taken.has(i)) },
+  };
+}
+
+/** Losuje "howMany" różnych numerów z zakresu 0..count-1 (nigdy więcej, niż jest pozycji). */
+export function randomPick(howMany: number, count: number, random: () => number = Math.random): number[] {
+  const all = Array.from({ length: Math.max(0, count) }, (_, i) => i);
+  for (let i = all.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [all[i], all[j]] = [all[j], all[i]];
+  }
+  return all.slice(0, Math.max(0, Math.min(howMany, all.length)));
+}
+
+/** Czy pozycja sprzedaje się w stackach (inaczej aplikacja pokazuje tylko ceny za sztukę). */
 export function isLotted(i: ShopItemDraft): boolean {
   return i.amount > 1 || i.sellAmount > 1;
 }

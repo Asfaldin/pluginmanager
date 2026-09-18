@@ -3,7 +3,7 @@ import smallEnRaw from "./shopTemplates/small-en.json?raw";
 import smallPlRaw from "./shopTemplates/small-pl.json?raw";
 
 // Gotowe sklepy do wczytania w edytorze (scripts/convert-big-shop.mjs). Mały = to, co plugin wgrywa sam przy
-// pierwszym starcie (ceny za sztukę, grosze). Duży = nasz sklep (paczki, pełne złotówki, rotacja, spawnery).
+// pierwszym starcie (ceny za sztukę, grosze). Duży = nasz sklep (stacki, pełne złotówki, rotacja, spawnery).
 
 export interface ShopTemplate {
   "shop.yml": string;

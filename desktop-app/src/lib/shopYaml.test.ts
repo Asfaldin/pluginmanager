@@ -6,11 +6,19 @@ import {
   fromPerPiece,
   isLotted,
   parseCategory,
+  moveBackFromPool,
+  moveToPool,
+  newItem,
   parseShopSettings,
   perPiece,
+  randomPick,
+  detectSort,
+  matchesPriceFilter,
+  sortItems,
   serializeCategory,
   serializeShopSettings,
   shopProblems,
+  type CategoryDraft,
 } from "./shopYaml";
 
 const CATEGORY = `
@@ -97,5 +105,103 @@ describe("shopYaml prices", () => {
     expect(p.some((x) => x.includes("nie ma ani ceny"))).toBe(true);
     expect(p.some((x) => x.includes("nie ma miejsca"))).toBe(true);
     expect(isLotted(c.items[0])).toBe(false);
+  });
+});
+
+describe("shopYaml rotation pool", () => {
+  const cat = (ids: string[]): CategoryDraft => ({
+    id: "bloki",
+    name: "Bloki",
+    icon: { item: "STONE" },
+    items: ids.map((id) => newItem({ item: id })),
+    rotation: { enabled: true, show: 5, everyDays: 14, announce: true, pool: [], raw: {} },
+    raw: {},
+  });
+
+  it("moves picked items from the fixed list into the pool", () => {
+    const c = cat(["STONE", "DIRT", "SAND", "GRAVEL"]);
+    const out = moveToPool(c, [1, 3]);
+    expect(out.items.map((i) => (i.ref as any).item)).toEqual(["STONE", "SAND"]);
+    expect(out.rotation!.pool.map((i) => (i.ref as any).item)).toEqual(["DIRT", "GRAVEL"]);
+  });
+
+  it("keeps items already in the pool", () => {
+    const c = cat(["STONE", "DIRT"]);
+    c.rotation!.pool = [newItem({ item: "ICE" })];
+    const out = moveToPool(c, [0]);
+    expect(out.rotation!.pool.map((i) => (i.ref as any).item)).toEqual(["ICE", "STONE"]);
+  });
+
+  it("moves a pool item back to the fixed list", () => {
+    const c = cat(["STONE"]);
+    c.rotation!.pool = [newItem({ item: "ICE" }), newItem({ item: "SAND" })];
+    const out = moveBackFromPool(c, [0]);
+    expect(out.items.map((i) => (i.ref as any).item)).toEqual(["STONE", "ICE"]);
+    expect(out.rotation!.pool.map((i) => (i.ref as any).item)).toEqual(["SAND"]);
+  });
+
+  it("draws random items without repeating and never more than there are", () => {
+    const picked = randomPick(4, 10, () => 0.5);
+    expect(picked).toHaveLength(4);
+    expect(new Set(picked).size).toBe(4);
+    expect(randomPick(6, 3, () => 0.5)).toHaveLength(3);
+    expect(randomPick(6, 0, () => 0.5)).toEqual([]);
+  });
+
+  it("does nothing when the category has no rotation", () => {
+    const c = { ...cat(["STONE"]), rotation: null };
+    expect(moveToPool(c, [0])).toBe(c);
+    expect(moveBackFromPool(c, [0])).toBe(c);
+  });
+});
+
+describe("shopYaml sorting", () => {
+  const it2 = (id: string, buy: number | null, sell: number | null, amount = 1, sellAmount = 1) => ({
+    ...newItem({ item: id }),
+    buy,
+    sell,
+    amount,
+    sellAmount,
+  });
+
+  it("sorts by buy price per piece, cheapest first, no price last", () => {
+    const list = [it2("A", 640, null, 64), it2("B", null, null), it2("C", 5, null), it2("D", 256, null, 64)];
+    expect(sortItems(list, "buy").map((i) => (i.ref as any).item)).toEqual(["D", "C", "A", "B"]);
+  });
+
+  it("turns the order around but keeps priceless items last", () => {
+    const list = [it2("A", 640, null, 64), it2("B", null, null), it2("C", 5, null), it2("D", 256, null, 64)];
+    expect(sortItems(list, "buy", "desc").map((i) => (i.ref as any).item)).toEqual(["A", "C", "D", "B"]);
+  });
+
+  it("recognises how the list is already ordered", () => {
+    const cheapFirst = [it2("A", 5, null), it2("B", 640, null, 64), it2("C", null, null)];
+    expect(detectSort(cheapFirst)).toEqual({ by: "buy", dir: "asc" });
+    expect(detectSort([...cheapFirst].reverse().filter((i) => i.buy != null))).toEqual({ by: "buy", dir: "desc" });
+    expect(detectSort([it2("A", 5, null), it2("B", 1, null), it2("C", 9, null)])).toBeNull();
+    expect(detectSort([])).toBeNull();
+  });
+
+  it("sorts by sell price per piece, smallest first", () => {
+    const list = [it2("A", null, 64, 1, 64), it2("B", null, 2), it2("C", null, null), it2("D", null, 0.5)];
+    expect(sortItems(list, "sell").map((i) => (i.ref as any).item)).toEqual(["D", "A", "B", "C"]);
+  });
+});
+
+describe("shopYaml price filter", () => {
+  const mk = (buy: number | null, sell: number | null) => ({ ...newItem({ item: "STONE" }), buy, sell });
+  const both = mk(10, 5);
+  const onlyBuy = mk(10, null);
+  const onlySell = mk(null, 5);
+  const none = mk(null, null);
+
+  it("shows everything by default", () => {
+    for (const i of [both, onlyBuy, onlySell, none]) expect(matchesPriceFilter(i, "all")).toBe(true);
+  });
+
+  it("splits items by what the player can do with them", () => {
+    expect([both, onlyBuy, onlySell, none].map((i) => matchesPriceFilter(i, "buy"))).toEqual([false, true, false, false]);
+    expect([both, onlyBuy, onlySell, none].map((i) => matchesPriceFilter(i, "sell"))).toEqual([false, false, true, false]);
+    expect([both, onlyBuy, onlySell, none].map((i) => matchesPriceFilter(i, "both"))).toEqual([true, false, false, false]);
   });
 });

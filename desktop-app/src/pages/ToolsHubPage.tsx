@@ -50,7 +50,7 @@ const TOOL_GROUPS: ToolGroup[] = [
       {
         to: "/items",
         title: "Sklep",
-        description: "Kategorie i przedmioty sklepu serwerowego: ceny kupna i skupu, paczki, rotacja, ceny dynamiczne, wygląd menu. Szablony Mały i Duży.",
+        description: "Kategorie i przedmioty sklepu serwerowego: ceny kupna i skupu, stacki, rotacja, ceny dynamiczne, wygląd menu. Szablony Mały i Duży.",
         icon: Hammer,
       },
       {
