@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Save, Store, Terminal, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, HelpCircle, Save, Store, Terminal, Trash2, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { CopyRow, Fold, LoreEditor } from "../components/EditorBits";
@@ -19,14 +19,21 @@ import { shopTemplateChoices, shopTemplateFor, type ShopTemplate } from "../lib/
 import {
   BUTTON_LABELS,
   defaultSettings,
+  detectSort,
   fromPerPiece,
   isLotted,
+  matchesPriceFilter,
+  moveBackFromPool,
+  moveToPool,
   newCategory,
   newItem,
   parseCategory,
   parseShopSettings,
   perPiece,
+  randomPick,
+  type PriceFilter,
   ROLE_LABELS,
+  sortItems,
   SCREEN_LABELS,
   SCREENS,
   serializeCategory,
@@ -108,8 +115,8 @@ function ShopCommandsModal({ file, onClose }: { file: ShopFile; onClose: () => v
         <div className="ci-protip">
           <CopyRow cmd="/@shop reload" what="wczytuje sklep od nowa (aplikacja robi to sama po „Wyślij na serwer”)" />
           <CopyRow cmd="/@shop info <przedmiot>" what="ceny i stan rynku przedmiotu" />
-          <CopyRow cmd="/@shop price <przedmiot> buy <kwota>" what="zmienia cenę kupna paczki (zapis w pliku kategorii)" />
-          <CopyRow cmd="/@shop price <przedmiot> sell <kwota>" what="zmienia cenę skupu paczki" />
+          <CopyRow cmd="/@shop price <przedmiot> buy <kwota>" what="zmienia cenę kupna stacka (zapis w pliku kategorii)" />
+          <CopyRow cmd="/@shop price <przedmiot> sell <kwota>" what="zmienia cenę skupu stacka" />
           <CopyRow cmd="/@shop event <przedmiot> 1.5" what="event: skup x1.5 na stałe, aż wpiszesz ... off" />
           <CopyRow cmd="/@shop event list" what="lista eventów" />
           <CopyRow cmd="/@shop reset <przedmiot>" what="skup przedmiotu wraca do normy" />
@@ -152,6 +159,12 @@ export default function ShopEditorPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showCommands, setShowCommands] = useState(false);
+  const [rotationHelp, setRotationHelp] = useState(false);
+  const [poolPickCat, setPoolPickCat] = useState<string | null>(null);
+  const [poolPickBack, setPoolPickBack] = useState(false);
+  const [sortBy, setSortBy] = useState<Record<string, { by: "buy" | "sell"; dir: "asc" | "desc" }>>({});
+  const [priceFilter, setPriceFilter] = useState<Record<string, PriceFilter>>({});
+  const [fillCount, setFillCount] = useState(10);
   const [trashConfirm, setTrashConfirm] = useState<string | null>(null);
   const [screen, setScreen] = useState("main-menu");
   const [layoutEdit, setLayoutEdit] = useState(false);
@@ -326,6 +339,19 @@ export default function ShopEditorPage() {
     setFile({ ...file, cats: file.cats.map((c) => (c.id === id ? { ...c, ...patch } : c)) });
   }
 
+  /** Przeniesienie pozycji ze stałych do puli rotacji, jako łatka do updateCategory. */
+  function movedToPool(c: CategoryDraft, indexes: number[]): Partial<CategoryDraft> {
+    const next = moveToPool(c, indexes);
+    return { items: next.items, rotation: next.rotation };
+  }
+
+  /** Cofnięcie: pozycja z puli wraca na stałą listę. Zaznaczenie wraca na kategorię, bo numery się przesuwają. */
+  function moveBack(c: CategoryDraft, indexes: number[]) {
+    const next = moveBackFromPool(c, indexes);
+    updateCategory(c.id, { items: next.items, rotation: next.rotation });
+    setSel({ kind: "cat" });
+  }
+
   function listOf(c: CategoryDraft, pool: boolean): ShopItemDraft[] {
     return pool ? (c.rotation?.pool ?? []) : c.items;
   }
@@ -351,6 +377,73 @@ export default function ShopEditorPage() {
   function removeItem(c: CategoryDraft, pool: boolean, index: number) {
     setList(c, pool, listOf(c, pool).filter((_, i) => i !== index));
     setSel({ kind: "cat" });
+  }
+
+  /**
+   * Przełącznik układania listy. Pierwsze kliknięcie układa od najtańszego, kolejne
+   * odwraca. Kolejność w pliku to kolejność w menu sklepu, więc zmienia to widok w grze.
+   */
+  function toggleSort(c: CategoryDraft, pool: boolean, by: "buy" | "sell") {
+    const key = `${c.id}:${pool}`;
+    const cur = sortBy[key];
+    const dir: "asc" | "desc" = cur && cur.by === by && cur.dir === "asc" ? "desc" : "asc";
+    setList(c, pool, sortItems(listOf(c, pool), by, dir));
+    setSortBy({ ...sortBy, [key]: { by, dir } });
+    setSel({ kind: "cat" });
+  }
+
+  /** Wąski pasek nad listą: układanie i filtr obok siebie, żeby nie zjadał miejsca. */
+  function listToolbar(c: CategoryDraft, pool: boolean) {
+    const key = `${c.id}:${pool}`;
+    const cur = sortBy[key] ?? detectSort(listOf(c, pool));
+    const filter = priceFilter[key] ?? "all";
+    const style = { fontSize: "0.72rem", padding: "0.12rem 0.4rem" } as const;
+    const sortBtn = (by: "buy" | "sell", label: string) => {
+      const on = cur?.by === by;
+      const down = on && cur.dir === "desc";
+      return (
+        <button
+          type="button"
+          style={style}
+          className={on ? "ci-publish" : undefined}
+          title={down ? "Od najdroższego - kliknij, żeby odwrócić" : "Od najtańszego - kliknij drugi raz, żeby odwrócić"}
+          onClick={() => toggleSort(c, pool, by)}
+        >
+          {label} {on ? (down ? "↓" : "↑") : ""}
+        </button>
+      );
+    };
+    const filterBtn = (f: PriceFilter, label: string, title: string) => (
+      <button
+        type="button"
+        style={style}
+        className={filter === f ? "ci-publish" : undefined}
+        title={title}
+        onClick={() => setPriceFilter({ ...priceFilter, [key]: f })}
+      >
+        {label}
+      </button>
+    );
+    return (
+      <div className="row" style={{ gap: "0.2rem", margin: "0.15rem 0 0.4rem", alignItems: "center", flexWrap: "wrap" }}>
+        <span className="muted small">Ułóż:</span>
+        {sortBtn("buy", "kupno")}
+        {sortBtn("sell", "skup")}
+        <span className="muted small" style={{ marginLeft: "0.4rem" }}>
+          Pokaż:
+        </span>
+        {filterBtn("all", "wszystko", "Cała lista")}
+        {filterBtn("buy", "kupno", "Tylko do kupienia - sklep tego nie skupuje")}
+        {filterBtn("sell", "skup", "Tylko do sprzedania - kupić się nie da")}
+        {filterBtn("both", "oba", "Da się i kupić, i sprzedać")}
+      </div>
+    );
+  }
+
+  /** Ile przedmiotów widać przy obecnym filtrze. */
+  function shownCount(c: CategoryDraft, pool: boolean): number {
+    const f = priceFilter[`${c.id}:${pool}`] ?? "all";
+    return listOf(c, pool).filter((it) => matchesPriceFilter(it, f)).length;
   }
 
   function addItem(c: CategoryDraft, pool: boolean) {
@@ -428,7 +521,7 @@ export default function ShopEditorPage() {
 
   function priceText(it: ShopItemDraft): string {
     const parts: string[] = [];
-    if (it.buy != null) parts.push(isLotted(it) && it.amount > 1 ? `kupno ${money(it.buy)} za ${it.amount} szt.` : `kupno ${money(it.buy)}`);
+    if (it.buy != null) parts.push(`kupno ${money(perPiece(it.buy, it.amount))} za szt.`);
     if (it.sell != null) parts.push(isLotted(it) && it.sellAmount > 1 ? `skup ${money(it.sell)} za ${it.sellAmount} szt.` : `skup ${money(it.sell)}`);
     return parts.join(", ") || "brak cen";
   }
@@ -453,6 +546,11 @@ export default function ShopEditorPage() {
             )}
           </span>
         </button>
+        {pool && (
+          <button type="button" title="Wróć do stałych - przedmiot znów będzie w sklepie zawsze" onClick={() => moveBack(c, [i])}>
+            <Undo2 size={14} strokeWidth={1.75} />
+          </button>
+        )}
         {trashButton(key, "Usuń pozycję")}
       </div>
     );
@@ -501,6 +599,11 @@ export default function ShopEditorPage() {
           {iconOf(it.ref)} {it.name.trim() ? <MinecraftTextPreview text={it.name} /> : refLabel(it.ref)}
           <span className="muted small">{pool ? "(pula rotacji)" : ""}</span>
           <span style={{ flex: 1 }} />
+          {pool && (
+            <button type="button" title="Przedmiot wraca na stałą listę kategorii" onClick={() => moveBack(c, [index])}>
+              Wróć do stałych
+            </button>
+          )}
           <button type="button" title="Wyżej" onClick={() => moveItem(c, pool, index, -1)} disabled={index === 0}>
             <ArrowUp size={14} />
           </button>
@@ -510,7 +613,7 @@ export default function ShopEditorPage() {
         </h2>
         <p className="muted small">Klucz w komendach: {itemKey(it.ref)}</p>
         <Fold title="Przedmiot" open>
-          <ItemRefPicker value={it.ref} onChange={(r) => set({ ref: r.custom != null ? { custom: r.custom } : { item: r.item } })} materials={allMaterials} customIds={customIds} />
+          <ItemRefPicker value={it.ref} onChange={(r) => set({ ref: r.custom != null ? { custom: r.custom } : { item: r.item } })} materials={allMaterials} customIds={customIds} iconPackDir={iconPackDir} />
           {it.ref.custom != null && (
             <p className="muted small">Przedmiot z katalogu itemów albo z innego pluginu (np. spawner_zombie ze Spawnerów). Bez tego pluginu pozycja się nie pokaże.</p>
           )}
@@ -545,17 +648,33 @@ export default function ShopEditorPage() {
                 else set({ amount: 1, sellAmount: 1, buy: perPiece(it.buy, it.amount), sell: perPiece(it.sell, it.sellAmount) });
               }}
             />
-            Ceny w paczkach (np. 64 sztuki za 640)
+            Stacki (np. po 64 sztuki) - gracz skupuje tylko pełne stacki, kupno i tak jest za sztukę
           </label>
           <label className="checkbox">
-            <input type="checkbox" checked={it.buy != null} onChange={(e) => set({ buy: e.target.checked ? 1 : null })} />
+            <input
+              type="checkbox"
+              checked={it.buy != null}
+              // Cena w pliku jest za cały stack, a pole w aplikacji za sztukę - startowa "1" musi
+              // być za sztukę, inaczej przy stacku 64 pokazywało się 0.02.
+              onChange={(e) => set({ buy: e.target.checked ? fromPerPiece(1, it.amount) : null })}
+            />
             Da się kupić
           </label>
           {it.buy != null &&
             (lotted ? (
               <div className="row" style={{ alignItems: "center" }}>
-                Kupno: paczka {numberInput(it.amount, (n) => set({ amount: Math.max(1, Math.floor(n)) }), "1", 1)} szt. za {numberInput(it.buy, (n) => set({ buy: n }))}
-                <span className="muted small">= {money(perPiece(it.buy, it.amount))} za sztukę</span>
+                Kupno za sztukę {numberInput(perPiece(it.buy, it.amount), (n) => set({ buy: fromPerPiece(n, it.amount) }))}
+                <span className="muted small">stack</span>
+                {numberInput(
+                  it.amount,
+                  (n) => {
+                    const amount = Math.max(1, Math.floor(n));
+                    set({ amount, buy: fromPerPiece(perPiece(it.buy, it.amount), amount) });
+                  },
+                  "1",
+                  1
+                )}
+                <span className="muted small">szt. = {money(it.buy)} za stack</span>
               </div>
             ) : (
               <label>
@@ -569,7 +688,7 @@ export default function ShopEditorPage() {
           {it.sell != null &&
             (lotted ? (
               <div className="row" style={{ alignItems: "center" }}>
-                Skup: paczka {numberInput(it.sellAmount, (n) => set({ sellAmount: Math.max(1, Math.floor(n)) }), "1", 1)} szt. za {numberInput(it.sell, (n) => set({ sell: n }))}
+                Skup: stack {numberInput(it.sellAmount, (n) => set({ sellAmount: Math.max(1, Math.floor(n)) }), "1", 1)} szt. za {numberInput(it.sell, (n) => set({ sell: n }))}
                 <span className="muted small">= {money(perPiece(it.sell, it.sellAmount))} za sztukę</span>
               </div>
             ) : (
@@ -579,9 +698,9 @@ export default function ShopEditorPage() {
             ))}
           <p className="muted small">
             {rounding === "whole"
-              ? "Sklep liczy w pełnych złotówkach (Ustawienia): część paczki zaokrągla się w górę do złotówki."
+              ? "Sklep liczy w pełnych złotówkach (Ustawienia): część stacka zaokrągla się w górę do złotówki."
               : "Sklep liczy z groszami (Ustawienia)."}{" "}
-            Gracz sprzedaje tylko pełne paczki skupu - reszta zostaje mu w ekwipunku.
+            Gracz sprzedaje tylko pełne stacki skupu - reszta zostaje mu w ekwipunku.
           </p>
           {it.buy != null && it.sell != null && it.sell / it.sellAmount >= it.buy / it.amount && (
             <p className="ci-badge warn">Skup za sztukę jest co najmniej taki jak kupno - gracze zarobią na kupowaniu i sprzedawaniu w kółko.</p>
@@ -609,9 +728,9 @@ export default function ShopEditorPage() {
             <MinecraftTextInput value={c.name} onChange={(v) => updateCategory(c.id, { name: v })} placeholder="&e&lNazwa kategorii" />
           </label>
           <div className="ci-section-title">Ikonka w menu głównym</div>
-          <ItemRefPicker value={c.icon} onChange={(ref) => updateCategory(c.id, { icon: ref.custom != null ? { custom: ref.custom } : { item: ref.item } })} materials={allMaterials} customIds={customIds} />
+          <ItemRefPicker value={c.icon} onChange={(ref) => updateCategory(c.id, { icon: ref.custom != null ? { custom: ref.custom } : { item: ref.item } })} materials={allMaterials} customIds={customIds} iconPackDir={iconPackDir} />
         </Fold>
-        <Fold title="Rotacja (oferta zmieniająca się co kilka dni)" open={r != null}>
+        <Fold title="Rotacja (przedmioty wymieniają się co kilka dni)" open={r != null}>
           <label className="checkbox">
             <input
               type="checkbox"
@@ -624,14 +743,18 @@ export default function ShopEditorPage() {
             />
             Włącz rotację
           </label>
-          <p className="muted small">
-            Co kilka dni sklep losuje kilka pozycji z puli i pokazuje je w tej kategorii obok zwykłych pozycji. Pozycja, która była w ofercie,
-            przez 5 kolejnych losowań „odpoczywa”.
-          </p>
+          <div className="row" style={{ alignItems: "center" }}>
+            <span className="muted small" style={{ flex: 1 }}>
+              Przedmioty w tej kategorii wymieniają się co kilka dni - część jest do kupienia tylko wtedy, gdy sklep je wylosuje.
+            </span>
+            <button type="button" title="Po co jest rotacja" aria-label="Po co jest rotacja" onClick={() => setRotationHelp(true)}>
+              <HelpCircle size={16} strokeWidth={1.75} />
+            </button>
+          </div>
           {r && (
             <>
               <label>
-                Ile pozycji naraz {numberInput(r.show, (n) => updateCategory(c.id, { rotation: { ...r, show: Math.max(1, Math.floor(n)) } }), "1", 1)}
+                Ilość przedmiotów w rotacji {numberInput(r.show, (n) => updateCategory(c.id, { rotation: { ...r, show: Math.max(1, Math.floor(n)) } }), "1", 1)}
               </label>
               <label>
                 Co ile dni nowa oferta {numberInput(r.everyDays, (n) => updateCategory(c.id, { rotation: { ...r, everyDays: Math.max(1, Math.floor(n)) } }), "1", 1)}
@@ -644,11 +767,143 @@ export default function ShopEditorPage() {
                 />
                 Ogłoś na czacie, gdy oferta się zmieni
               </label>
-              <p className="muted small">Pula ma {r.pool.length} pozycji - edytujesz je na liście w środku, pod zwykłymi pozycjami.</p>
+              <div className="ci-section-title">Pula - z czego sklep losuje</div>
+              <p className="muted small">
+                Pula ma {r.pool.length} przedmiotów, stałych jest {c.items.length}. Przedmioty z puli edytujesz na liście w środku, pod stałymi.
+              </p>
+              <div className="row" style={{ alignItems: "center" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPoolPickBack(false);
+                    setPoolPickCat(c.id);
+                  }}
+                  disabled={c.items.length === 0}
+                >
+                  Wybierz z kategorii...
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPoolPickBack(true);
+                    setPoolPickCat(c.id);
+                  }}
+                  disabled={r.pool.length === 0}
+                >
+                  Cofnij z puli...
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateCategory(c.id, movedToPool(c, randomPick(fillCount, c.items.length)))}
+                  disabled={c.items.length === 0}
+                >
+                  Wypełnij losowo
+                </button>
+                {numberInput(fillCount, (n) => setFillCount(Math.max(1, Math.floor(n))), "1", 1)}
+                <span className="muted small">przedmiotów</span>
+              </div>
+              <p className="muted small">
+                Wybrane przedmioty przenoszą się ze stałych do puli - przestają być dostępne zawsze. Cofniesz to przyciskiem „Wróć do stałych”
+                przy przedmiocie z puli.
+              </p>
             </>
           )}
         </Fold>
       </>
+    );
+  }
+
+  // ---- okienka rotacji ----
+
+  function rotationHelpModal() {
+    return (
+      <div className="modal-overlay" onClick={() => setRotationHelp(false)}>
+        <div className="modal card" onClick={(e) => e.stopPropagation()}>
+          <div className="row">
+            <h2 style={{ margin: 0, flex: 1 }}>Po co jest rotacja</h2>
+            <button type="button" onClick={() => setRotationHelp(false)}>
+              Zamknij
+            </button>
+          </div>
+          <p>
+            Rotacja wymienia przedmioty wewnątrz kategorii - co kilka dni jedne znikają, a na ich miejsce wchodzą inne. Dzięki temu nie
+            wszystko jest dostępne od ręki i gracze mają po co zaglądać do sklepu.
+          </p>
+          <p>
+            Przedmioty w kategorii dzielą się na dwie listy: <b>stałe</b> (zawsze w sklepie) i <b>pulę</b> (zapas, z którego sklep losuje te
+            zmieniające się). Stałe zostają na miejscu, rotują się tylko te z puli.
+          </p>
+          <p>
+            <b>Przykład:</b> pula 30 rzeczy, 5 przedmiotów naraz, nowa oferta co 14 dni. Gracz wchodzi i widzi 5 przedmiotów, za dwa tygodnie 5
+            innych. To samo wraca najwcześniej po 5 losowaniach, żeby nie kręciło się w kółko.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  function poolPickModal() {
+    const c = file.cats.find((x) => x.id === poolPickCat);
+    if (!c) return null;
+    const back = poolPickBack;
+    const list = back ? (c.rotation?.pool ?? []) : c.items;
+    const close = () => setPoolPickCat(null);
+    return (
+      <div className="modal-overlay" onClick={close}>
+        <div className="modal card" style={{ width: "min(34rem, 92vw)" }} onClick={(e) => e.stopPropagation()}>
+          <div className="row">
+            <h2 style={{ margin: 0, flex: 1 }}>{back ? "Pula rotacji - co wraca na stałe" : "Stałe przedmioty - co idzie do rotacji"}</h2>
+            <button
+              type="button"
+              disabled={list.length === 0}
+              onClick={() => {
+                const all = list.map((_, i) => i);
+                if (back) moveBack(c, all);
+                else {
+                  updateCategory(c.id, movedToPool(c, all));
+                  setSel({ kind: "cat" });
+                }
+              }}
+            >
+              {back ? "Cofnij wszystko" : "Wszystko do rotacji"}
+            </button>
+            <button type="button" onClick={close}>
+              Zamknij
+            </button>
+          </div>
+          <p className="muted small">
+            {back
+              ? "Kliknij „Cofnij” przy przedmiocie - wróci na stałą listę i będzie w sklepie zawsze, bez losowania."
+              : "Kliknij „Do rotacji” przy przedmiocie - zniknie ze stałej listy i gracz kupi go tylko wtedy, gdy sklep go wylosuje."}
+          </p>
+          <div style={{ maxHeight: "24rem", overflowY: "auto", paddingRight: "0.6rem" }}>
+            {list.length === 0 && <p className="muted small">{back ? "Pula jest pusta." : "Kategoria nie ma stałych przedmiotów."}</p>}
+            {list.map((it, i) => (
+              <div key={`pick:${i}`} className="ci-cat-row">
+                <div className="ci-item" style={{ flex: 1 }}>
+                  {iconOf(it.ref)}
+                  <span className="ci-item-text">
+                    <span className="ci-item-name">{it.name.trim() ? <MinecraftTextPreview text={it.name} /> : refLabel(it.ref)}</span>
+                    <span className="small muted">{priceText(it)}</span>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (back) moveBack(c, [i]);
+                    else {
+                      updateCategory(c.id, movedToPool(c, [i]));
+                      setSel({ kind: "cat" });
+                    }
+                  }}
+                >
+                  {back ? "Cofnij" : "Do rotacji"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -770,11 +1025,11 @@ export default function ShopEditorPage() {
         <Fold title="Ceny" open>
           <label className="checkbox">
             <input type="radio" checked={s.rounding === "whole"} onChange={() => setSettings({ rounding: "whole" })} />
-            Pełne złotówki (1 sztuka z paczki „64 za 10” kosztuje 1)
+            Pełne złotówki (1 sztuka ze stacka „64 za 10” kosztuje 1)
           </label>
           <label className="checkbox">
             <input type="radio" checked={s.rounding === "cents"} onChange={() => setSettings({ rounding: "cents" })} />
-            Grosze (1 sztuka z paczki „64 za 10” kosztuje 0.16)
+            Grosze (1 sztuka ze stacka „64 za 10” kosztuje 0.16)
           </label>
         </Fold>
         <Fold title="Ceny dynamiczne skupu" open>
@@ -944,6 +1199,8 @@ export default function ShopEditorPage() {
       </div>
       {status && <p className="status">{status}</p>}
       {showCommands && <ShopCommandsModal file={file} onClose={() => setShowCommands(false)} />}
+      {rotationHelp && rotationHelpModal()}
+      {poolPickCat && poolPickModal()}
 
       <div className="row">
         <button type="button" className={tab === "cats" ? "ci-publish" : undefined} onClick={() => setTab("cats")}>
@@ -961,7 +1218,7 @@ export default function ShopEditorPage() {
       {tab === "stats" && renderStats()}
 
       {tab === "cats" && (
-        <div className="ci-layout ci-layout-crates ci-layout-quests">
+        <div className="ci-layout ci-layout-crates ci-layout-quests ci-layout-shop">
           <aside className="card ci-cats">
             <div className="ci-section-title">Kategorie</div>
             {file.cats.map((c, i) =>
@@ -1008,8 +1265,14 @@ export default function ShopEditorPage() {
                     <span className="small muted">ustawienia kategorii</span>
                   </span>
                 </button>
-                <div className="ci-group">Pozycje ({category.items.length})</div>
-                {category.items.map((it, i) => itemRow(category, false, it, i))}
+                <div className="ci-group">
+                  Przedmioty ({shownCount(category, false)}
+                  {shownCount(category, false) === category.items.length ? "" : ` z ${category.items.length}`})
+                </div>
+                {category.items.length > 1 && listToolbar(category, false)}
+                {category.items.map((it, i) =>
+                  matchesPriceFilter(it, priceFilter[`${category.id}:false`] ?? "all") ? itemRow(category, false, it, i) : null
+                )}
                 <button type="button" onClick={() => addItem(category, false)}>
                   + Dodaj przedmiot
                 </button>
@@ -1018,7 +1281,10 @@ export default function ShopEditorPage() {
                     <div className="ci-group" style={{ marginTop: "0.8rem" }}>
                       Pula rotacji ({category.rotation.pool.length}){category.rotation.enabled ? "" : " - rotacja wyłączona"}
                     </div>
-                    {category.rotation.pool.map((it, i) => itemRow(category, true, it, i))}
+                    {category.rotation.pool.length > 1 && listToolbar(category, true)}
+                    {category.rotation.pool.map((it, i) =>
+                      matchesPriceFilter(it, priceFilter[`${category.id}:true`] ?? "all") ? itemRow(category, true, it, i) : null
+                    )}
                     <button type="button" onClick={() => addItem(category, true)}>
                       + Dodaj do puli
                     </button>

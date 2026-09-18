@@ -2606,6 +2606,18 @@ button:disabled:hover {
   }
 }
 
+/* Sklep: więcej miejsca na listę kategorii i listę przedmiotów (długie nazwy i ceny),
+   mniej na prawy panel - mieści się bez tego. */
+.ci-layout.ci-layout-crates.ci-layout-quests.ci-layout-shop {
+  grid-template-columns: 320px minmax(0, 0.9fr) minmax(0, 1.1fr);
+}
+
+@media (max-width: 1100px) {
+  .ci-layout.ci-layout-crates.ci-layout-quests.ci-layout-shop {
+    grid-template-columns: 280px minmax(0, 1fr);
+  }
+}
+
 /* Questy - nagłówek „Zadania (N)” jako przycisk zwijania listy. */
 .quest-list-toggle {
   display: flex;
