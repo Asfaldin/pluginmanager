@@ -1,8 +1,8 @@
 import { ArrowDown, ArrowUp, HelpCircle, Save, Store, Terminal, Trash2, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { CopyRow, Fold, LoreEditor } from "../components/EditorBits";
-import ItemRefPicker from "../components/ItemRefPicker";
+import { CopyRow, Fold, LoreEditor, StatusBar } from "../components/EditorBits";
+import ItemRefPicker, { ItemDatalists, MATERIALS_LIST_ID } from "../components/ItemRefPicker";
 import MaterialIcon from "../components/MaterialIcon";
 import MinecraftTextInput from "../components/MinecraftTextInput";
 import MinecraftTextPreview from "../components/MinecraftTextPreview";
@@ -18,11 +18,14 @@ import { itemKey, parseDynamicPrices, parseSalesStats, type SalesStatEntry } fro
 import { shopTemplateChoices, shopTemplateFor, type ShopTemplate } from "../lib/shopTemplates";
 import {
   BUTTON_LABELS,
+  categoryBySlot,
   defaultSettings,
   detectSort,
   fromPerPiece,
   isLotted,
   matchesPriceFilter,
+  moveCategoryTo,
+  swapItems,
   moveBackFromPool,
   moveToPool,
   newCategory,
@@ -55,10 +58,22 @@ interface ShopFile {
 }
 
 type Sel = { kind: "cat" } | { kind: "item"; pool: boolean; index: number };
-type Tab = "cats" | "settings" | "stats";
+type Tab = "cats" | "settings" | "stats" | "menu";
 
 const EMPTY: ShopFile = { settings: defaultSettings(), cats: [] };
 const GOAT_HORNS = ["ponder_goat_horn", "sing_goat_horn", "seek_goat_horn", "feel_goat_horn", "admire_goat_horn", "call_goat_horn", "yearn_goat_horn", "dream_goat_horn"];
+// Ktory przycisk z "Ikonki przyciskow" odpowiada ktorej roli pola w ukladzie. "sort-sell"
+// to tylko druga ikonka tego samego przycisku sortowania, wiec nie ma wlasnej roli.
+const BUTTON_ROLES: Record<string, string> = {
+  search: "SEARCH",
+  exit: "EXIT",
+  back: "NAV_BACK",
+  prev: "NAV_PREV",
+  next: "NAV_NEXT",
+  sort: "SORT",
+  "picker-back": "NAV_BACK",
+};
+
 const ROLES_BY_SCREEN: Record<string, string[]> = {
   "main-menu": ["CATEGORY_SLOT", "SEARCH", "EXIT", "FILLER"],
   "category-page": ["ITEM_SLOT", "SORT", "NAV_PREV", "NAV_NEXT", "NAV_BACK", "EXIT", "FILLER"],
@@ -162,13 +177,20 @@ export default function ShopEditorPage() {
   const [rotationHelp, setRotationHelp] = useState(false);
   const [poolPickCat, setPoolPickCat] = useState<string | null>(null);
   const [poolPickBack, setPoolPickBack] = useState(false);
+  // Co jest "podniesione" z listy obok siatki: kategoria albo rola pola (Szukaj, Zamknij, Tło).
+  const [picked, setPicked] = useState<{ cat?: string; role?: string } | null>(null);
+  // Kategoria pokazywana w podgladzie strony kategorii (jej przedmioty w polach).
+  const [previewCat, setPreviewCat] = useState<string | null>(null);
+  const [previewPage, setPreviewPage] = useState(0);
+  // Liczba dopisywana do stawianego przycisku ilosci - zamiast osobnej listy pol pod spodem.
+  const [amountValue, setAmountValue] = useState(64);
+  // Material stawianego tla - wybierasz raz na dole i klikasz pola w siatce.
+  const [fillerMaterial, setFillerMaterial] = useState("BLACK_STAINED_GLASS_PANE");
   const [sortBy, setSortBy] = useState<Record<string, { by: "buy" | "sell"; dir: "asc" | "desc" }>>({});
   const [priceFilter, setPriceFilter] = useState<Record<string, PriceFilter>>({});
   const [fillCount, setFillCount] = useState(10);
   const [trashConfirm, setTrashConfirm] = useState<string | null>(null);
   const [screen, setScreen] = useState("main-menu");
-  const [layoutEdit, setLayoutEdit] = useState(false);
-  const [addRole, setAddRole] = useState("CATEGORY_SLOT");
   const autoLoadedRef = useRef(false);
   const { iconPackDir, allMaterials } = useIconPack(setStatus);
 
@@ -331,8 +353,22 @@ export default function ShopEditorPage() {
     setFile({ ...file, settings: { ...file.settings, ...patch } });
   }
 
+  /**
+   * Kategorie i menu to dwie różne rzeczy: `cats` to wszystko, co jest w sklepie, a
+   * `categoryOrder` to te, które mają ikonkę w menu (i w jakiej kolejności). Kategoria
+   * poza menu dalej działa - plugin ją wczytuje, tylko gracz nie widzi jej kafelka.
+   * Nowa kategoria wchodzi do menu, skasowana z niego wypada; reszta zostaje jak była.
+   */
   function setCats(cats: CategoryDraft[]) {
-    setFile({ ...file, cats, settings: { ...file.settings, categoryOrder: cats.map((c) => c.id) } });
+    const ids = cats.map((c) => c.id);
+    const kept = file.settings.categoryOrder.filter((id) => ids.includes(id));
+    const added = ids.filter((id) => !file.settings.categoryOrder.includes(id));
+    setFile({ ...file, cats, settings: { ...file.settings, categoryOrder: [...kept, ...added] } });
+  }
+
+  /** Kategoria znika z menu, ale zostaje w sklepie - można ją później postawić z powrotem. */
+  function hideFromMenu(id: string) {
+    setSettings({ categoryOrder: file.settings.categoryOrder.filter((x) => x !== id) });
   }
 
   function updateCategory(id: string, patch: Partial<CategoryDraft>) {
@@ -462,13 +498,19 @@ export default function ShopEditorPage() {
     setTab("cats");
   }
 
+  /** Strzałki przestawiają kolejność w menu (kategoria poza menu wraca na koniec). */
   function moveCategory(id: string, dir: -1 | 1) {
-    const i = file.cats.findIndex((c) => c.id === id);
+    const order = file.settings.categoryOrder;
+    const i = order.indexOf(id);
+    if (i < 0) {
+      setSettings({ categoryOrder: [...order, id] });
+      return;
+    }
     const to = i + dir;
-    if (i < 0 || to < 0 || to >= file.cats.length) return;
-    const cats = [...file.cats];
-    [cats[i], cats[to]] = [cats[to], cats[i]];
-    setCats(cats);
+    if (to < 0 || to >= order.length) return;
+    const next = [...order];
+    [next[i], next[to]] = [next[to], next[i]];
+    setSettings({ categoryOrder: next });
   }
 
   function removeCategory(id: string) {
@@ -493,7 +535,7 @@ export default function ShopEditorPage() {
   function trashButton(key: string, title: string) {
     return (
       <button type="button" className="ci-trash" title={title} onClick={() => setTrashConfirm(key)}>
-        <Trash2 size={14} strokeWidth={1.75} />
+        <Trash2 size={16} strokeWidth={1.75} />
       </button>
     );
   }
@@ -913,105 +955,106 @@ export default function ShopEditorPage() {
     const m: MenuScreenDraft = file.settings.menus[sc];
     const setMenu = (patch: Partial<MenuScreenDraft>) => setSettings({ menus: { ...file.settings.menus, [sc]: { ...m, ...patch } } });
     const content: Record<number, SlotContent> = {};
-    let n = 0;
+    const catBySlot = categoryBySlot(m.layout, file.settings.categoryOrder);
+    // Pola na przedmioty w kolejnosci z pliku - plugin wklada w nie towar po kolei.
+    const itemSlots = m.layout.filter((e) => e.role === "ITEM_SLOT").map((e) => e.slot);
     for (const e of m.layout) {
       if (e.role === "CATEGORY_SLOT") {
-        const cat = file.cats.find((c) => c.id === file.settings.categoryOrder[n++]);
-        content[e.slot] = { label: cat ? plain(cat.name) : "(wolne)", kind: "category", material: cat?.icon.item, dim: !cat };
+        const catId = catBySlot.get(e.slot);
+        const cat = file.cats.find((c) => c.id === catId);
+        content[e.slot] = {
+          label: cat ? plain(cat.name) : "",
+          kind: "category",
+          // Puste pole ma wygladac jak tlo, ale zostaje polem (da sie je usunac w trybie ukladu).
+          blank: !cat,
+          material: cat?.icon.item,
+          dim: !cat,
+          // Klikniecie pola stawia tu to, co podniesione z listy obok (dziala tez w trybie ukladu).
+          onClick: picked ? () => placePicked(sc, e.slot) : undefined,
+          highlighted: Boolean(picked) && !cat,
+        };
       } else if (e.role === "ITEM_SLOT") {
-        content[e.slot] = { label: "Przedmiot", kind: "item", dim: true };
+        const pc = file.cats.find((c) => c.id === previewCat);
+        const it = pc ? pc.items[previewPage * itemSlots.length + itemSlots.indexOf(e.slot)] : undefined;
+        content[e.slot] = it
+          ? {
+              label: it.name.trim() ? plain(it.name) : refLabel(it.ref),
+              kind: "item",
+              material: it.ref.item,
+              sublabel: money(perPiece(it.buy, it.amount)),
+            }
+          : { label: pc ? "" : "Przedmiot", kind: "item", dim: true, blank: Boolean(pc) };
       } else if (e.role === "AMOUNT_SLOT") {
-        content[e.slot] = { label: `${e.amount ?? 1} szt.`, kind: "item", material: "STONE", sublabel: String(e.amount ?? 1) };
+        // Pole "ile sztuk kupic" - liczy sie sama liczba, a kamien i tak byl obrazkiem na niby.
+        content[e.slot] = {
+          label: String(e.amount ?? 1),
+          sublabel: "szt.",
+          kind: "amount",
+          onClick: picked ? () => placePicked(sc, e.slot) : undefined,
+        };
       } else if (e.role === "FILLER") {
         content[e.slot] = { label: "Tło", kind: "nav", material: e.material ?? "GRAY_STAINED_GLASS_PANE" };
       } else {
-        content[e.slot] = { label: ROLE_LABELS[e.role] ?? e.role, kind: "nav", material: conventionalRoleIcon(e.role) };
+        content[e.slot] = {
+          label: ROLE_LABELS[e.role] ?? e.role,
+          kind: "nav",
+          material: conventionalRoleIcon(e.role),
+          onClick: picked ? () => placePicked(sc, e.slot) : undefined,
+        };
       }
     }
-    const roles = ROLES_BY_SCREEN[sc];
-    const role = roles.includes(addRole) ? addRole : roles[0];
-    const amounts = m.layout.filter((e) => e.role === "AMOUNT_SLOT");
-    const fillers = m.layout.filter((e) => e.role === "FILLER");
+    if (picked) {
+      // Pole spoza ukladu tez ma byc celem - inaczej dalo by sie stawiac tylko tam, gdzie juz cos jest.
+      for (let i = 0; i < m.size; i++) {
+        if (content[i]) continue;
+        content[i] = { label: "", kind: "filler", blank: true, highlighted: true, onClick: () => placePicked(sc, i) };
+      }
+    }
     return (
       <>
-        <div className="row" style={{ alignItems: "center" }}>
-          <label className="row" style={{ alignItems: "center", margin: 0 }}>
-            Rozmiar okna
-            <select value={m.size} onChange={(e) => setMenu({ size: Number(e.target.value), layout: m.layout.filter((x) => x.slot < Number(e.target.value)) })}>
-              {[9, 18, 27, 36, 45, 54].map((s) => (
-                <option key={s} value={s}>
-                  {s / 9} rzędy ({s} pól)
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="button" className={layoutEdit ? "ci-publish" : undefined} onClick={() => setLayoutEdit(!layoutEdit)}>
-            {layoutEdit ? "Gotowe" : "Zmień układ"}
-          </button>
-          {layoutEdit && (
-            <>
-              <select value={role} onChange={(e) => setAddRole(e.target.value)}>
-                {roles.map((r) => (
-                  <option key={r} value={r}>
-                    Dodawane: {ROLE_LABELS[r]}
-                  </option>
-                ))}
-              </select>
-              <span className="muted small">Kliknij wolne pole, żeby dodać. Przeciągnij pole, żeby przenieść.</span>
-            </>
-          )}
-        </div>
         <SlotGrid
           content={content}
           size={m.size}
-          editable={layoutEdit}
+          // Uklad jest edytowalny od razu - bez przelacznika "Zmien uklad".
+          editable
           allowSwap
           plain
           iconPackDir={iconPackDir}
-          onMoveSlot={(from, to) => setMenu({ layout: m.layout.map((e) => (e.slot === from ? { ...e, slot: to } : e.slot === to ? { ...e, slot: from } : e)) })}
-          onAddSlot={(slot) =>
-            setMenu({
-              layout: [...m.layout, role === "AMOUNT_SLOT" ? { slot, role, amount: 1 } : role === "FILLER" ? { slot, role, material: "BLACK_STAINED_GLASS_PANE" } : { slot, role }],
-            })
-          }
-          onRemoveSlot={(slot) => setMenu({ layout: m.layout.filter((e) => e.slot !== slot) })}
+          onMoveSlot={(from, to) => {
+            // Podglad kategorii: przeciagniecie przedmiotu zmienia jego miejsce w kategorii
+            // (czyli w oknie gry), a nie uklad samych pol.
+            const pc = file.cats.find((c) => c.id === previewCat);
+            if (pc && itemSlots.includes(from) && itemSlots.includes(to)) {
+              const at = (slot: number) => previewPage * itemSlots.length + itemSlots.indexOf(slot);
+              updateCategory(pc.id, { items: swapItems(pc.items, at(from), at(to)) });
+              return;
+            }
+            setMenu({ layout: m.layout.map((e) => (e.slot === from ? { ...e, slot: to } : e.slot === to ? { ...e, slot: from } : e)) });
+          }}
+          onRemoveSlot={(slot) => {
+            // Na polu z kategorią × chowa kategorię z menu (zostaje w sklepie), a pole zostaje
+            // puste. Na pustym polu i na przyciskach × usuwa samo pole z układu.
+            const hidden = categoryBySlot(m.layout, file.settings.categoryOrder).get(slot);
+            const isCat = m.layout.some((e) => e.slot === slot && e.role === "CATEGORY_SLOT");
+            if (isCat && hidden) hideFromMenu(hidden);
+            else setMenu({ layout: m.layout.filter((e) => e.slot !== slot) });
+          }}
         />
-        {amounts.length > 0 && (
-          <div style={{ marginTop: "0.5rem" }}>
-            <div className="ci-section-title">Ile sztuk na przyciskach</div>
-            {amounts.map((e) => (
-              <label key={e.slot} className="row" style={{ alignItems: "center" }}>
-                Pole {e.slot}:
-                {numberInput(e.amount ?? 1, (v) => setMenu({ layout: m.layout.map((x) => (x.slot === e.slot ? { ...x, amount: Math.max(1, Math.floor(v)) } : x)) }), "1", 1)} szt.
-              </label>
-            ))}
-          </div>
-        )}
-        {fillers.length > 0 && (
-          <div style={{ marginTop: "0.5rem" }}>
-            <div className="ci-section-title">Własne tło na polach</div>
-            {fillers.map((e) => (
-              <label key={e.slot} className="row" style={{ alignItems: "center" }}>
-                Pole {e.slot}:
-                {materialInput(e.material ?? "", (v) => setMenu({ layout: m.layout.map((x) => (x.slot === e.slot ? { ...x, material: v } : x)) }), `shop-filler-${sc}-${e.slot}`)}
-              </label>
-            ))}
-          </div>
-        )}
       </>
     );
   }
 
-  function materialInput(value: string, onPick: (m: string) => void, listId: string) {
+  /** Pole materialu. Podpowiedzi biora sie z jednej listy na cala strone (patrz nizej). */
+  function materialInput(value: string, onPick: (m: string) => void, _listId?: string) {
     return (
       <span className="row" style={{ alignItems: "center", gap: "0.4rem", margin: 0 }}>
         {value && <MaterialIcon material={value} iconPackDir={iconPackDir} />}
-        <input list={listId} value={value} onChange={(e) => onPick(e.target.value.toUpperCase().replace(/\s+/g, "_"))} style={{ minWidth: "14rem" }} />
-        <datalist id={listId}>
-          {allMaterials.map((mm) => (
-            <option key={mm} value={mm} />
-          ))}
-        </datalist>
+        <input
+          list={MATERIALS_LIST_ID}
+          value={value}
+          onChange={(e) => onPick(e.target.value.toUpperCase().replace(/\s+/g, "_"))}
+          style={{ minWidth: "14rem" }}
+        />
       </span>
     );
   }
@@ -1070,7 +1113,190 @@ export default function ShopEditorPage() {
             Zbieraj statystyki (stats.yml + raport stats.csv do Excela z podpowiedziami cen)
           </label>
         </Fold>
-        <Fold title="Wygląd menu" open>
+        <p className="muted small">Układ okien w grze i ikonki przycisków są w osobnej zakładce „Wygląd menu” u góry.</p>
+      </section>
+    );
+  }
+
+  /** Stawia to, co podniesione z listy obok, w klikniętym polu. */
+  function placePicked(sc: string, slot: number) {
+    if (!picked) return;
+    const m = file.settings.menus[sc];
+    const withoutSlot = m.layout.filter((e) => e.slot !== slot);
+    if (picked.role) {
+      const role = picked.role;
+      const entry =
+        role === "AMOUNT_SLOT"
+          ? { slot, role, amount: Math.max(1, Math.floor(amountValue)) }
+          : role === "FILLER"
+            ? { slot, role, material: fillerMaterial || "BLACK_STAINED_GLASS_PANE" }
+            : { slot, role };
+      setSettings({ menus: { ...file.settings.menus, [sc]: { ...m, layout: [...withoutSlot, entry] } } });
+      setPicked(null);
+      return;
+    }
+    if (!picked.cat) return;
+    // Kategoria potrzebuje pola o roli CATEGORY_SLOT - jak go tu nie ma, robimy je.
+    const isCatSlot = m.layout.some((e) => e.slot === slot && e.role === "CATEGORY_SLOT");
+    const layout = isCatSlot ? m.layout : [...withoutSlot, { slot, role: "CATEGORY_SLOT" }];
+    const index = [...categoryBySlot(layout, file.settings.categoryOrder).keys()].indexOf(slot);
+    if (index < 0) return;
+    setFile({
+      ...file,
+      settings: {
+        ...file.settings,
+        menus: { ...file.settings.menus, [sc]: { ...m, layout } },
+        categoryOrder: moveCategoryTo(file.settings.categoryOrder, picked.cat, index),
+      },
+    });
+    setPicked(null);
+  }
+
+  /** Ustawienia pól wybranego ekranu (ile sztuk, własne tło) - siedzą pod listą po lewej. */
+  function layoutExtras(sc: string) {
+    const m: MenuScreenDraft = file.settings.menus[sc];
+    const setMenu = (patch: Partial<MenuScreenDraft>) => setSettings({ menus: { ...file.settings.menus, [sc]: { ...m, ...patch } } });
+    const fillers = m.layout.filter((e) => e.role === "FILLER");
+    if (fillers.length === 0) return null;
+    return (
+      <>
+        {fillers.length > 0 && (
+          <div style={{ marginTop: "0.5rem" }}>
+            <div className="ci-section-title">Własne tło na polach</div>
+            <div className="row" style={{ flexWrap: "wrap", gap: "0.75rem", alignItems: "flex-end" }}>
+              {fillers.map((e) => (
+                <label key={e.slot} style={{ margin: 0 }}>
+                  <span className="muted small">Pole {e.slot}</span>
+                  {materialInput(e.material ?? "", (v) => setMenu({ layout: m.layout.map((x) => (x.slot === e.slot ? { ...x, material: v } : x)) }))}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  /** Pasek nad siatką: co podglądamy, ile tego jest i przełączanie stron. */
+  function previewBar(sc: string) {
+    const pc = file.cats.find((c) => c.id === previewCat);
+    if (!pc || (sc !== "category-page" && sc !== "search-results")) return null;
+    const perPage = file.settings.menus[sc].layout.filter((e) => e.role === "ITEM_SLOT").length;
+    const pages = perPage > 0 ? Math.max(1, Math.ceil(pc.items.length / perPage)) : 0;
+    const page = Math.min(previewPage, Math.max(0, pages - 1));
+    return (
+      <div className="row" style={{ alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}>
+        <MinecraftTextPreview text={pc.name} emptyLabel={pc.id} />
+        <span className="muted small">
+          {pc.items.length} przedmiotów{perPage > 0 ? `, po ${perPage} na stronie` : " - brak pól na przedmioty"}
+        </span>
+        {pages > 1 && (
+          <>
+            <span style={{ flex: 1 }} />
+            <button type="button" onClick={() => setPreviewPage(Math.max(0, page - 1))} disabled={page === 0}>
+              <ArrowUp size={14} style={{ transform: "rotate(-90deg)" }} />
+            </button>
+            <span className="muted small">
+              strona {page + 1} z {pages}
+            </span>
+            <button type="button" onClick={() => setPreviewPage(Math.min(pages - 1, page + 1))} disabled={page >= pages - 1}>
+              <ArrowDown size={14} style={{ transform: "rotate(-90deg)" }} />
+            </button>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  /** Rozmiar okna i tryb przesuwania pól - pod listą, żeby nie rozpychać góry siatki. */
+  function screenToolbar(sc: string) {
+    const m: MenuScreenDraft = file.settings.menus[sc];
+    const setMenu = (patch: Partial<MenuScreenDraft>) => setSettings({ menus: { ...file.settings.menus, [sc]: { ...m, ...patch } } });
+    return (
+      <div className="card" style={{ padding: "0.6rem", marginTop: "0.6rem" }}>
+        <label style={{ margin: 0 }}>
+          <span className="muted small">Rozmiar okna</span>
+          <select
+            value={m.size}
+            onChange={(e) => setMenu({ size: Number(e.target.value), layout: m.layout.filter((x) => x.slot < Number(e.target.value)) })}
+          >
+            {[9, 18, 27, 36, 45, 54].map((sz) => (
+              <option key={sz} value={sz}>
+                {sz / 9} rzędy ({sz} pól)
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    );
+  }
+
+  /** Lista kategorii obok siatki: klikasz kategorię, potem pole - i tam stanie. */
+  function pickerPanel(sc: string) {
+    // W menu glownym lista sluzy do stawiania kategorii, na stronie kategorii - do podgladu
+    // jej przedmiotow w polach. Reszta (przyciski, tlo, ilosc) stawia sie z sekcji na dole.
+    const preview = sc === "category-page" || sc === "search-results";
+    if (sc !== "main-menu" && !preview) return null;
+    const order = file.settings.categoryOrder;
+    return (
+      // position: static - lista ma stac w miejscu przy przewijaniu (ci-cats domyslnie sie przykleja).
+      <aside className="card ci-cats" style={{ minWidth: 0, padding: "0.6rem", position: "static" }}>
+        <p className="muted small">
+          {preview
+            ? "Kliknij kategorię, żeby zobaczyć jej przedmioty w polach. Przeciągnij przedmiot, żeby zmienić mu miejsce."
+            : "Klikasz co postawić i gdzie, przeciągasz myszką, żeby przesunąć, a krzyżykiem usuwasz."}
+        </p>
+        <div className="ci-section-title">Kategorie</div>
+        {file.cats.map((c) => {
+          const inMenu = order.includes(c.id);
+          return (
+            <div key={c.id} className="ci-cat-row">
+              <button
+                type="button"
+                className={`ci-cat ci-cat-pick${(preview ? previewCat === c.id : picked?.cat === c.id) ? " active" : ""}`}
+                onClick={() =>
+                  preview
+                    ? (setPreviewCat(previewCat === c.id ? null : c.id), setPreviewPage(0))
+                    : setPicked(picked?.cat === c.id ? null : { cat: c.id })
+                }
+              >
+                {iconOf(c.icon)}
+                <span className="ci-item-name">
+                  <MinecraftTextPreview text={c.name} emptyLabel={c.id} />
+                </span>
+                {!preview && !inMenu && <span className="ci-badge">poza menu</span>}
+              </button>
+              {!preview && inMenu && (
+                <button
+                  type="button"
+                  className="ci-trash"
+                  title="Schowaj z menu (kategoria zostaje w sklepie)"
+                  onClick={() => hideFromMenu(c.id)}
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </div>
+          );
+        })}
+        {picked && (
+          <button type="button" onClick={() => setPicked(null)}>
+            Anuluj wybór
+          </button>
+        )}
+      </aside>
+    );
+  }
+
+  function renderMenu() {
+    const s = file.settings;
+    return (
+      <section className="card form">
+        <Fold title="Układ okien w grze" open>
+          <p className="muted small">
+            Kliknij kategorię albo przycisk, potem pole w siatce - tam stanie. Pola przeciągasz myszką, a krzyżyk je usuwa. Kategorie
+            widać z prawdziwymi ikonkami, dokładnie tak, jak zobaczy je gracz.
+          </p>
           <div className="row">
             {SCREENS.map((sc) => (
               <button key={sc} type="button" className={screen === sc ? "ci-publish" : undefined} onClick={() => setScreen(sc)}>
@@ -1078,16 +1304,96 @@ export default function ShopEditorPage() {
               </button>
             ))}
           </div>
-          {layoutEditor(screen)}
+          <div className="row" style={{ alignItems: "flex-start", gap: "1rem" }}>
+            {/* Stala, waska kolumna - inaczej dluzsze nazwy kategorii rozpychaja ja na pol ekranu. */}
+            <div style={{ flex: "0 0 18rem", maxWidth: "18rem" }}>
+              {pickerPanel(screen)}
+              {screenToolbar(screen)}
+              {layoutExtras(screen)}
+            </div>
+            {/* Siatka odrobine nizej niz lista obok - inaczej lepi sie do gornej krawedzi karty. */}
+            <div style={{ flex: 1, minWidth: 0, marginTop: "0.5rem" }}>
+              {previewBar(screen)}
+              {layoutEditor(screen)}
+            </div>
+          </div>
         </Fold>
-        <Fold title="Przyciski (wygląd)">
-          {Object.keys(BUTTON_LABELS).map((b) => (
-            <label key={b}>
-              {BUTTON_LABELS[b]}
-              {materialInput(s.buttons[b] ?? "", (v) => setSettings({ buttons: { ...s.buttons, [b]: v } }), `shop-btn-${b}`)}
-            </label>
-          ))}
-          <p className="muted small">Teksty przycisków i tytuły okien są w plikach językowych pluginu (lang/en.yml, lang/pl.yml).</p>
+        <Fold title="Przyciski" open>
+          <p className="muted small">
+            Ikonka przycisku i stawianie go w oknie. „Postaw” podnosi przycisk - potem klikasz pole w siatce wyżej, tak samo jak przy
+            kategoriach. Przyciski, których nie ma na wybranym ekranie, są bez tej opcji.
+          </p>
+          {Object.keys(BUTTON_LABELS).map((b) => {
+            // Wroc ma dwie ikonki: zwykla i te z wyboru ilosci - stawiamy te, ktora pasuje do ekranu.
+            const role = BUTTON_ROLES[b];
+            const rightBack = b === "picker-back" ? screen === "buy-picker" : b === "back" ? screen !== "buy-picker" : true;
+            const canPlace = Boolean(role) && rightBack && (ROLES_BY_SCREEN[screen] ?? []).includes(role);
+            return (
+              <div key={b} className="row" style={{ alignItems: "center", gap: "0.5rem" }}>
+                <span style={{ minWidth: "11rem" }}>{BUTTON_LABELS[b]}</span>
+                {materialInput(s.buttons[b] ?? "", (v) => setSettings({ buttons: { ...s.buttons, [b]: v } }))}
+                {canPlace && (
+                  <button
+                    type="button"
+                    className={picked?.role === role ? "ci-publish" : undefined}
+                    onClick={() => setPicked(picked?.role === role ? null : { role })}
+                  >
+                    {picked?.role === role ? "Anuluj" : "Postaw"}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+          {(ROLES_BY_SCREEN[screen] ?? []).includes("ITEM_SLOT") && (
+            <div className="row" style={{ alignItems: "center", gap: "0.5rem" }}>
+              <span style={{ minWidth: "11rem" }}>Przedmiot ze sklepu</span>
+              <span className="muted small" style={{ minWidth: "14rem" }}>
+                pole wypełnia się towarem z kategorii
+              </span>
+              <button
+                type="button"
+                className={picked?.role === "ITEM_SLOT" ? "ci-publish" : undefined}
+                onClick={() => setPicked(picked?.role === "ITEM_SLOT" ? null : { role: "ITEM_SLOT" })}
+              >
+                {picked?.role === "ITEM_SLOT" ? "Anuluj" : "Postaw"}
+              </button>
+            </div>
+          )}
+          {(ROLES_BY_SCREEN[screen] ?? []).includes("AMOUNT_SLOT") && (
+            <div className="row" style={{ alignItems: "center", gap: "0.5rem" }}>
+              <span style={{ minWidth: "11rem" }}>Przycisk ilości</span>
+              <input
+                type="number"
+                className="no-spin"
+                min={1}
+                max={64}
+                step="1"
+                title="Ile sztuk kupuje ten przycisk (najwyżej 64, czyli pełny stack)"
+                value={amountValue}
+                onChange={(e) => setAmountValue(Math.min(64, Math.max(1, Math.floor(Number(e.target.value) || 1))))}
+                style={{ width: "3.4rem" }}
+              />
+              <span className="muted small" style={{ minWidth: "11rem" }}>sztuk (max 64)</span>
+              <button
+                type="button"
+                className={picked?.role === "AMOUNT_SLOT" ? "ci-publish" : undefined}
+                onClick={() => setPicked(picked?.role === "AMOUNT_SLOT" ? null : { role: "AMOUNT_SLOT" })}
+              >
+                {picked?.role === "AMOUNT_SLOT" ? "Anuluj" : "Postaw"}
+              </button>
+            </div>
+          )}
+          <div className="row" style={{ alignItems: "center", gap: "0.5rem" }}>
+            <span style={{ minWidth: "11rem" }}>Tło (puste pola)</span>
+            {materialInput(fillerMaterial, (v) => setFillerMaterial(v))}
+            <button
+              type="button"
+              className={picked?.role === "FILLER" ? "ci-publish" : undefined}
+              onClick={() => setPicked(picked?.role === "FILLER" ? null : { role: "FILLER" })}
+            >
+              {picked?.role === "FILLER" ? "Anuluj" : "Postaw"}
+            </button>
+          </div>
         </Fold>
       </section>
     );
@@ -1173,6 +1479,19 @@ export default function ShopEditorPage() {
         <button type="button" onClick={() => setShowCommands(true)}>
           <Terminal size={14} strokeWidth={1.75} /> Komendy
         </button>
+        {/* Zakladki w tym samym wierszu co reszta paska - tak samo jak na stronie Questow. */}
+        <button type="button" className={tab === "cats" ? "ci-publish" : undefined} onClick={() => setTab("cats")}>
+          Kategorie
+        </button>
+        <button type="button" className={tab === "settings" ? "ci-publish" : undefined} onClick={() => setTab("settings")}>
+          Ustawienia
+        </button>
+        <button type="button" className={tab === "menu" ? "ci-publish" : undefined} onClick={() => setTab("menu")}>
+          Wygląd menu
+        </button>
+        <button type="button" className={tab === "stats" ? "ci-publish" : undefined} onClick={() => setTab("stats")}>
+          Statystyki
+        </button>
         <select value="" onChange={(e) => loadTemplate(e.target.value)} disabled={!profileId} title="Gotowe sklepy">
           <option value="">Wczytaj szablon...</option>
           {shopTemplateChoices(language).map((t) => (
@@ -1197,31 +1516,21 @@ export default function ShopEditorPage() {
           <Save size={14} strokeWidth={1.75} /> Wyślij na serwer
         </button>
       </div>
-      {status && <p className="status">{status}</p>}
+      {status && <StatusBar text={status} onClose={() => setStatus(null)} />}
       {showCommands && <ShopCommandsModal file={file} onClose={() => setShowCommands(false)} />}
+      <ItemDatalists materials={allMaterials} customIds={customIds} />
       {rotationHelp && rotationHelpModal()}
       {poolPickCat && poolPickModal()}
 
-      <div className="row">
-        <button type="button" className={tab === "cats" ? "ci-publish" : undefined} onClick={() => setTab("cats")}>
-          Kategorie
-        </button>
-        <button type="button" className={tab === "settings" ? "ci-publish" : undefined} onClick={() => setTab("settings")}>
-          Ustawienia
-        </button>
-        <button type="button" className={tab === "stats" ? "ci-publish" : undefined} onClick={() => setTab("stats")}>
-          Statystyki
-        </button>
-      </div>
-
       {tab === "settings" && renderSettings()}
+      {tab === "menu" && renderMenu()}
       {tab === "stats" && renderStats()}
 
       {tab === "cats" && (
         <div className="ci-layout ci-layout-crates ci-layout-quests ci-layout-shop">
           <aside className="card ci-cats">
             <div className="ci-section-title">Kategorie</div>
-            {file.cats.map((c, i) =>
+            {file.cats.map((c) =>
               trashConfirm === `cat:${c.id}` ? (
                 <div key={c.id}>{confirmRow(`Usunąć kategorię ${c.id}?`, () => removeCategory(c.id))}</div>
               ) : (
@@ -1237,11 +1546,22 @@ export default function ShopEditorPage() {
                     <span className="ci-item-name">
                       <MinecraftTextPreview text={c.name} emptyLabel={c.id} />
                     </span>
-                    <span className="ci-prize-count" title={`${c.items.length} pozycji`}>
+                    {!file.settings.categoryOrder.includes(c.id) && (
+                      <span className="ci-badge" title="Kategoria działa, ale nie ma swojego kafelka w menu sklepu">
+                        poza menu
+                      </span>
+                    )}
+                    <span className="ci-prize-count" title={`${c.items.length} przedmiotów`}>
                       <Store size={12} strokeWidth={2} /> {c.items.length}
                     </span>
                   </button>
-                  <button type="button" className="ci-trash" title="Wyżej w menu" onClick={() => moveCategory(c.id, -1)} disabled={i === 0}>
+                  <button
+                    type="button"
+                    className="ci-trash"
+                    title={file.settings.categoryOrder.includes(c.id) ? "Wyżej w menu" : "Wstaw z powrotem do menu (na koniec)"}
+                    onClick={() => moveCategory(c.id, -1)}
+                    disabled={file.settings.categoryOrder.indexOf(c.id) === 0}
+                  >
                     <ArrowUp size={12} />
                   </button>
                   {trashButton(`cat:${c.id}`, `Usuń kategorię ${c.id}`)}

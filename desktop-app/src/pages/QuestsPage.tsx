@@ -1,8 +1,8 @@
 import { Save, ScrollText, Terminal, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { CommandTip, CopyRow, Fold, LoreEditor } from "../components/EditorBits";
-import ItemRefPicker from "../components/ItemRefPicker";
+import { CommandTip, CopyRow, Fold, LoreEditor, StatusBar } from "../components/EditorBits";
+import ItemRefPicker, { ItemDatalists, MATERIALS_LIST_ID } from "../components/ItemRefPicker";
 import MaterialIcon from "../components/MaterialIcon";
 import MinecraftTextInput from "../components/MinecraftTextInput";
 import MinecraftTextPreview from "../components/MinecraftTextPreview";
@@ -306,17 +306,12 @@ export default function QuestsPage() {
       <span className="row" style={{ alignItems: "center", gap: "0.4rem" }}>
         {value && <MaterialIcon material={value} iconPackDir={iconPackDir} />}
         <input
-          list="quests-filler-materials"
+          list={MATERIALS_LIST_ID}
           value={value}
           placeholder="np. RED_STAINED_GLASS_PANE"
           onChange={(e) => onPick(e.target.value.toUpperCase().replace(/\s+/g, "_"))}
           style={{ minWidth: "16rem" }}
         />
-        <datalist id="quests-filler-materials">
-          {allMaterials.map((m) => (
-            <option key={m} value={m} />
-          ))}
-        </datalist>
       </span>
     );
   }
@@ -693,7 +688,7 @@ export default function QuestsPage() {
   function trashButton(id: string, title: string) {
     return (
       <button type="button" className="ci-trash" title={title} onClick={() => setTrashConfirm(id)}>
-        <Trash2 size={14} strokeWidth={1.75} />
+        <Trash2 size={16} strokeWidth={1.75} />
       </button>
     );
   }
@@ -742,6 +737,17 @@ export default function QuestsPage() {
         <button type="button" onClick={() => setShowCommands(true)} disabled={!profileId}>
           <Terminal size={14} strokeWidth={1.75} /> Komendy
         </button>
+        {/* Przełącznik widoku w tym samym wierszu co reszta paska - wygląd menu był za głęboko schowany. */}
+        <button
+          type="button"
+          className={view?.kind === "category" ? "ci-publish" : undefined}
+          onClick={() => setView(file.categories[0] ? { kind: "category", id: file.categories[0].id, quest: "settings" } : { kind: "menu" })}
+        >
+          Kategorie i zadania
+        </button>
+        <button type="button" className={view?.kind === "menu" ? "ci-publish" : undefined} onClick={() => setView({ kind: "menu" })}>
+          Wygląd menu
+        </button>
         <select value="" onChange={(e) => loadTemplate(e.target.value)} disabled={!profileId} title="Gotowe zestawy questów">
           <option value="">Wczytaj szablon...</option>
           {templateChoices(language).map((t) => (
@@ -766,8 +772,9 @@ export default function QuestsPage() {
           <Save size={14} strokeWidth={1.75} /> Wyślij na serwer
         </button>
       </div>
-      {status && <p className="status">{status}</p>}
+      {status && <StatusBar text={status} onClose={() => setStatus(null)} />}
       {showCommands && <QuestCommandsModal file={file} onClose={() => setShowCommands(false)} />}
+      <ItemDatalists materials={allMaterials} customIds={customIds} />
 
       {/* Ustawienia ogólne (menu, wygląd) nie mają środkowej listy - edytor zajmuje całą resztę. */}
       <div className={`ci-layout ci-layout-crates ci-layout-quests${view && view.kind !== "category" ? " ci-layout-general" : ""}`}>

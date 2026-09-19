@@ -12,13 +12,17 @@ import {
   parseShopSettings,
   perPiece,
   randomPick,
+  categoryBySlot,
   detectSort,
   matchesPriceFilter,
+  moveCategoryTo,
   sortItems,
+  swapItems,
   serializeCategory,
   serializeShopSettings,
   shopProblems,
   type CategoryDraft,
+  type ShopItemDraft,
 } from "./shopYaml";
 
 const CATEGORY = `
@@ -203,5 +207,70 @@ describe("shopYaml price filter", () => {
     expect([both, onlyBuy, onlySell, none].map((i) => matchesPriceFilter(i, "buy"))).toEqual([false, true, false, false]);
     expect([both, onlyBuy, onlySell, none].map((i) => matchesPriceFilter(i, "sell"))).toEqual([false, false, true, false]);
     expect([both, onlyBuy, onlySell, none].map((i) => matchesPriceFilter(i, "both"))).toEqual([true, false, false, false]);
+  });
+});
+
+describe("shopYaml menu categories", () => {
+  const slots = (...list: Array<[number, string]>) => list.map(([slot, role]) => ({ slot, role }));
+
+  it("puts categories into category slots in order, one per slot", () => {
+    const layout = slots([4, "SEARCH"], [19, "CATEGORY_SLOT"], [20, "CATEGORY_SLOT"], [21, "CATEGORY_SLOT"], [49, "EXIT"]);
+    const map = categoryBySlot(layout, ["bloki", "roslinki", "drewno"]);
+    expect(map.get(19)).toBe("bloki");
+    expect(map.get(20)).toBe("roslinki");
+    expect(map.get(21)).toBe("drewno");
+    expect(map.has(4)).toBe(false);
+  });
+
+  it("leaves spare slots empty when there are fewer categories", () => {
+    const layout = slots([19, "CATEGORY_SLOT"], [20, "CATEGORY_SLOT"], [21, "CATEGORY_SLOT"]);
+    const map = categoryBySlot(layout, ["bloki"]);
+    expect(map.get(19)).toBe("bloki");
+    expect(map.get(20)).toBeUndefined();
+    expect(map.get(21)).toBeUndefined();
+  });
+
+  it("gives all ten categories a slot when the menu has more slots than categories", () => {
+    const ids = ["bloki", "roslinki", "drewno", "mineraly", "moby", "narzedzia", "jedzenie", "dekoracje", "kolekcja", "spawnery"];
+    const layout = slots(...([19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34].map((s) => [s, "CATEGORY_SLOT"]) as Array<[number, string]>));
+    const map = categoryBySlot(layout, ids);
+    expect([...map.values()].filter(Boolean)).toEqual(ids);
+  });
+});
+
+describe("shopYaml category placement", () => {
+  const order = ["bloki", "roslinki", "drewno", "mineraly"];
+
+  it("moves a category to the chosen place and shifts the rest", () => {
+    expect(moveCategoryTo(order, "mineraly", 0)).toEqual(["mineraly", "bloki", "roslinki", "drewno"]);
+    expect(moveCategoryTo(order, "bloki", 2)).toEqual(["roslinki", "drewno", "bloki", "mineraly"]);
+  });
+
+  it("adds a category that had no place yet", () => {
+    expect(moveCategoryTo(order, "spawnery", 1)).toEqual(["bloki", "spawnery", "roslinki", "drewno", "mineraly"]);
+  });
+
+  it("puts it at the end when the place is past the list", () => {
+    expect(moveCategoryTo(order, "bloki", 99)).toEqual(["roslinki", "drewno", "mineraly", "bloki"]);
+  });
+
+  it("changes nothing when the category is already there", () => {
+    expect(moveCategoryTo(order, "drewno", 2)).toEqual(order);
+  });
+});
+
+describe("shopYaml item order", () => {
+  const ids = (list: ShopItemDraft[]) => list.map((i) => (i.ref as any).item);
+  const list = [newItem({ item: "A" }), newItem({ item: "B" }), newItem({ item: "C" })];
+
+  it("swaps two items", () => {
+    expect(ids(swapItems(list, 0, 2))).toEqual(["C", "B", "A"]);
+    expect(ids(list)).toEqual(["A", "B", "C"]);
+  });
+
+  it("leaves the list alone when a place is outside it", () => {
+    expect(swapItems(list, 0, 9)).toBe(list);
+    expect(swapItems(list, -1, 1)).toBe(list);
+    expect(swapItems(list, 1, 1)).toBe(list);
   });
 });

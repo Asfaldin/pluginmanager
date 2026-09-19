@@ -407,6 +407,43 @@ export function matchesPriceFilter(i: ShopItemDraft, filter: PriceFilter): boole
   }
 }
 
+/**
+ * Która kategoria trafia w które pole menu. Plugin robi to samo: bierze pola o roli
+ * CATEGORY_SLOT w kolejności z pliku i wkłada w nie kategorie po kolei, więc kolejność
+ * kategorii = miejsce w menu. Pola ponad liczbę kategorii zostają puste.
+ */
+export function categoryBySlot(layout: SlotEntryDraft[], categoryOrder: string[]): Map<number, string | undefined> {
+  const out = new Map<number, string | undefined>();
+  let n = 0;
+  for (const e of layout) {
+    if (e.role !== "CATEGORY_SLOT") continue;
+    out.set(e.slot, categoryOrder[n]);
+    n++;
+  }
+  return out;
+}
+
+/**
+ * Stawia kategorię na wskazanym miejscu w kolejności (a więc w tym polu menu), reszta
+ * przesuwa się dalej. Kategoria, która wcześniej nie miała miejsca, po prostu je dostaje.
+ */
+export function moveCategoryTo(order: string[], id: string, index: number): string[] {
+  const rest = order.filter((x) => x !== id);
+  const at = Math.max(0, Math.min(index, rest.length));
+  return [...rest.slice(0, at), id, ...rest.slice(at)];
+}
+
+/**
+ * Zamienia miejscami dwa przedmioty na liście kategorii. Kolejność listy to kolejność
+ * w oknie sklepu, więc to samo przestawia je graczowi w grze.
+ */
+export function swapItems(items: ShopItemDraft[], a: number, b: number): ShopItemDraft[] {
+  if (a === b || a < 0 || b < 0 || a >= items.length || b >= items.length) return items;
+  const out = [...items];
+  [out[a], out[b]] = [out[b], out[a]];
+  return out;
+}
+
 // ---------- pula rotacji ----------
 
 /**
