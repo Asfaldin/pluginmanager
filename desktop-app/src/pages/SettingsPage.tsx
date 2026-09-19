@@ -136,7 +136,7 @@ export default function SettingsPage() {
         </p>
         <div className="row">
           <button type="button" onClick={clearLocalCache}>
-            <Trash2 size={14} strokeWidth={1.75} /> Wyczyść lokalne presety
+            <Trash2 size={16} strokeWidth={1.75} /> Wyczyść lokalne presety
           </button>
         </div>
         {cacheMsg && <p className="status small">{cacheMsg}</p>}

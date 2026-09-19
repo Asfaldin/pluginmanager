@@ -1,5 +1,6 @@
 import { useDirtyTracking } from "../state/DirtyContext";
 import { RefreshCw, Save } from "lucide-react";
+import { StatusBar } from "../components/EditorBits";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import MinecraftTextInput from "../components/MinecraftTextInput";
@@ -340,7 +341,7 @@ export default function HudPage() {
         </button>
       </div>
 
-      {status && <p className="status">{status}</p>}
+      {status && <StatusBar text={status} onClose={() => setStatus(null)} />}
     </div>
   );
 }

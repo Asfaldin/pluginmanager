@@ -1,7 +1,7 @@
 import { Save, Terminal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { CopyRow, Fold } from "../components/EditorBits";
+import { CopyRow, Fold, StatusBar } from "../components/EditorBits";
 import MaterialIcon from "../components/MaterialIcon";
 import MinecraftTextInput from "../components/MinecraftTextInput";
 import SlotGrid, { type SlotContent } from "../components/SlotGrid";
@@ -244,7 +244,7 @@ export default function MarketPage() {
           <Save size={14} strokeWidth={1.75} /> Wyślij na serwer
         </button>
       </div>
-      {status && <p className="status">{status}</p>}
+      {status && <StatusBar text={status} onClose={() => setStatus(null)} />}
       {showCommands && <MarketCommandsModal onClose={() => setShowCommands(false)} />}
 
       <section className="card form">

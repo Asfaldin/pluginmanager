@@ -1,4 +1,5 @@
 import { open, save } from "@tauri-apps/plugin-dialog";
+import { StatusBar } from "../components/EditorBits";
 import { useEffect, useState } from "react";
 import PixelEditor from "../components/PixelEditor";
 import TextureBrowser from "../components/TextureBrowser";
@@ -748,7 +749,7 @@ export default function ResourcePackPage() {
         </>
       )}
 
-      {status && <p className="status">{status}</p>}
+      {status && <StatusBar text={status} onClose={() => setStatus(null)} />}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useDirtyTracking } from "../state/DirtyContext";
 import { Save } from "lucide-react";
+import { StatusBar } from "../components/EditorBits";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import MaterialIcon from "../components/MaterialIcon";
@@ -412,7 +413,7 @@ export default function CustomItemsPage() {
         />
       </ToolbarMore>
 
-      {status && <p className="status">{status}</p>}
+      {status && <StatusBar text={status} onClose={() => setStatus(null)} />}
       {dups.size > 0 && (
         <p className="error">
           To samo ID jest w kilku kategoriach - plugin użyje tylko pierwszego (alfabetycznie wg pliku). Zmień ID albo usuń

@@ -1,4 +1,5 @@
 import { Save } from "lucide-react";
+import { StatusBar } from "../components/EditorBits";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { showPrompt } from "../components/PromptModal";
@@ -153,7 +154,7 @@ export default function CoreSettingsPage() {
         </button>
       </div>
 
-      {status && <p className="status">{status}</p>}
+      {status && <StatusBar text={status} onClose={() => setStatus(null)} />}
 
       <div className="two-col">
         <div className="card form">

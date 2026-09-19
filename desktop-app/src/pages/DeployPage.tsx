@@ -1,4 +1,5 @@
 import { open } from "@tauri-apps/plugin-dialog";
+import { StatusBar } from "../components/EditorBits";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import ToolbarMore from "../components/ToolbarMore";
@@ -294,7 +295,7 @@ export default function DeployPage() {
       </ToolbarMore>
       )}
 
-      {status && <p className="status">{status}</p>}
+      {status && <StatusBar text={status} onClose={() => setStatus(null)} />}
     </div>
   );
 }

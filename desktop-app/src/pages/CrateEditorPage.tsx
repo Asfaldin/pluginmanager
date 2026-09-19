@@ -1,8 +1,8 @@
 import { Gift, Save, Terminal, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { CommandTip, CopyRow, Fold, LoreEditor } from "../components/EditorBits";
-import ItemRefPicker from "../components/ItemRefPicker";
+import { CommandTip, CopyRow, Fold, LoreEditor, StatusBar } from "../components/EditorBits";
+import ItemRefPicker, { ItemDatalists } from "../components/ItemRefPicker";
 import MaterialIcon from "../components/MaterialIcon";
 import MinecraftTextInput from "../components/MinecraftTextInput";
 import MinecraftTextPreview from "../components/MinecraftTextPreview";
@@ -528,7 +528,7 @@ export default function CrateEditorPage() {
   function trashButton(id: string, title: string) {
     return (
       <button type="button" className="ci-trash" title={title} onClick={() => setTrashConfirm(id)}>
-        <Trash2 size={14} strokeWidth={1.75} />
+        <Trash2 size={16} strokeWidth={1.75} />
       </button>
     );
   }
@@ -591,8 +591,9 @@ export default function CrateEditorPage() {
           <Save size={14} strokeWidth={1.75} /> Wyślij na serwer
         </button>
       </div>
-      {status && <p className="status">{status}</p>}
+      {status && <StatusBar text={status} onClose={() => setStatus(null)} />}
       {showCommands && <CrateCommandsModal file={file} onClose={() => setShowCommands(false)} />}
+      <ItemDatalists materials={allMaterials} customIds={customIds} />
 
       <div className="ci-layout ci-layout-crates">
         <aside className="card ci-cats">

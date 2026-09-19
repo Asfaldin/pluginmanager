@@ -2,6 +2,7 @@ import { useDirtyTracking } from "../state/DirtyContext";
 import { yaml } from "@codemirror/lang-yaml";
 import CodeMirror from "@uiw/react-codemirror";
 import { File, Folder, Save } from "lucide-react";
+import { StatusBar } from "../components/EditorBits";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import PresetBar from "../components/PresetBar";
@@ -275,7 +276,7 @@ export default function ConfigEditorPage() {
         </div>
       )}
 
-      {status && <p className="status">{status}</p>}
+      {status && <StatusBar text={status} onClose={() => setStatus(null)} />}
     </div>
   );
 }

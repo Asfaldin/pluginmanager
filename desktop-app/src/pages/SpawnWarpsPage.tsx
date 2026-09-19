@@ -1,6 +1,7 @@
 import { useDirtyTracking } from "../state/DirtyContext";
 import { Save } from "lucide-react";
 import * as yaml from "js-yaml";
+import { StatusBar } from "../components/EditorBits";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import PresetBar from "../components/PresetBar";
@@ -649,7 +650,7 @@ export default function SpawnWarpsPage() {
         </>
       )}
 
-      {status && <p className="status">{status}</p>}
+      {status && <StatusBar text={status} onClose={() => setStatus(null)} />}
     </div>
   );
 }

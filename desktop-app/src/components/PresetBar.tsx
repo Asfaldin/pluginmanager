@@ -35,7 +35,7 @@ export default function PresetBar({ presets, selectedName, onSelectName, onSaveA
         <Download size={14} strokeWidth={1.75} /> Wczytaj do edycji
       </button>
       <button type="button" disabled={!selectedName} onClick={() => onDelete(selectedName)}>
-        <Trash2 size={14} strokeWidth={1.75} /> Usuń zapis
+        <Trash2 size={16} strokeWidth={1.75} /> Usuń zapis
       </button>
     </div>
   );

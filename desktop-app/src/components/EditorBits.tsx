@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import MinecraftTextInput from "./MinecraftTextInput";
 
@@ -76,5 +77,17 @@ export function Fold({ title, open, children }: { title: string; open?: boolean;
       </summary>
       <div className="ci-fold-body">{children}</div>
     </details>
+  );
+}
+
+/** Pasek z komunikatem (np. "Wysłano na serwer") i krzyżykiem do schowania go. */
+export function StatusBar({ text, onClose }: { text: string; onClose: () => void }) {
+  return (
+    <p className="status">
+      <span>{text}</span>
+      <button type="button" className="ci-trash" title="Schowaj komunikat" onClick={onClose}>
+        <X size={14} />
+      </button>
+    </p>
   );
 }

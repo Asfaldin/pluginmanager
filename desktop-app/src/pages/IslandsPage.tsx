@@ -1,5 +1,6 @@
 import { useDirtyTracking } from "../state/DirtyContext";
 import { RefreshCw, Save } from "lucide-react";
+import { StatusBar } from "../components/EditorBits";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import MaterialField from "../components/MaterialField";
@@ -551,7 +552,7 @@ export default function IslandsPage() {
         </button>
       </div>
 
-      {status && <p className="status">{status}</p>}
+      {status && <StatusBar text={status} onClose={() => setStatus(null)} />}
     </div>
   );
 }

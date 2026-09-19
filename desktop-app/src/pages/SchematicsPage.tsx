@@ -1,5 +1,6 @@
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { Blocks, Download, File, Folder, Trash2, Upload } from "lucide-react";
+import { StatusBar } from "../components/EditorBits";
 import { useEffect, useRef, useState } from "react";
 import { sftpDeleteFile, sftpDownloadFile, sftpListDir, sftpUploadLocalFile } from "../lib/api";
 import { getLastUsed, setLastUsed } from "../lib/lastUsed";
@@ -196,7 +197,7 @@ export default function SchematicsPage() {
                           <Download size={14} strokeWidth={1.75} />
                         </button>
                         <button type="button" onClick={() => deleteEntry(entry)} disabled={busy} title="Usuń z serwera">
-                          <Trash2 size={14} strokeWidth={1.75} />
+                          <Trash2 size={16} strokeWidth={1.75} />
                         </button>
                       </>
                     )}
@@ -209,7 +210,7 @@ export default function SchematicsPage() {
         </>
       )}
 
-      {status && <p className="status">{status}</p>}
+      {status && <StatusBar text={status} onClose={() => setStatus(null)} />}
     </div>
   );
 }
