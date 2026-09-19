@@ -1,4 +1,4 @@
-import { useId } from "react";
+
 import type { ItemRef } from "../lib/cratesYaml";
 import { getIconPackDir } from "../lib/materialIcons";
 import MaterialIcon from "./MaterialIcon";
@@ -15,9 +15,32 @@ interface Props {
   iconPackDir?: string;
 }
 
+// Podpowiedzi (ponad 1500 przedmiotow) siedza w JEDNEJ liscie na cala strone - strona
+// rysuje <ItemDatalists> raz, a wszystkie pola tylko sie do niej odwoluja. Wczesniej kazde
+// pole robilo wlasna kopie przy kazdym przerysowaniu i strona sie przez to zacinala.
+export const MATERIALS_LIST_ID = "app-materials";
+export const CUSTOM_LIST_ID = "app-custom-items";
+
+/** Wspólne listy podpowiedzi - strona z polami wyboru przedmiotu rysuje to raz. */
+export function ItemDatalists({ materials, customIds }: { materials: string[]; customIds: string[] }) {
+  return (
+    <>
+      <datalist id={MATERIALS_LIST_ID}>
+        {materials.map((m) => (
+          <option key={m} value={m} />
+        ))}
+      </datalist>
+      <datalist id={CUSTOM_LIST_ID}>
+        {customIds.map((c) => (
+          <option key={c} value={c} />
+        ))}
+      </datalist>
+    </>
+  );
+}
+
 /** Wybór przedmiotu: zwykły item Minecrafta albo custom item z katalogu (items/). */
-export default function ItemRefPicker({ value, onChange, materials, customIds, showAmount, maxAmount, iconPackDir }: Props) {
-  const listId = useId();
+export default function ItemRefPicker({ value, onChange, customIds, showAmount, maxAmount, iconPackDir }: Props) {
   const custom = value.custom != null;
   const pack = iconPackDir ?? getIconPackDir();
   return (
@@ -37,18 +60,13 @@ export default function ItemRefPicker({ value, onChange, materials, customIds, s
         <option value="custom">Custom item</option>
       </select>
       <input
-        list={listId}
+        list={custom ? CUSTOM_LIST_ID : MATERIALS_LIST_ID}
         value={custom ? value.custom : (value.item ?? "")}
         onChange={(e) =>
           onChange(custom ? { ...value, custom: e.target.value } : { ...value, item: e.target.value.toUpperCase() })
         }
         style={{ flex: 1 }}
       />
-      <datalist id={listId}>
-        {(custom ? customIds : materials).map((m) => (
-          <option key={m} value={m} />
-        ))}
-      </datalist>
       {showAmount && (
         <input
           type="number"

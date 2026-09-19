@@ -31,6 +31,12 @@ export function setIconPackDir(path: string): void {
 const MATERIAL_NAME_EXCEPTIONS: Record<string, string> = {
   SNOW_BLOCK: "snow",
   MAGMA_BLOCK: "magma",
+  // Kompas i zegar sa animowane - zamiast jednego pliku maja 32/64 klatki
+  // (compass_00.png...). Bierzemy klatke "igla na polnoc" i "poludnie", czyli to,
+  // co widac w ekwipunku najczesciej.
+  COMPASS: "compass_16",
+  RECOVERY_COMPASS: "recovery_compass_16",
+  CLOCK: "clock_00",
 };
 
 // Materials where the generic "_top before _side" fallback picks the worse
@@ -173,9 +179,7 @@ export function iconCropForMaterial(material: string): IconCrop | undefined {
 // per-slot material of their own in the real data (nav arrows, exit, search,
 // sort) - standard Minecraft plugin convention, not a claim about any
 // specific server's actual configured icon (buttons don't have one).
-// COMPASS/CLOCK are excluded - vanilla ships them as numbered animation
-// frames (compass_00.png..compass_31.png), not a single static "compass.png",
-// so they'd never resolve through the simple per-material lookup below.
+// Animowane przedmioty (kompas, zegar) maja swoje klatki w MATERIAL_NAME_EXCEPTIONS.
 const ROLE_ICONS: Record<string, string> = {
   NAV_PREV: "ARROW",
   NAV_NEXT: "ARROW",
@@ -183,6 +187,8 @@ const ROLE_ICONS: Record<string, string> = {
   EXIT: "BARRIER",
   SEARCH: "SPYGLASS",
   SORT: "HOPPER",
+  // Tło to domyślnie czarna szybka - tyle samo mówi co napis, a widać od razu, o co chodzi.
+  FILLER: "BLACK_STAINED_GLASS_PANE",
 };
 
 export function conventionalRoleIcon(role: string): string | undefined {

@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { setHasConfigured } from "./appSettings";
+import { clearIconCache } from "./iconCache";
 import type {
   Catalog,
   CustomerInfo,
@@ -96,6 +97,7 @@ export function rpTextureStatus(packDir: string, relPath: string): Promise<Textu
 }
 
 export function rpMakeTransparent(packDir: string, relPath: string, width: number, height: number): Promise<void> {
+  clearIconCache();
   return invoke("rp_make_transparent", { packDir, relPath, width, height });
 }
 
@@ -105,10 +107,12 @@ export function rpImportTexture(
   sourcePath: string,
   stripAlpha: boolean
 ): Promise<void> {
+  clearIconCache();
   return invoke("rp_import_texture", { packDir, relPath, sourcePath, stripAlpha });
 }
 
 export function rpResetTexture(packDir: string, relPath: string): Promise<void> {
+  clearIconCache();
   return invoke("rp_reset_texture", { packDir, relPath });
 }
 
@@ -117,6 +121,7 @@ export function rpExportZip(packDir: string, outputPath: string): Promise<void> 
 }
 
 export function rpSavePngBytes(packDir: string, relPath: string, pngBase64: string): Promise<void> {
+  clearIconCache();
   return invoke("rp_save_png_bytes", { packDir, relPath, pngBase64 });
 }
 
