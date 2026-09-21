@@ -1,4 +1,4 @@
-import { open, save } from "@tauri-apps/plugin-dialog";
+import { ask, open, save } from "@tauri-apps/plugin-dialog";
 import { Blocks, Download, File, Folder, Trash2, Upload } from "lucide-react";
 import { StatusBar } from "../components/EditorBits";
 import { useEffect, useRef, useState } from "react";
@@ -104,7 +104,11 @@ export default function SchematicsPage() {
   }
 
   async function deleteEntry(entry: RemoteEntry) {
-    if (!window.confirm(`Na pewno usunąć „${entry.name}" z serwera? Tej operacji nie da się cofnąć.`)) return;
+    const confirmed = await ask(`Na pewno usunąć „${entry.name}" z serwera? Tej operacji nie da się cofnąć.`, {
+      title: "Usunąć plik?",
+      kind: "warning",
+    });
+    if (!confirmed) return;
     setBusy(true);
     setStatus(null);
     try {

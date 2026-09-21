@@ -2,9 +2,17 @@ import { Blocks, LayoutDashboard, LogIn, Palette, Server, Settings, ShoppingCart
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import logo from "../assets/logo.png";
+import AccountLoginCard from "./AccountLoginCard";
 import { setLastPath } from "../lib/appSettings";
 import { useAuth } from "../state/AuthContext";
 import { useProfiles } from "../state/ProfilesContext";
+
+// Strony, które MUSZĄ zostać dostępne mimo bramki logowania niżej - inaczej nikt nigdy
+// by się nie zalogował (login jest w środku bramki, na /account) ani nie przeczytał
+// Regulaminu/Polityki (link z checkboxa rejestracji w AccountLoginCard.tsx).
+function isGateExempt(pathname: string): boolean {
+  return pathname === "/account" || pathname.startsWith("/legal/");
+}
 
 const NAV_ITEMS: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean }> = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -67,17 +75,19 @@ export default function Layout() {
           <img src={logo} alt="" className="sidebar-logo" />
           <span className="sidebar-title-text">RSMCMANAGER</span>
         </div>
-        <div className="sidebar-server-picker">
-          <label className="muted small">Aktywny serwer</label>
-          <select value={activeProfileId} onChange={(e) => setActiveProfileId(e.target.value)}>
-            <option value="">- wybierz -</option>
-            {profiles.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        {customer && (
+          <div className="sidebar-server-picker">
+            <label className="muted small">Aktywny serwer</label>
+            <select value={activeProfileId} onChange={(e) => setActiveProfileId(e.target.value)}>
+              <option value="">- wybierz -</option>
+              {profiles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <ul>
           {NAV_ITEMS.map((item) => (
             <li key={item.to}>
@@ -126,7 +136,20 @@ export default function Layout() {
         </div>
       </nav>
       <main className="content">
-        <Outlet />
+        {customer || isGateExempt(location.pathname) ? (
+          <Outlet />
+        ) : (
+          <div className="app-gate-wrap">
+            <div className="app-gate-overlay">
+              <div style={{ width: "360px" }}>
+                <AccountLoginCard />
+              </div>
+            </div>
+            <div className="app-gate-dimmed" aria-hidden="true">
+              <Outlet />
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

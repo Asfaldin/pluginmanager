@@ -472,6 +472,44 @@ body {
   color: var(--accent-strong);
 }
 
+/* Przełącznik logowanie/rejestracja jako jedno zdanie ("Nie masz konta? Zarejestruj
+   się") pod głównym przyciskiem - tak jak w większości logowań, zamiast osobnego
+   przycisku obok submitu. */
+.auth-switch-line {
+  text-align: center;
+  margin: 0.6rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.auth-card-subtitle {
+  margin: 0.35rem 0 0.15rem;
+  line-height: 1.4;
+}
+
+/* Etykieta pola Hasło + "Zapomniałem hasła" na tej samej linii, wyrównane do przeciwnych
+   krawędzi - standardowy układ logowania (link resetu obok etykiety, nie osobny wiersz). */
+.auth-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.auth-inline-link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.auth-inline-link:hover {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+}
+
 .page h1 {
   font-family: "Cinzel", "Segoe UI", serif;
   font-weight: 700;
@@ -510,6 +548,10 @@ body {
   gap: 0.25rem;
 }
 
+.status-error {
+  color: var(--danger);
+}
+
 .row {
   display: flex;
   align-items: center;
@@ -544,6 +586,62 @@ body {
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 0.75rem;
   margin-top: 0.75rem;
+}
+
+/* Karty serwerów - trochę szersze niż zwykłe .card-grid (ikona + status + 3 przyciski
+   w wierszu akcji potrzebują więcej miejsca niż 220px, inaczej przyciski się łamią). */
+.server-grid {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.server-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.server-card.is-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.server-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.server-card-icon {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--accent);
+  margin-top: 0.1rem;
+}
+
+.server-card-status {
+  margin: 0;
+  gap: 0;
+}
+
+/* Pusty stan (0 serwerów) - zachęta do dodania pierwszego zamiast po prostu pustej
+   przestrzeni tam, gdzie normalnie byłaby siatka kart. */
+.server-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.35rem;
+  padding: 2.5rem 1.5rem;
+  margin-top: 0.75rem;
+}
+
+.server-empty svg {
+  margin-bottom: 0.25rem;
+}
+
+.server-form {
+  max-width: 560px;
+  margin-top: 1.5rem;
 }
 
 /* Nagłówek Sklepu - tytuł/tagline + wyszukiwarka w jednym bloku, wyraźnie oddzielone od
@@ -739,214 +837,261 @@ div.onboarding-row-content:hover {
   background: var(--text-muted);
 }
 
-/* Wykres zależności pluginów na Dashboardzie (patrz PluginGraph.tsx) - Core na
-   środku okręgu, reszta dookoła połączona liniami; linie w SVG i "bąbelki" jako
-   zwykłe divy pozycjonowane w tym samym układzie procentowym (0-100), więc
-   zostają wyrównane ze sobą przy każdej szerokości karty. */
-.plugin-graph {
+/* Ekosystem pluginów na Dashboardzie (patrz PluginEcosystem.tsx) - Core jako hub na
+   dole, reszta na łuku nad nim (jak diagramy integracji/ekosystemu w stylu Zapiera czy
+   Segmentu - centralny hub + wachlarz ikon, nie pełna "obwarzanka" z pustym środkiem).
+   Statyczny SVG (bez zoom/pan), więźby świecą się (accent) tylko gdy OBA połączone
+   węzły są posiadane. */
+.plugin-ecosystem {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.5rem;
 }
 
-/* Zoomowalne, przesuwalne "okno" na graf - stały rozmiar, przycięte na krawędziach
-   (overflow hidden), żeby przybliżenie/przesunięcie nie rozwalało układu strony pod
-   spodem. Kółko myszy zoomuje, przeciąganie łapką przesuwa (patrz PluginGraph.tsx),
-   user-select: none, żeby przy szybkim przeciąganiu nie zaznaczało etykiet. */
-.plugin-graph-viewport {
+/* Kwadratowy, wyśrodkowany panel (aspect-ratio 1/1) - węzły są rozłożone pełnym kołem
+   (patrz PluginEcosystem.tsx, RING_POINTS), a procenty left/top muszą się zgadzać 1:1 w
+   obu osiach, inaczej koło rozciągnęłoby się w elipsę w szerszej niż wyższej karcie. */
+.eco-diagram {
   position: relative;
-  width: 100%;
-  height: 620px;
-  overflow: hidden;
+  width: min(100%, 560px);
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
   border-radius: var(--radius-lg);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
 }
 
-.plugin-graph-viewport.is-dragging {
-  cursor: grabbing;
-}
-
-.plugin-graph-zoom-controls {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 0.25rem 0.4rem;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
-}
-
-.plugin-graph-zoom-controls button {
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border-radius: 50%;
-  font-size: 1rem;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.plugin-graph-zoom-reset {
-  width: auto !important;
-  border-radius: 999px !important;
-  padding: 0 0.55rem !important;
-  font-size: 0.68rem !important;
-}
-
-.plugin-graph-zoom-value {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  min-width: 34px;
-  text-align: center;
-}
-
-/* Sam graf - stały rozmiar w pikselach (nie %), bo skalowanie transformem jest
-   dużo płynniejsze i przewidywalniejsze niż przeliczanie viewBox/procentów przy
-   każdej zmianie zoomu. Węzły dalej są pozycjonowane w układzie 0-100% wewnątrz
-   tego stałego kwadratu, więc matematyka orbity (patrz ORBIT_RADIUS) się nie zmienia. */
-.plugin-graph-ring {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 560px;
-  height: 560px;
-  transform-origin: center center;
-  transition: transform 0.08s linear;
-}
-
-/* Podczas przeciągania transform się zmienia na każdy pixel ruchu myszy - z
-   przejściem CSS-owym to by "gumowato" doganiało kursor zamiast jechać 1:1 z nim. */
-.plugin-graph-viewport.is-dragging .plugin-graph-ring {
-  transition: none;
-}
-
-.plugin-graph-lines {
+/* Siatka kropek (ten sam trik co .auth-screen::before na ekranie logowania) + bardzo
+   delikatna fioletowa poświata za Core - stonowane, żeby wtapiało się w kartę zamiast
+   robić osobny, kontrastowy panel (stąd brak własnego background/border na .eco-diagram
+   samym - tylko te dwie ciche warstwy). border-radius: inherit na pseudo-elementach
+   zamiast overflow: hidden na całym kontenerze, żeby nie ryzykować przycięcia węzłów
+   przy krawędzi. */
+.eco-diagram::before {
+  content: "";
   position: absolute;
   inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background-image: radial-gradient(var(--border-strong) 1px, transparent 1px);
+  background-size: 26px 26px;
+  opacity: 0.18;
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000, transparent 72%);
+  mask-image: radial-gradient(circle at 50% 50%, #000, transparent 72%);
+  pointer-events: none;
+}
+
+.eco-diagram::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.1), transparent 60%);
+  pointer-events: none;
+}
+
+.eco-lines {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   width: 100%;
   height: 100%;
+  overflow: visible;
 }
 
-.plugin-graph-lines line {
+.eco-spoke {
   stroke: var(--border-strong);
-  stroke-width: 0.4;
+  stroke-width: 0.35;
+  transition: stroke 0.2s, stroke-width 0.2s, opacity 0.2s;
 }
 
-.plugin-graph-node {
+.eco-spoke.is-lit {
+  stroke: var(--accent);
+  stroke-width: 0.5;
+  opacity: 0.85;
+}
+
+.eco-chord {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 0.3;
+  stroke-dasharray: 1.2 1.4;
+  transition: stroke 0.2s, stroke-width 0.2s, opacity 0.2s;
+}
+
+.eco-chord.is-lit {
+  stroke: var(--accent-strong);
+  stroke-width: 0.55;
+  stroke-dasharray: none;
+  opacity: 0.9;
+}
+
+/* Tryb ogniskowania (klik na węzeł, patrz selected w PluginEcosystem.tsx) - własne
+   połączenia klikniętego węzła dostają grubą, pełną kreskę NIEZALEŻNIE od tego, czy są
+   posiadane (żeby sama struktura była widoczna nawet bez licencji), reszta przygasa. */
+.eco-spoke.is-focus-active {
+  stroke: var(--accent-strong);
+  stroke-width: 0.65;
+  opacity: 1;
+}
+
+.eco-chord.is-focus-active {
+  stroke: var(--accent-strong);
+  stroke-width: 0.7;
+  stroke-dasharray: none;
+  opacity: 1;
+}
+
+.eco-spoke.is-dimmed,
+.eco-chord.is-dimmed {
+  opacity: 0.08;
+}
+
+.eco-node-wrap {
   position: absolute;
   transform: translate(-50%, -50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
-  width: 84px;
+  gap: 0.4rem;
+  z-index: 1;
+  transition: opacity 0.2s;
 }
 
-.plugin-graph-dot {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--surface-hover);
-  border: 1.5px solid var(--border-strong);
+.eco-node-wrap.is-dimmed {
+  opacity: 0.3;
+}
+
+.eco-node-core {
+  z-index: 2;
+}
+
+/* Sam okrąg z ikoną - szary/przygaszony gdy zablokowany (z plakietką kłódki w rogu),
+   fioletowa poświata gdy posiadany. "Masz" dostaje akcent appki, nie zielony "sukces" -
+   to nie potwierdzenie operacji, tylko trwały status "to jest twoje". */
+/* .eco-node jest teraz <button> (klikalne - patrz PluginEcosystem.tsx), nie <div> -
+   padding:0 nadpisuje globalny padding przycisków (App.css wyżej), inaczej rozjeżdżałby
+   wyśrodkowanie ikony w kole o zadanym inline width/height. */
+.eco-node {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--surface-hover);
+  border: 1.5px solid var(--border-strong);
   color: var(--text-muted);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
-  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.15s, color 0.2s;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s, color 0.2s, transform 0.15s;
 }
 
-.plugin-graph-node:hover .plugin-graph-dot {
+.eco-node:hover {
+  transform: scale(1.08);
+}
+
+/* Węzeł w "ogniskowaniu" (patrz selected w PluginEcosystem.tsx) - wyraźny fioletowy
+   pierścień NIEZALEŻNIE od tego, czy jest posiadany, żeby był widoczny nawet na
+   zablokowanym (szarym) węźle. */
+.eco-node.is-focused {
+  outline: 2.5px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.eco-node.is-owned {
+  background: linear-gradient(145deg, var(--accent-strong), var(--accent));
   border-color: var(--accent-strong);
-  transform: scale(1.15);
+  color: var(--accent-ink);
+  box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.16), 0 4px 14px rgba(168, 85, 247, 0.45);
 }
 
-.plugin-graph-node:hover .plugin-graph-label {
-  color: var(--text);
+.eco-node-lock {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
 }
 
-.plugin-graph-label {
-  font-size: 0.72rem;
+.eco-node-label {
+  font-size: 0.74rem;
   color: var(--text-muted);
   text-align: center;
-  line-height: 1.15;
-  transition: color 0.15s;
+  line-height: 1.2;
+  max-width: 88px;
+  transition: color 0.2s;
 }
 
-.plugin-graph-core {
-  z-index: 1;
+.eco-node-wrap:has(.eco-node.is-owned) .eco-node-label {
+  color: var(--text);
+  font-weight: 500;
 }
 
-.plugin-graph-core .plugin-graph-dot {
-  width: 56px;
-  height: 56px;
-}
-
-.plugin-graph-core .plugin-graph-label {
-  font-weight: 600;
+.eco-node-label-core {
+  font-weight: 700;
   font-size: 0.85rem;
 }
 
-/* Pluginy, do których user ma dziś realny dostęp (za darmo albo z aktywnej licencji,
-   patrz computeOwnedIds w PluginGraph.tsx) - świecą kolorem sukcesu zamiast szarej
-   "wyłączonej" kulki, więc od razu widać, czego naprawdę używasz, bez czytania opisów. */
-@keyframes plugin-glow {
-  0%, 100% { box-shadow: 0 0 5px 1px rgba(63, 185, 80, 0.5); }
-  50% { box-shadow: 0 0 10px 3px rgba(63, 185, 80, 0.8); }
+/* Osobna "półka" pod diagramem - wyraźny separator, żeby nie wyglądało jak dopisek, tylko
+   jak świadomie osobna grupa (bo faktycznie jest: te pluginy nie łączą się z niczym). */
+.eco-standalone {
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--border);
 }
 
-.plugin-graph-node.is-owned .plugin-graph-dot {
-  background: var(--success);
-  border-color: #6fd47f;
-  color: #0c2410;
-  animation: plugin-glow 2.6s ease-in-out infinite;
+.eco-group-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.7rem;
 }
 
-.plugin-graph-node.is-owned .plugin-graph-label {
-  color: var(--text);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .plugin-graph-node.is-owned .plugin-graph-dot {
-    animation: none;
-    box-shadow: 0 0 6px 2px rgba(63, 185, 80, 0.6);
-  }
-}
-
-.plugin-graph-standalone-row {
+.eco-standalone-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 1.1rem;
 }
 
-.plugin-graph-standalone-chip {
-  display: inline-flex;
+.eco-standalone-item {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.25rem 0.65rem;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface-hover);
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+  gap: 0.4rem;
+  transition: opacity 0.2s;
 }
 
-.plugin-graph-standalone-chip.is-owned {
-  background: rgba(63, 185, 80, 0.14);
-  border-color: var(--success);
-  color: var(--text);
+.eco-standalone-item.is-dimmed {
+  opacity: 0.3;
+}
+
+/* Pasek nad diagramem - po kliknięciu węzła wypisuje słownie, z czym się łączy (samo
+   przygaszenie linii nie zawsze wystarczy, żeby było oczywiste). Stała wysokość
+   (min-height), żeby diagram pod spodem nie "skakał" przy przełączaniu stanu pustego. */
+.eco-focus-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 1.6rem;
+  font-size: 0.85rem;
+}
+
+.eco-focus-clear {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
 }
 
 /* Karta pluginu w Sklepie - neutralna, bez kolorowania per kategoria; płaska, bez
@@ -1773,6 +1918,62 @@ button:disabled:hover {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  flex: 1 1 auto;
+}
+
+/* Plakietka "Posiadasz"/"Brak licencji" na karcie w Twoich pluginach - informacyjna,
+   nie blokuje kliknięcia (edytor configów działa niezależnie od licencji, którą
+   sprawdza dopiero sam plugin na serwerze - patrz LicenseManager.java). */
+.tool-card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tool-card-badge-owned {
+  background: color-mix(in srgb, var(--success) 18%, transparent);
+  color: var(--success);
+}
+
+.tool-card-badge-locked {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+/* Niezalogowany, gdziekolwiek poza /account i /legal/* (patrz Layout.tsx) - prawdziwa
+   strona zostaje wyrenderowana, tylko przyciemniona/rozmyta i nieklikalna w tle, z
+   panelem logowania na wierzchu, wyśrodkowanym w widocznym oknie - zamiast pustej
+   strony pokazuje, co jest do zdobycia, i jedno spójne miejsce logowania dla całej appki. */
+.app-gate-wrap {
+  position: relative;
+  height: calc(100vh - 4rem);
+  overflow: hidden;
+}
+
+.app-gate-dimmed {
+  filter: blur(3px);
+  opacity: 0.5;
+  pointer-events: none;
+  user-select: none;
+}
+
+.app-gate-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
 }
 
 /* Ucina dłuższe opisy do 3 linii zamiast rozpychać kartę - patrz stała wysokość
@@ -2663,6 +2864,24 @@ button:disabled:hover {
 @media (max-width: 1100px) {
   .ci-layout.ci-layout-crates.ci-layout-quests.ci-layout-shop {
     grid-template-columns: 280px minmax(0, 1fr);
+  }
+}
+
+/* Poniżej ok. 900px nawet 2 kolumny (kategorie + reszta) robią się za ciasne na tabele/
+   formularze edytorów - appka jest desktopowa, ale okno da się zwęzić. Jedna kolumna,
+   kategorie na górze zamiast przyklejonego z boku panelu (traci sens bez sąsiadującej
+   treści). */
+@media (max-width: 800px) {
+  .ci-layout,
+  .ci-layout.ci-layout-crates,
+  .ci-layout.ci-layout-crates.ci-layout-quests,
+  .ci-layout.ci-layout-crates.ci-layout-quests.ci-layout-shop {
+    grid-template-columns: 1fr;
+  }
+  .ci-cats {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
   }
 }
 

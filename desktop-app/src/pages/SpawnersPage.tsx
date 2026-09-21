@@ -1,4 +1,5 @@
 import { useDirtyTracking } from "../state/DirtyContext";
+import { ask } from "@tauri-apps/plugin-dialog";
 import { RefreshCw, Save } from "lucide-react";
 import { StatusBar } from "../components/EditorBits";
 import { useEffect, useRef, useState } from "react";
@@ -75,11 +76,17 @@ export default function SpawnersPage() {
     }
   }
 
-  function selectProfile(id: string) {
+  async function selectProfile(id: string) {
     // Config startuje edytowalny od zera bez serwera (patrz useState wyżej) - jeśli user
     // już coś tak zbudował/zmienił, zwykłe przełączenie serwera po cichu by to nadpisało
     // wczytaną stamtąd konfiguracją. Ostrzegamy, zamiast ubić czyjąś robotę bez pytania.
-    if (dirty && !window.confirm("Masz niezapisane zmiany w edytorze. Wybranie serwera wczyta stamtąd konfigurację i nadpisze je. Kontynuować?")) {
+    if (
+      dirty &&
+      !(await ask("Masz niezapisane zmiany w edytorze. Wybranie serwera wczyta stamtąd konfigurację i nadpisze je. Kontynuować?", {
+        title: "Niezapisane zmiany",
+        kind: "warning",
+      }))
+    ) {
       return;
     }
     setProfileId(id);

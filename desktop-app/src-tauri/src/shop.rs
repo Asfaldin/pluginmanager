@@ -142,7 +142,7 @@ pub async fn shop_register(app: AppHandle, email: String, password: String) -> R
         .json(&serde_json::json!({ "email": email, "password": password }))
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| friendly_request_error(&e))?;
     if !resp.status().is_success() {
         return Err(extract_error(resp).await);
     }
@@ -159,7 +159,7 @@ pub async fn shop_login(app: AppHandle, email: String, password: String) -> Resu
         .json(&serde_json::json!({ "email": email, "password": password }))
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| friendly_request_error(&e))?;
     if !resp.status().is_success() {
         return Err(extract_error(resp).await);
     }
@@ -192,7 +192,7 @@ pub async fn shop_me(app: AppHandle) -> Result<Option<CustomerInfo>, String> {
         .bearer_auth(&token)
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| friendly_request_error(&e))?;
     if resp.status() == reqwest::StatusCode::UNAUTHORIZED {
         shop_logout()?;
         return Ok(None);
@@ -201,6 +201,38 @@ pub async fn shop_me(app: AppHandle) -> Result<Option<CustomerInfo>, String> {
         return Err(extract_error(resp).await);
     }
     Ok(Some(resp.json().await.map_err(|e| e.to_string())?))
+}
+
+/// Zawsze Ok(()) (serwer sam nie zdradza, czy e-mail istnieje - patrz forgot-password
+/// w server.js), więc UI zawsze pokazuje ten sam komunikat "sprawdź maila".
+#[tauri::command]
+pub async fn shop_forgot_password(app: AppHandle, email: String) -> Result<(), String> {
+    let url = format!("{}/api/auth/forgot-password", base_url(&app)?);
+    let resp = reqwest::Client::new()
+        .post(url)
+        .json(&serde_json::json!({ "email": email }))
+        .send()
+        .await
+        .map_err(|e| friendly_request_error(&e))?;
+    if !resp.status().is_success() {
+        return Err(extract_error(resp).await);
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn shop_reset_password(app: AppHandle, token: String, new_password: String) -> Result<(), String> {
+    let url = format!("{}/api/auth/reset-password", base_url(&app)?);
+    let resp = reqwest::Client::new()
+        .post(url)
+        .json(&serde_json::json!({ "token": token, "newPassword": new_password }))
+        .send()
+        .await
+        .map_err(|e| friendly_request_error(&e))?;
+    if !resp.status().is_success() {
+        return Err(extract_error(resp).await);
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -213,7 +245,7 @@ pub async fn shop_change_password(app: AppHandle, current_password: String, new_
         .json(&serde_json::json!({ "currentPassword": current_password, "newPassword": new_password }))
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| friendly_request_error(&e))?;
     if !resp.status().is_success() {
         return Err(extract_error(resp).await);
     }
@@ -229,7 +261,29 @@ pub async fn shop_my_licenses(app: AppHandle) -> Result<Vec<LicenseRecord>, Stri
         .bearer_auth(&token)
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| friendly_request_error(&e))?;
+    if !resp.status().is_success() {
+        return Err(extract_error(resp).await);
+    }
+    resp.json().await.map_err(|e| e.to_string())
+}
+
+/// Testowe "kup" bez prawdziwej płatności - trafia do /api/me/dev-grant, który sam
+/// odmawia (404), jeśli operator nie ustawił DEV_LICENSE_GRANTS=1 w .env
+/// license-servera. Appka pokazuje przycisk wołający to tylko w import.meta.env.DEV
+/// (patrz ShopPage.tsx) - druga, niezależna warstwa: nawet zbudowana wersja dla klienta
+/// nie ma jak wywołać tej komendy z UI.
+#[tauri::command]
+pub async fn shop_dev_grant(app: AppHandle, plugin: String) -> Result<LicenseRecord, String> {
+    let token = get_token().ok_or("Nie jesteś zalogowany.")?;
+    let url = format!("{}/api/me/dev-grant", base_url(&app)?);
+    let resp = reqwest::Client::new()
+        .post(url)
+        .bearer_auth(&token)
+        .json(&serde_json::json!({ "plugin": plugin }))
+        .send()
+        .await
+        .map_err(|e| friendly_request_error(&e))?;
     if !resp.status().is_success() {
         return Err(extract_error(resp).await);
     }
@@ -239,7 +293,7 @@ pub async fn shop_my_licenses(app: AppHandle) -> Result<Vec<LicenseRecord>, Stri
 #[tauri::command]
 pub async fn shop_catalog(app: AppHandle) -> Result<Catalog, String> {
     let url = format!("{}/api/catalog", base_url(&app)?);
-    let resp = reqwest::Client::new().get(url).send().await.map_err(|e| e.to_string())?;
+    let resp = reqwest::Client::new().get(url).send().await.map_err(|e| friendly_request_error(&e))?;
     if !resp.status().is_success() {
         return Err(extract_error(resp).await);
     }
@@ -279,8 +333,34 @@ fn urlencoding_encode(s: &str) -> String {
         .collect()
 }
 
+/// Zamienia surowy błąd transportu reqwest (np. "tcp connect error: Connection refused"
+/// przy niedziałającym/nieosiągalnym license-serverze) na krótki, polski komunikat -
+/// inaczej klient widziałby angielski, deweloperski tekst prosto z biblioteki HTTP.
+fn friendly_request_error(e: &reqwest::Error) -> String {
+    if e.is_connect() {
+        "Nie udało się połączyć z serwerem sklepu. Sprawdź internet i spróbuj ponownie.".to_string()
+    } else if e.is_timeout() {
+        "Serwer sklepu nie odpowiedział na czas. Spróbuj ponownie za chwilę.".to_string()
+    } else {
+        format!("Błąd połączenia z serwerem sklepu: {e}")
+    }
+}
+
+/// Znacznik w treści błędu, po którym front (patrz api.ts) rozpoznaje "sesja wygasła" i
+/// czyści stan zalogowania - odróżnia to od zwykłego błędu walidacji/uprawnień.
+const SESSION_EXPIRED_MARKER: &str = "SESJA_WYGASŁA";
+
 async fn extract_error(resp: reqwest::Response) -> String {
     let status = resp.status();
+    if status == reqwest::StatusCode::UNAUTHORIZED {
+        // Token wygasł/został unieważniony W TRAKCIE sesji (nie tylko przy starcie appki,
+        // to już obsługuje shop_me) - czyścimy go lokalnie, żeby appka nie "myślała"
+        // dalej, że klient jest zalogowany, mimo że każde kolejne wywołanie i tak dostanie 401.
+        if let Ok(entry) = keyring::Entry::new(KEYRING_SERVICE, KEYRING_ACCOUNT) {
+            let _ = entry.delete_credential();
+        }
+        return format!("{SESSION_EXPIRED_MARKER}: Sesja wygasła - zaloguj się ponownie.");
+    }
     match resp.json::<serde_json::Value>().await {
         Ok(body) => body.get("error").and_then(|v| v.as_str()).unwrap_or("nieznany błąd").to_string(),
         Err(_) => format!("HTTP {}", status),

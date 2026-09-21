@@ -187,6 +187,30 @@ export function deleteTexturePack(id: string): Promise<void> {
 
 // --- Sklep (klient, nie operator - patrz shop.rs) ---
 
+/** Znacznik dopisywany przez shop.rs::extract_error, gdy token sesji wygasł/został
+    unieważniony W TRAKCIE pracy appki (nie tylko przy starcie - to już obsługuje shop_me).
+    Bez tego appka "myślała" dalej, że klient jest zalogowany (sidebar dalej pokazywał
+    e-mail), mimo że każde kolejne wywołanie i tak dostawało niejasny błąd 401. */
+const SESSION_EXPIRED_MARKER = "SESJA_WYGASŁA";
+
+let sessionExpiredHandler: (() => void) | null = null;
+
+/** Wołane raz przez AuthProvider (patrz AuthContext.tsx) - gdy dowolna komenda wymagająca
+    zalogowania dostanie SESSION_EXPIRED_MARKER, appka sama czyści stan `customer`, żeby
+    UI (pasek boczny, gated strony) natychmiast wrócił do stanu "niezalogowany". */
+export function setSessionExpiredHandler(handler: (() => void) | null): void {
+  sessionExpiredHandler = handler;
+}
+
+async function invokeAuthed<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  try {
+    return await invoke<T>(cmd, args);
+  } catch (e) {
+    if (String(e).includes(SESSION_EXPIRED_MARKER)) sessionExpiredHandler?.();
+    throw e;
+  }
+}
+
 export function shopRegister(email: string, password: string): Promise<CustomerInfo> {
   return invoke("shop_register", { email, password });
 }
@@ -203,8 +227,25 @@ export function shopMe(): Promise<CustomerInfo | null> {
   return invoke("shop_me");
 }
 
+/** Zawsze się "udaje" (serwer nie zdradza, czy e-mail istnieje) - wysyła kod resetu mailem, jeśli konto istnieje. */
+export function shopForgotPassword(email: string): Promise<void> {
+  return invoke("shop_forgot_password", { email });
+}
+
+/** `token` to kod z maila (patrz shopForgotPassword) - jednorazowy, ważny 30 minut. */
+export function shopResetPassword(token: string, newPassword: string): Promise<void> {
+  return invoke("shop_reset_password", { token, newPassword });
+}
+
 export function shopMyLicenses(): Promise<LicenseRecord[]> {
-  return invoke("shop_my_licenses");
+  return invokeAuthed("shop_my_licenses");
+}
+
+/** Testowe "kup" bez prawdziwej płatności - działa tylko, gdy operator włączył
+    DEV_LICENSE_GRANTS=1 na license-serverze (patrz shop.rs). Wołane wyłącznie z
+    przycisku widocznego tylko w import.meta.env.DEV (patrz ShopPage.tsx). */
+export function shopDevGrant(pluginId: string): Promise<LicenseRecord> {
+  return invokeAuthed("shop_dev_grant", { plugin: pluginId });
 }
 
 export function shopCatalog(): Promise<Catalog> {
@@ -212,11 +253,11 @@ export function shopCatalog(): Promise<Catalog> {
 }
 
 export function shopCheckoutUrl(variantId: string): Promise<string> {
-  return invoke("shop_checkout_url", { variantId });
+  return invokeAuthed("shop_checkout_url", { variantId });
 }
 
 export function shopChangePassword(currentPassword: string, newPassword: string): Promise<void> {
-  return invoke("shop_change_password", { currentPassword, newPassword });
+  return invokeAuthed("shop_change_password", { currentPassword, newPassword });
 }
 
 // --- Ustawienia appki ---

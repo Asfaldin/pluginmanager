@@ -1,6 +1,7 @@
-import { LogOut } from "lucide-react";
+import { Eye, EyeOff, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import AccountLoginCard from "../components/AccountLoginCard";
+import { StatusBar } from "../components/EditorBits";
 import { shopChangePassword, shopMyLicenses } from "../lib/api";
 import { useAuth } from "../state/AuthContext";
 import type { LicenseRecord } from "../lib/types";
@@ -15,6 +16,8 @@ export default function AccountPage() {
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [pwBusy, setPwBusy] = useState(false);
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwSaved, setPwSaved] = useState(false);
@@ -30,13 +33,18 @@ export default function AccountPage() {
 
   async function submitPasswordChange(e: React.FormEvent) {
     e.preventDefault();
-    setPwBusy(true);
     setPwError(null);
     setPwSaved(false);
+    if (newPassword !== newPasswordConfirm) {
+      setPwError("Nowe hasła się nie zgadzają.");
+      return;
+    }
+    setPwBusy(true);
     try {
       await shopChangePassword(currentPassword, newPassword);
       setCurrentPassword("");
       setNewPassword("");
+      setNewPasswordConfirm("");
       setPwSaved(true);
     } catch (e) {
       setPwError(String(e));
@@ -78,16 +86,38 @@ export default function AccountPage() {
           </label>
           <label>
             Nowe hasło
+            <span className="auth-password-field">
+              <input
+                required
+                minLength={8}
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                className="auth-password-toggle"
+                title={showPassword ? "Ukryj hasło" : "Pokaż hasło"}
+                onClick={() => setShowPassword((v) => !v)}
+              >
+                {showPassword ? <EyeOff size={16} strokeWidth={1.75} /> : <Eye size={16} strokeWidth={1.75} />}
+              </button>
+            </span>
+          </label>
+          <label>
+            Powtórz nowe hasło
             <input
               required
               minLength={8}
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              value={newPasswordConfirm}
+              onChange={(e) => setNewPasswordConfirm(e.target.value)}
             />
           </label>
-          {pwError && <p className="error">{pwError}</p>}
-          {pwSaved && !pwError && <p className="status">Hasło zmienione.</p>}
+          {pwError && <StatusBar text={pwError} tone="error" onClose={() => setPwError(null)} />}
+          {pwSaved && !pwError && <StatusBar text="Hasło zmienione." onClose={() => setPwSaved(false)} />}
           <div className="row">
             <button type="submit" disabled={pwBusy}>
               {pwBusy ? "Zapisuję..." : "Zmień hasło"}

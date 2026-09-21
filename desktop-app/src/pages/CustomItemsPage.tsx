@@ -1,3 +1,4 @@
+import { ask } from "@tauri-apps/plugin-dialog";
 import { useDirtyTracking } from "../state/DirtyContext";
 import { Save } from "lucide-react";
 import { StatusBar, ListToggle } from "../components/EditorBits";
@@ -242,9 +243,13 @@ export default function CustomItemsPage() {
     setEditingKey({ id: item.id, file: item.file });
   }
 
-  function removeEditing() {
+  async function removeEditing() {
     if (!editingKey) return;
-    if (!window.confirm(`Usunąć item ${editingKey.id}? (Na serwerze zniknie dopiero po „Wyślij na serwer”.)`)) return;
+    const confirmed = await ask(`Usunąć item ${editingKey.id}? (Na serwerze zniknie dopiero po „Wyślij na serwer”.)`, {
+      title: "Usunąć item?",
+      kind: "warning",
+    });
+    if (!confirmed) return;
     setItems(items.filter((it) => !sameItem(it, editingKey)));
     newItem();
   }

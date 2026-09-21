@@ -1,7 +1,7 @@
 import { KeyRound, Server, Wrench } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import PluginGraph from "../components/PluginGraph";
+import PluginEcosystem from "../components/PluginEcosystem";
 import { getHasConfigured, getHasDeployed, getHasTestedConnection, setHasTestedConnection } from "../lib/appSettings";
 import { listEmbeddedJars, sftpListDir, shopMyLicenses } from "../lib/api";
 import { FREE_PLUGIN_IDS } from "../lib/freePlugins";
@@ -103,6 +103,17 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Checklista wyżej kończy się bez żadnej wzmianki o Sklepie - klient mógł przejść
+          cały onboarding, korzystając wyłącznie z darmowych pluginów, i nie ma jak się
+          dowiedzieć, że jest więcej do odblokowania. Osobna, nieznikająca-po-zakupie
+          podpowiedź zamiast dorzucania tego jako krok checklisty (checklista ma sens
+          tylko dopóki znika po ukończeniu - zakup nie jest "obowiązkowym pierwszym krokiem"). */}
+      {!!customer && licenses !== null && activeLicenses.length === 0 && (
+        <p className="muted small">
+          Korzystasz na razie tylko z darmowych pluginów. <Link to="/shop">Zajrzyj do Sklepu</Link>, żeby zobaczyć, co jeszcze możesz odblokować.
+        </p>
+      )}
+
       <div className="stat-tiles">
         <Link to="/servers" className="stat-tile">
           <span className="stat-tile-icon">
@@ -174,10 +185,11 @@ export default function DashboardPage() {
 
       <h2 style={{ marginTop: "1.5rem" }}>Ekosystem pluginów</h2>
       <p className="muted small" style={{ marginTop: "-0.3rem" }}>
-        Który plugin od którego zależy - większość wymaga Core (współdzielone API i licencje), kilka działa samodzielnie.
+        Co masz, co jest zablokowane, i które pluginy realnie się ze sobą łączą (nie samo "wymaga Core" - to dotyczy
+        prawie wszystkich).
       </p>
       <div className="card">
-        <PluginGraph licenses={licenses ?? []} />
+        <PluginEcosystem licenses={licenses ?? []} />
       </div>
     </div>
   );

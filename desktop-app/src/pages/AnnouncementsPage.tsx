@@ -1,3 +1,4 @@
+import { ask } from "@tauri-apps/plugin-dialog";
 import { Save } from "lucide-react";
 import { StatusBar } from "../components/EditorBits";
 import { useEffect, useRef, useState } from "react";
@@ -60,8 +61,14 @@ export default function AnnouncementsPage() {
     setGroupExpand((prev) => ({ ...prev, [i]: !isGroupExpanded(i, group) }));
   }
 
-  function selectProfile(id: string) {
-    if (dirty && !window.confirm("Masz niezapisane zmiany w edytorze. Wybranie serwera wczyta stamtąd konfigurację i nadpisze je. Kontynuować?")) {
+  async function selectProfile(id: string) {
+    if (
+      dirty &&
+      !(await ask("Masz niezapisane zmiany w edytorze. Wybranie serwera wczyta stamtąd konfigurację i nadpisze je. Kontynuować?", {
+        title: "Niezapisane zmiany",
+        kind: "warning",
+      }))
+    ) {
       return;
     }
     setProfileId(id);
@@ -164,8 +171,12 @@ export default function AnnouncementsPage() {
     next[i] = { ...next[i], ...patch };
     setConfig({ ...config, groups: next });
   }
-  function removeGroup(i: number) {
-    if (!window.confirm("Usunąć całą grupę razem z jej wiadomościami? Tego nie da się cofnąć.")) return;
+  async function removeGroup(i: number) {
+    const confirmed = await ask("Usunąć całą grupę razem z jej wiadomościami? Tego nie da się cofnąć.", {
+      title: "Usunąć grupę?",
+      kind: "warning",
+    });
+    if (!confirmed) return;
     setConfig({ ...config, groups: config.groups.filter((_, idx) => idx !== i) });
     setGroupExpand((prev) => {
       const next: Record<number, boolean> = {};

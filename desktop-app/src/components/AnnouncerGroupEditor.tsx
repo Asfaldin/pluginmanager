@@ -1,3 +1,4 @@
+import { ask } from "@tauri-apps/plugin-dialog";
 import { useState } from "react";
 import AnnouncerMessageEditor from "./AnnouncerMessageEditor";
 import ChannelPicker from "./ChannelPicker";
@@ -38,8 +39,9 @@ export default function AnnouncerGroupEditor({ group: g, index, total, expanded,
     next[i] = { ...next[i], ...patch };
     onChange({ messages: next });
   }
-  function removeMessage(i: number) {
-    if (!window.confirm("Usunąć tę wiadomość z grupy? Tego nie da się cofnąć.")) return;
+  async function removeMessage(i: number) {
+    const confirmed = await ask("Usunąć tę wiadomość z grupy? Tego nie da się cofnąć.", { title: "Usunąć wiadomość?", kind: "warning" });
+    if (!confirmed) return;
     onChange({ messages: g.messages.filter((_, idx) => idx !== i) });
     setMsgExpand((prev) => {
       const next: Record<number, boolean> = {};
