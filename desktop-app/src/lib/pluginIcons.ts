@@ -23,7 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-// Ta sama ikona per plugin co w PluginGraph.tsx (ekosystem na Dashboardzie) - osobna
+// Ta sama ikona per plugin co w PluginEcosystem.tsx (ekosystem na Dashboardzie) - osobna
 // kopia mapy zamiast importu stamtąd, żeby nie ryzykować refaktoru już przetestowanego
 // komponentu. Używane jako ikona nagłówka na PluginDetailPage.tsx.
 export const PLUGIN_ICONS: Record<string, LucideIcon> = {

@@ -1,5 +1,5 @@
 // JEDNO ŹRÓDŁO PRAWDY o tym, co jest darmowe. Wcześniej ta sama lista żyła w trzech
-// miejscach (DeployPage, PluginGraph, tu) i się rozjeżdżała - teraz importują stąd.
+// miejscach (DeployPage, PluginEcosystem, tu) i się rozjeżdżała - teraz importują stąd.
 //
 // Dwa poziomy, celowo rozdzielone:
 //  - FREE_PLUGIN_IDS  - pluginy BEZ bramki licencyjnej w kodzie Javy. Działają u każdego
@@ -10,7 +10,7 @@
 //                       (sekcja "Darmowe"). Podzbiór FREE_PLUGIN_IDS, czysto marketingowy.
 
 /** Pluginy bez licencji - działają u każdego bez klucza. Współdzielone przez
-    DeployPage (gating + plakietki) i PluginGraph (podświetlenie "posiadane"). */
+    DeployPage (gating + plakietki) i PluginEcosystem (podświetlenie "posiadane"). */
 export const FREE_PLUGIN_IDS: ReadonlySet<string> = new Set([
   "core",
   "announcer",
