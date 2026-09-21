@@ -18,6 +18,7 @@ import FishingPage from "./pages/FishingPage";
 import GeneratorsPage from "./pages/GeneratorsPage";
 import HudPage from "./pages/HudPage";
 import IslandsPage from "./pages/IslandsPage";
+import LegalPage from "./pages/LegalPage";
 import MarketPage from "./pages/MarketPage";
 import MenuGuiPage from "./pages/MenuGuiPage";
 import QuestsPage from "./pages/QuestsPage";
@@ -68,6 +69,7 @@ function Gate() {
             <Route path="/" element={<Layout />}>
               <Route index element={<HomeRedirect />} />
               <Route path="account" element={<AccountPage />} />
+              <Route path="legal/:kind" element={<LegalPage />} />
               <Route path="servers" element={<ServersPage />} />
               <Route path="shop" element={<ShopPage />} />
               <Route path="shop/:kind/:id" element={<PluginDetailPage />} />

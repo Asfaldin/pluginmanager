@@ -1,13 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { shopLogin, shopLogout, shopMe, shopRegister } from "../lib/api";
+import { setSessionExpiredHandler, shopLogin, shopLogout, shopMe, shopRegister } from "../lib/api";
 import type { CustomerInfo } from "../lib/types";
 
 // Logowanie NIE jest już bramką na wejściu do appki (patrz App.tsx) - appka działa
 // bez konta (edycja configów, Wdrożenie, Texturepack Creator itd. to lokalne/SFTP
-// operacje). Konto jest potrzebne tylko do Sklepu i loguje się w środku, w Ustawieniach
-// → Konto (patrz SettingsPage.tsx). Osobny panel admina (dawna zakładka "Licencje")
-// świadomie usunięty z appki - operator wystawia klucze przez curl (patrz
-// Mainplugins/license-server/README.md), appka jest wyłącznie dla klienta.
+// operacje). Konto jest potrzebne tylko do Sklepu i "Twoich pluginów", i loguje się w
+// środku, na osobnej stronie /account (patrz AccountPage.tsx, link w pasku bocznym).
+// Osobny panel admina (dawna zakładka "Licencje") świadomie usunięty z appki - operator
+// wystawia klucze przez curl (patrz Mainplugins/license-server/README.md), appka jest
+// wyłącznie dla klienta.
 
 interface AuthContextValue {
   customer: CustomerInfo | null;
@@ -16,6 +17,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  clearError: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -30,6 +32,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(setCustomer)
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false));
+
+    // Token wygasły/unieważniony W TRAKCIE pracy appki (nie tylko przy starcie - to już
+    // obsługuje shop_me powyżej) - patrz SESSION_EXPIRED_MARKER w api.ts/shop.rs. Bez
+    // tego appka dalej "myślała", że klient jest zalogowany, mimo że kolejne wywołania
+    // Sklepu/Konta i tak dostawały niejasny błąd 401.
+    setSessionExpiredHandler(() => {
+      setCustomer(null);
+      setError("Sesja wygasła - zaloguj się ponownie.");
+    });
+    return () => setSessionExpiredHandler(null);
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -57,8 +69,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCustomer(null);
   }, []);
 
+  const clearError = useCallback(() => setError(null), []);
+
   return (
-    <AuthContext.Provider value={{ customer, loading, error, login, register, logout }}>
+    <AuthContext.Provider value={{ customer, loading, error, login, register, logout, clearError }}>
       {children}
     </AuthContext.Provider>
   );

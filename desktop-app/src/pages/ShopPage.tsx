@@ -1,8 +1,9 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Search } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { shopCatalog, shopCheckoutUrl, shopMyLicenses } from "../lib/api";
+import { StatusBar } from "../components/EditorBits";
+import { shopCatalog, shopCheckoutUrl, shopDevGrant, shopMyLicenses } from "../lib/api";
 import { FREE_PLUGINS } from "../lib/freePlugins";
 import { ownsPackage, ownsPluginId, packagePluginsField } from "../lib/licenses";
 import { PLUGIN_ART } from "../lib/pluginArt";
@@ -98,8 +99,43 @@ export default function ShopPage() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [licenses, setLicenses] = useState<LicenseRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [buyingVariant, setBuyingVariant] = useState<string | null>(null);
+  const pollRef = useRef<number | null>(null);
+
+  function stopLicensePolling() {
+    if (pollRef.current != null) {
+      window.clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }
+
+  // Po "Kup" appka otwiera przeglądarkę i appka sama nie wie, kiedy (ani czy) zakup się
+  // dokończył - LemonSqueezy nie ma jak "wrócić" do appki desktopowej. Zamiast zostawiać
+  // klienta z tym samym stanem po powrocie (dawny "ślepy zaułek"), odpytujemy licencje
+  // co kilka sekund przez ~2 minuty i sami wykrywamy nową aktywną licencję.
+  function startLicensePolling(baselineActiveCount: number) {
+    stopLicensePolling();
+    let tries = 0;
+    pollRef.current = window.setInterval(async () => {
+      tries++;
+      try {
+        const fresh = await shopMyLicenses();
+        setLicenses(fresh);
+        if (fresh.filter((l) => l.status === "active").length > baselineActiveCount) {
+          setStatus("Nowa licencja aktywna - dzięki za zakup!");
+          stopLicensePolling();
+          return;
+        }
+      } catch {
+        // cicho - kolejna próba za chwilę, nie zasypujemy błędami sieci w tle
+      }
+      if (tries >= 24) stopLicensePolling();
+    }, 5000);
+  }
+
+  useEffect(() => stopLicensePolling, []);
 
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -112,6 +148,7 @@ export default function ShopPage() {
   async function refresh() {
     setLoading(true);
     setError(null);
+    setStatus(null);
     try {
       setCatalog(await shopCatalog());
     } catch (e) {
@@ -132,9 +169,35 @@ export default function ShopPage() {
     }
     setBuyingVariant(variantId);
     setError(null);
+    setStatus(null);
     try {
       const url = await shopCheckoutUrl(variantId ?? "");
       await openUrl(url);
+      setStatus("Otworzyliśmy przeglądarkę - dokończ zakup, a potem wróć tutaj. Sprawdzimy Twoje licencje automatycznie.");
+      startLicensePolling(activeLicenses.length);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBuyingVariant(null);
+    }
+  }
+
+  // Testowe "kup" bez prawdziwej płatności - działa tylko gdy operator włączył
+  // DEV_LICENSE_GRANTS=1 na license-serverze (inaczej dostaje 404, patrz shop.rs);
+  // sam przycisk pokazuje się tylko w import.meta.env.DEV (poniżej, przy renderze),
+  // więc zbudowana wersja dla klienta nie ma z czego tego wywołać.
+  async function buyTest(pluginField: string) {
+    if (!customer) {
+      setError("Zaloguj się najpierw, żeby kupić.");
+      return;
+    }
+    setBuyingVariant(pluginField);
+    setError(null);
+    setStatus(null);
+    try {
+      await shopDevGrant(pluginField);
+      setLicenses(await shopMyLicenses());
+      setStatus("Licencja testowa nadana.");
     } catch (e) {
       setError(String(e));
     } finally {
@@ -193,7 +256,8 @@ export default function ShopPage() {
         </div>
       </div>
 
-      {error && <p className="error">{error}</p>}
+      {error && <StatusBar text={error} tone="error" onClose={() => setError(null)} />}
+      {status && <StatusBar text={status} onClose={() => setStatus(null)} />}
       {loading && <p className="muted">Ładowanie...</p>}
 
       <h2>Moje licencje</h2>
@@ -243,12 +307,27 @@ export default function ShopPage() {
                   </div>
                   {!owned && (
                     <div className="row">
-                      <button disabled={buyingVariant === pkg.variantId} onClick={() => buy(pkg.variantId)}>
-                        Kup
-                      </button>
-                      {pkg.subscriptionPrice != null && (
+                      {pkg.price != null && pkg.variantId != null ? (
+                        <button disabled={buyingVariant === pkg.variantId} onClick={() => buy(pkg.variantId)}>
+                          {buyingVariant === pkg.variantId ? "Otwieram przeglądarkę..." : "Kup"}
+                        </button>
+                      ) : (
+                        <span className="muted small">Cena wkrótce - jeszcze nie można kupić.</span>
+                      )}
+                      {pkg.subscriptionPrice != null && pkg.subscriptionVariantId != null && (
                         <button disabled={buyingVariant === pkg.subscriptionVariantId} onClick={() => buy(pkg.subscriptionVariantId)}>
-                          Subskrybuj ({formatPrice(pkg.subscriptionPrice, "/mies.")})
+                          {buyingVariant === pkg.subscriptionVariantId
+                            ? "Otwieram przeglądarkę..."
+                            : `Subskrybuj (${formatPrice(pkg.subscriptionPrice, "/mies.")})`}
+                        </button>
+                      )}
+                      {import.meta.env.DEV && (
+                        <button
+                          disabled={buyingVariant === packagePluginsField(pkg.plugins)}
+                          onClick={() => buyTest(packagePluginsField(pkg.plugins))}
+                          title="Nadaje licencję bez prawdziwej płatności - tylko lokalnie, do testów"
+                        >
+                          Kup (TEST)
                         </button>
                       )}
                     </div>
@@ -294,9 +373,24 @@ export default function ShopPage() {
               price={<span className="card-title">{formatPrice(p.price)}</span>}
               actions={
                 !owned && (
-                  <button disabled={buyingVariant === p.variantId} onClick={() => buy(p.variantId)}>
-                    Kup
-                  </button>
+                  <div className="row" style={{ margin: 0 }}>
+                    {p.price != null && p.variantId != null ? (
+                      <button disabled={buyingVariant === p.variantId} onClick={() => buy(p.variantId)}>
+                        {buyingVariant === p.variantId ? "Otwieram przeglądarkę..." : "Kup"}
+                      </button>
+                    ) : (
+                      <span className="muted small">Cena wkrótce</span>
+                    )}
+                    {import.meta.env.DEV && (
+                      <button
+                        disabled={buyingVariant === p.id}
+                        onClick={() => buyTest(p.id)}
+                        title="Nadaje licencję bez prawdziwej płatności - tylko lokalnie, do testów"
+                      >
+                        Kup (TEST)
+                      </button>
+                    )}
+                  </div>
                 )
               }
             />

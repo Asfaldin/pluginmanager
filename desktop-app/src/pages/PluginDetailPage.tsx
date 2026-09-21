@@ -1,6 +1,7 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
+import { StatusBar } from "../components/EditorBits";
 import { shopCatalog, shopCheckoutUrl, shopMyLicenses } from "../lib/api";
 import { FREE_PLUGINS } from "../lib/freePlugins";
 import { ownsPackage, ownsPluginId, packagePluginsField } from "../lib/licenses";
@@ -76,7 +77,41 @@ export default function PluginDetailPage() {
   const [licenses, setLicenses] = useState<LicenseRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
   const [buyingVariant, setBuyingVariant] = useState<string | null>(null);
+  const pollRef = useRef<number | null>(null);
+
+  function stopLicensePolling() {
+    if (pollRef.current != null) {
+      window.clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }
+
+  // Ten sam mechanizm co w ShopPage.tsx - appka nie ma jak wiedzieć, kiedy klient
+  // dokończy zakup w przeglądarce, więc odpytujemy licencje w tle zamiast zostawiać go
+  // z tym samym ekranem po powrocie.
+  function startLicensePolling(baselineActiveCount: number) {
+    stopLicensePolling();
+    let tries = 0;
+    pollRef.current = window.setInterval(async () => {
+      tries++;
+      try {
+        const fresh = await shopMyLicenses();
+        setLicenses(fresh);
+        if (fresh.filter((l) => l.status === "active").length > baselineActiveCount) {
+          setStatus("Nowa licencja aktywna - dzięki za zakup!");
+          stopLicensePolling();
+          return;
+        }
+      } catch {
+        // cicho - kolejna próba za chwilę
+      }
+      if (tries >= 24) stopLicensePolling();
+    }, 5000);
+  }
+
+  useEffect(() => stopLicensePolling, []);
 
   // Katalog jest publiczny i musi się załadować niezależnie od tego, czy ktoś jest
   // zalogowany - brak konta blokuje tylko "moje licencje" (patrz ShopPage.tsx, ten sam
@@ -100,9 +135,12 @@ export default function PluginDetailPage() {
     }
     setBuyingVariant(variantId);
     setError(null);
+    setStatus(null);
     try {
       const url = await shopCheckoutUrl(variantId ?? "");
       await openUrl(url);
+      setStatus("Otworzyliśmy przeglądarkę - dokończ zakup, a potem wróć tutaj. Sprawdzimy Twoją licencję automatycznie.");
+      startLicensePolling(licenses.filter((l) => l.status === "active").length);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -129,7 +167,7 @@ export default function PluginDetailPage() {
     return (
       <div className="page">
         {backLink}
-        <p className="error">{error}</p>
+        <StatusBar text={error} tone="error" onClose={() => setError(null)} />
       </div>
     );
   }
@@ -180,6 +218,7 @@ export default function PluginDetailPage() {
     return (
       <div className="page">
         {backLink}
+        {status && <StatusBar text={status} onClose={() => setStatus(null)} />}
         <div className="plugin-detail-header">
           <HeaderIcon id={item.id} />
           <div>
@@ -205,14 +244,16 @@ export default function PluginDetailPage() {
               </div>
               {owned ? (
                 <p className="muted small" style={{ marginTop: "0.5rem" }}>Masz aktywną licencję na ten plugin.</p>
-              ) : (
+              ) : item.price != null && item.variantId != null ? (
                 <button
                   style={{ width: "100%", marginTop: "0.75rem" }}
                   disabled={buyingVariant === item.variantId}
                   onClick={() => buy(item.variantId)}
                 >
-                  Kup
+                  {buyingVariant === item.variantId ? "Otwieram przeglądarkę..." : "Kup"}
                 </button>
+              ) : (
+                <p className="muted small" style={{ marginTop: "0.5rem" }}>Cena wkrótce - jeszcze nie można kupić.</p>
               )}
             </div>
           </div>
@@ -232,6 +273,7 @@ export default function PluginDetailPage() {
   return (
     <div className="page">
       {backLink}
+      {status && <StatusBar text={status} onClose={() => setStatus(null)} />}
       <div className="plugin-detail-header">
         <HeaderIcon id={pkg.id} isPackage />
         <div>
@@ -272,14 +314,16 @@ export default function PluginDetailPage() {
             </div>
             {owned ? (
               <p className="muted small" style={{ marginTop: "0.5rem" }}>Masz aktywną licencję z tego pakietu.</p>
-            ) : (
+            ) : pkg.price != null && pkg.variantId != null ? (
               <button
                 style={{ width: "100%", marginTop: "0.75rem" }}
                 disabled={buyingVariant === pkg.variantId}
                 onClick={() => buy(pkg.variantId)}
               >
-                Kup
+                {buyingVariant === pkg.variantId ? "Otwieram przeglądarkę..." : "Kup"}
               </button>
+            ) : (
+              <p className="muted small" style={{ marginTop: "0.5rem" }}>Cena wkrótce - jeszcze nie można kupić.</p>
             )}
           </div>
         </div>
