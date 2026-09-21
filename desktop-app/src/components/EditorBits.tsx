@@ -80,10 +80,12 @@ export function Fold({ title, open, children }: { title: string; open?: boolean;
   );
 }
 
-/** Pasek z komunikatem (np. "Wysłano na serwer") i krzyżykiem do schowania go. */
-export function StatusBar({ text, onClose }: { text: string; onClose: () => void }) {
+/** Pasek z komunikatem (np. "Wysłano na serwer") i krzyżykiem do schowania go.
+    `tone="error"` przełącza na czerwony wariant - ten sam komponent zamiast osobnego,
+    niedomykalnego `<p className="error">` używanego dotąd w Sklepie/Koncie/Serwerach. */
+export function StatusBar({ text, onClose, tone = "status" }: { text: string; onClose: () => void; tone?: "status" | "error" }) {
   return (
-    <p className="status">
+    <p className={tone === "error" ? "status status-error" : "status"}>
       <span>{text}</span>
       <button type="button" className="ci-trash" title="Schowaj komunikat" onClick={onClose}>
         <X size={14} />

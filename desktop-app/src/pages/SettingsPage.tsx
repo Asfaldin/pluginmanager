@@ -1,4 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { ask } from "@tauri-apps/plugin-dialog";
 import { Monitor, Moon, Power, Sun, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getDefaultLandingPage, getConfirmUnsavedOnClose, setDefaultLandingPage, setConfirmUnsavedOnClose, type LandingPage } from "../lib/appSettings";
@@ -59,21 +60,26 @@ export default function SettingsPage() {
   // destroy() zamyka natychmiast, bez zdarzenia onCloseRequested - dlatego samo tu
   // pytamy o niezapisane zmiany, zamiast polegać na tamtej ścieżce.
   async function quitApp() {
-    if (anyDirty && !window.confirm("Masz niezapisane zmiany w co najmniej jednym edytorze. Zamknąć appkę mimo to?")) {
+    if (
+      anyDirty &&
+      !(await ask("Masz niezapisane zmiany w co najmniej jednym edytorze. Zamknąć appkę mimo to?", { title: "Niezapisane zmiany", kind: "warning" }))
+    ) {
       return;
     }
     await getCurrentWindow().destroy();
   }
 
-  function clearLocalCache() {
+  async function clearLocalCache() {
     const keys = countLocalCacheKeys();
     if (keys.length === 0) {
       setCacheMsg("Nie ma nic do wyczyszczenia.");
       return;
     }
-    if (!window.confirm(`Usunąć ${keys.length} lokalnie zapisanych presetów/ścieżek ze wszystkich edytorów? Tego nie da się cofnąć (serwera to nie dotyczy).`)) {
-      return;
-    }
+    const confirmed = await ask(
+      `Usunąć ${keys.length} lokalnie zapisanych presetów/ścieżek ze wszystkich edytorów? Tego nie da się cofnąć (serwera to nie dotyczy).`,
+      { title: "Wyczyścić lokalne dane?", kind: "warning" }
+    );
+    if (!confirmed) return;
     keys.forEach((k) => localStorage.removeItem(k));
     setCacheMsg(`Wyczyszczono ${keys.length} pozycji.`);
   }

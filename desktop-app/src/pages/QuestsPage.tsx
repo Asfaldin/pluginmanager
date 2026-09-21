@@ -1,3 +1,4 @@
+import { ask } from "@tauri-apps/plugin-dialog";
 import { Save, ScrollText, Terminal, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -227,12 +228,12 @@ export default function QuestsPage() {
     if (!profileId || !pluginsPath) return;
     let toSend = saved;
     if (unsaved) {
-      if (!window.confirm("Masz niezapisane zmiany. Zapisać je i wysłać razem?")) return;
+      if (!(await ask("Masz niezapisane zmiany. Zapisać je i wysłać razem?", { title: "Niezapisane zmiany", kind: "warning" }))) return;
       toSend = file;
       setSaved(file);
     }
     const warnings = validateQuests(toSend);
-    if (warnings.length && !window.confirm(`Uwaga:\n- ${warnings.join("\n- ")}\n\nWysłać mimo to?`)) return;
+    if (warnings.length && !(await ask(`Uwaga:\n- ${warnings.join("\n- ")}\n\nWysłać mimo to?`, { title: "Uwaga", kind: "warning" }))) return;
     setBusy(true);
     setStatus(null);
     try {
@@ -253,10 +254,14 @@ export default function QuestsPage() {
     }
   }
 
-  function loadTemplate(id: string) {
+  async function loadTemplate(id: string) {
     const t = templateChoices(language).find((x) => x.id === id);
     if (!t) return;
-    if (!window.confirm(`Wczytać szablon „${t.label}”? Questy w edytorze zostaną zastąpione (na serwerze nic się nie zmieni, dopóki nie wyślesz).`)) return;
+    const confirmed = await ask(
+      `Wczytać szablon „${t.label}”? Questy w edytorze zostaną zastąpione (na serwerze nic się nie zmieni, dopóki nie wyślesz).`,
+      { title: "Wczytać szablon?", kind: "warning" }
+    );
+    if (!confirmed) return;
     const f = parseQuestsYaml(t.text);
     setFile(f);
     setView(f.categories[0] ? { kind: "category", id: f.categories[0].id, quest: "settings" } : { kind: "menu" });

@@ -1,3 +1,4 @@
+import { ask } from "@tauri-apps/plugin-dialog";
 import { ArrowDown, ArrowUp, HelpCircle, Save, Store, Terminal, Trash2, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -303,14 +304,18 @@ export default function ShopEditorPage() {
     if (!profileId || !pluginsPath) return;
     let toSend = saved;
     if (unsaved) {
-      if (!window.confirm("Masz niezapisane zmiany. Zapisać je i wysłać razem?")) return;
+      if (!(await ask("Masz niezapisane zmiany. Zapisać je i wysłać razem?", { title: "Niezapisane zmiany", kind: "warning" }))) return;
       toSend = file;
       setSaved(file);
     }
     const warnings = shopProblems(toSend.settings, toSend.cats);
-    if (warnings.length && !window.confirm(`Uwaga:\n- ${warnings.join("\n- ")}\n\nWysłać mimo to?`)) return;
+    if (warnings.length && !(await ask(`Uwaga:\n- ${warnings.join("\n- ")}\n\nWysłać mimo to?`, { title: "Uwaga", kind: "warning" }))) return;
     const removed = serverCatIds.filter((id) => !toSend.cats.some((c) => c.id === id));
-    if (removed.length && !window.confirm(`Z serwera zostaną usunięte pliki kategorii: ${removed.join(", ")}. Kontynuować?`)) return;
+    if (
+      removed.length &&
+      !(await ask(`Z serwera zostaną usunięte pliki kategorii: ${removed.join(", ")}. Kontynuować?`, { title: "Usunięcie kategorii", kind: "warning" }))
+    )
+      return;
     setBusy(true);
     setStatus(null);
     const dir = shopDir(pluginsPath);
@@ -335,10 +340,14 @@ export default function ShopEditorPage() {
     }
   }
 
-  function loadTemplate(id: string) {
+  async function loadTemplate(id: string) {
     const t = shopTemplateChoices(language).find((x) => x.id === id);
     if (!t) return;
-    if (!window.confirm(`Wczytać szablon „${t.label}”? Sklep w edytorze zostanie zastąpiony (na serwerze nic się nie zmieni, dopóki nie wyślesz).`)) return;
+    const confirmed = await ask(
+      `Wczytać szablon „${t.label}”? Sklep w edytorze zostanie zastąpiony (na serwerze nic się nie zmieni, dopóki nie wyślesz).`,
+      { title: "Wczytać szablon?", kind: "warning" }
+    );
+    if (!confirmed) return;
     const f = fromTemplate(t.template);
     setFile(f);
     setCatId(f.cats[0]?.id ?? null);

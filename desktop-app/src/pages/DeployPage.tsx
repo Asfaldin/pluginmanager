@@ -1,4 +1,4 @@
-import { open } from "@tauri-apps/plugin-dialog";
+import { ask, open } from "@tauri-apps/plugin-dialog";
 import { StatusBar } from "../components/EditorBits";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -20,7 +20,7 @@ import type { LicenseRecord, LocalJar } from "../lib/types";
 import { useProfiles } from "../state/ProfilesContext";
 
 // Lista darmowych pluginów = jedno źródło prawdy w lib/freePlugins.ts (patrz też
-// PluginGraph.tsx). Reszta (płatne) sama się wyłączy na serwerze bez licencji.
+// PluginEcosystem.tsx). Reszta (płatne) sama się wyłączy na serwerze bez licencji.
 const ALWAYS_FREE = FREE_PLUGIN_IDS;
 
 function formatSize(bytes: number): string {
@@ -77,9 +77,20 @@ export default function DeployPage() {
 
   async function uploadPicked() {
     if (!profileId || picked.size === 0) return;
+    const ids = embedded.filter((j) => picked.has(j.id)).map((j) => j.id);
+    const unlicensed = ids.filter((id) => !owned(id)).map((id) => PLUGIN_LABELS[id] ?? id);
+    if (unlicensed.length > 0) {
+      // Plakietka "wymaga licencji" na liście wyżej jest tylko informacyjna - realne
+      // wymuszenie licencji dzieje się dopiero w Javie, na serwerze. Bez tego ostrzeżenia
+      // klient odkrywał brak licencji dopiero PO wysyłce i restarcie serwera.
+      const confirmed = await ask(
+        `Nie masz licencji na: ${unlicensed.join(", ")}. Appka wyśle jary na serwer, ale te pluginy się nie uruchomią (albo będą działać ograniczone), dopóki nie wykupisz licencji w Sklepie. Wysłać mimo to?`,
+        { title: "Brak licencji na część pluginów", kind: "warning" }
+      );
+      if (!confirmed) return;
+    }
     setBusy(true);
     setStatus(null);
-    const ids = embedded.filter((j) => picked.has(j.id)).map((j) => j.id);
     setUploadState(Object.fromEntries(ids.map((id) => [id, "pending" as const])));
     let ok = 0;
     for (const id of ids) {

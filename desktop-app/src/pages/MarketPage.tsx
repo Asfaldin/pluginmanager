@@ -1,3 +1,4 @@
+import { ask } from "@tauri-apps/plugin-dialog";
 import { Save, Terminal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -119,12 +120,12 @@ export default function MarketPage() {
     if (!profileId || !pluginsPath) return;
     let toSend = saved;
     if (unsaved) {
-      if (!window.confirm("Masz niezapisane zmiany. Zapisać je i wysłać razem?")) return;
+      if (!(await ask("Masz niezapisane zmiany. Zapisać je i wysłać razem?", { title: "Niezapisane zmiany", kind: "warning" }))) return;
       toSend = file;
       setSaved(file);
     }
     const warnings = marketProblems(toSend);
-    if (warnings.length && !window.confirm(`Uwaga:\n- ${warnings.join("\n- ")}\n\nWysłać mimo to?`)) return;
+    if (warnings.length && !(await ask(`Uwaga:\n- ${warnings.join("\n- ")}\n\nWysłać mimo to?`, { title: "Uwaga", kind: "warning" }))) return;
     setBusy(true);
     setStatus(null);
     try {
