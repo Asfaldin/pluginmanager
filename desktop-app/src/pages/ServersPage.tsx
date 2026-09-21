@@ -1,9 +1,13 @@
-import { open } from "@tauri-apps/plugin-dialog";
+import { ask, open } from "@tauri-apps/plugin-dialog";
+import { Cloud, HardDrive, Plus, Server } from "lucide-react";
 import { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { deleteProfile, saveProfile } from "../lib/api";
+import { StatusBar } from "../components/EditorBits";
+import { deleteProfile, saveProfile, sftpListDir } from "../lib/api";
 import { useProfiles } from "../state/ProfilesContext";
 import { profileWhere, type AuthMethod, type ProfileKind, type ServerProfile } from "../lib/types";
+
+type ConnState = "idle" | "checking" | "ok" | "error";
 
 const EMPTY_FORM = {
   id: "",
@@ -28,10 +32,12 @@ function toAppPath(folder: string): string {
 }
 
 export default function ServersPage() {
-  const { profiles, refresh, loading } = useProfiles();
+  const { profiles, refresh, loading, activeProfileId } = useProfiles();
   const [form, setForm] = useState(EMPTY_FORM);
+  const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [conn, setConn] = useState<Record<string, { state: ConnState; message?: string }>>({});
   const local = form.kind === "Local";
 
   function edit(profile: ServerProfile) {
@@ -43,10 +49,34 @@ export default function ServersPage() {
       sftp_secret: "",
       rcon_secret: "",
     });
+    setFormOpen(true);
   }
 
+  // Bez wstępnie wygenerowanego id - submit() i tak dorabia je sam (`form.id || uuidv4()`),
+  // gdy go brakuje. Wcześniejsze pre-generowanie tutaj sprawiało, że formularz po każdym
+  // zapisie/resecie wyglądał jak "Edytuj profil" (bo form.id nigdy nie był puste).
   function resetForm() {
-    setForm({ ...EMPTY_FORM, id: uuidv4() });
+    setForm(EMPTY_FORM);
+  }
+
+  function openNewForm() {
+    resetForm();
+    setFormOpen(true);
+  }
+
+  function closeForm() {
+    resetForm();
+    setFormOpen(false);
+  }
+
+  async function testConnection(p: ServerProfile) {
+    setConn((prev) => ({ ...prev, [p.id]: { state: "checking" } }));
+    try {
+      await sftpListDir(p.id, p.remote_plugins_path);
+      setConn((prev) => ({ ...prev, [p.id]: { state: "ok" } }));
+    } catch (e) {
+      setConn((prev) => ({ ...prev, [p.id]: { state: "error", message: String(e) } }));
+    }
   }
 
   async function pickFolder() {
@@ -58,6 +88,11 @@ export default function ServersPage() {
     e.preventDefault();
     if (local && !form.local_path) {
       setError("Wybierz folder serwera.");
+      return;
+    }
+    const nameTaken = profiles.some((p) => p.id !== form.id && p.name.trim().toLowerCase() === form.name.trim().toLowerCase());
+    if (nameTaken) {
+      setError(`Masz już serwer o nazwie „${form.name}" - zmień nazwę, żeby odróżnić je na liście.`);
       return;
     }
     setSaving(true);
@@ -83,7 +118,7 @@ export default function ServersPage() {
         form.rcon_secret ? form.rcon_secret : undefined
       );
       await refresh();
-      resetForm();
+      closeForm();
     } catch (e) {
       setError(String(e));
     } finally {
@@ -91,8 +126,13 @@ export default function ServersPage() {
     }
   }
 
-  async function remove(id: string) {
-    await deleteProfile(id);
+  async function remove(profile: ServerProfile) {
+    const confirmed = await ask(
+      `Usunąć profil „${profile.name}"? Będziesz musiał wpisać dane logowania SFTP/RCON od nowa - tej operacji nie da się cofnąć.`,
+      { title: "Usunąć profil serwera?", kind: "warning" }
+    );
+    if (!confirmed) return;
+    await deleteProfile(profile.id);
     await refresh();
   }
 
@@ -104,9 +144,87 @@ export default function ServersPage() {
         (appka zapisuje pliki prosto w jego folderze).
       </p>
 
-      <div className="two-col">
-        <form onSubmit={submit} className="card form">
-          <h2>{form.id ? "Edytuj profil" : "Nowy profil"}</h2>
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+        <h2 style={{ margin: 0 }}>Twoje serwery</h2>
+        {!formOpen && (
+          <button type="button" onClick={openNewForm}>
+            <Plus size={14} strokeWidth={2} /> Dodaj serwer
+          </button>
+        )}
+      </div>
+
+      {loading && <p className="muted">Ładowanie...</p>}
+
+      {!loading && profiles.length === 0 && (
+        <div className="card server-empty">
+          <Server size={28} strokeWidth={1.5} className="muted" />
+          <div className="card-title">Nie masz jeszcze żadnego serwera</div>
+          <p className="muted small">
+            Dodaj pierwszy serwer, żeby zacząć wysyłać na niego configi i pluginy z edytorów.
+          </p>
+          {!formOpen && (
+            <button type="button" onClick={openNewForm}>
+              <Plus size={14} strokeWidth={2} /> Dodaj pierwszy serwer
+            </button>
+          )}
+        </div>
+      )}
+
+      {profiles.length > 0 && (
+        <div className="card-grid server-grid">
+          {profiles.map((p) => {
+            const state = conn[p.id]?.state ?? "idle";
+            const isActive = p.id === activeProfileId;
+            return (
+              <div key={p.id} className={isActive ? "card server-card is-active" : "card server-card"}>
+                <div className="server-card-head">
+                  <span className="server-card-icon">
+                    {p.kind === "Local" ? <HardDrive size={18} strokeWidth={1.75} /> : <Cloud size={18} strokeWidth={1.75} />}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="card-title">{p.name}</div>
+                    <div className="muted small">{profileWhere(p)}</div>
+                  </div>
+                  {isActive && <span className="badge badge-on">Aktywny</span>}
+                </div>
+                {p.rcon_host && (
+                  <div className="muted small">
+                    RCON: {p.rcon_host}:{p.rcon_port}
+                  </div>
+                )}
+                <div className="row server-card-status">
+                  <span className={`status-dot ${state === "checking" ? "idle" : state}`} />
+                  <span className="muted small">
+                    {state === "checking"
+                      ? "Sprawdzam..."
+                      : state === "ok"
+                        ? "Połączono"
+                        : state === "error"
+                          ? "Błąd połączenia"
+                          : "Nie sprawdzono"}
+                  </span>
+                </div>
+                {state === "error" && conn[p.id]?.message && <div className="error small">{conn[p.id]?.message}</div>}
+                <div className="row">
+                  <button type="button" onClick={() => testConnection(p)} disabled={state === "checking"}>
+                    {state === "checking" ? "Sprawdzam..." : "Testuj połączenie"}
+                  </button>
+                  <button type="button" onClick={() => edit(p)}>
+                    Edytuj
+                  </button>
+                  <button type="button" onClick={() => remove(p)}>
+                    Usuń
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {formOpen && (
+        <form onSubmit={submit} className="card form server-form">
+          <h2 style={{ marginTop: 0 }}>{form.id ? "Edytuj profil" : "Nowy profil"}</h2>
 
           <label>
             Nazwa
@@ -243,42 +361,18 @@ export default function ServersPage() {
             </label>
           </fieldset>
 
-          {error && <p className="error">{error}</p>}
+          {error && <StatusBar text={error} tone="error" onClose={() => setError(null)} />}
 
           <div className="row">
             <button type="submit" disabled={saving}>
               {saving ? "Zapisuję..." : "Zapisz profil"}
             </button>
-            {form.id && (
-              <button type="button" onClick={resetForm}>
-                Anuluj edycję
-              </button>
-            )}
+            <button type="button" onClick={closeForm}>
+              Anuluj
+            </button>
           </div>
         </form>
-
-        <div>
-          <h2>Zapisane profile</h2>
-          {loading && <p className="muted">Ładowanie...</p>}
-          <div className="card-grid">
-            {profiles.map((p) => (
-              <div key={p.id} className="card">
-                <div className="card-title">{p.name}</div>
-                <div className="muted small">{profileWhere(p)}</div>
-                {p.rcon_host && (
-                  <div className="muted small">
-                    RCON: {p.rcon_host}:{p.rcon_port}
-                  </div>
-                )}
-                <div className="row">
-                  <button onClick={() => edit(p)}>Edytuj</button>
-                  <button onClick={() => remove(p.id)}>Usuń</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
