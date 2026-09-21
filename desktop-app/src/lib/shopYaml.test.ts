@@ -3,6 +3,7 @@ import * as yaml from "js-yaml";
 import {
   defaultMenus,
   defaultSettings,
+  defaultTuning,
   fromPerPiece,
   isLotted,
   parseCategory,
@@ -272,5 +273,31 @@ describe("shopYaml item order", () => {
     expect(swapItems(list, 0, 9)).toBe(list);
     expect(swapItems(list, -1, 1)).toBe(list);
     expect(swapItems(list, 1, 1)).toBe(list);
+  });
+});
+
+describe("shopYaml dynamic prices", () => {
+  it("reads and writes the fixed-price switch on an item", () => {
+    const c = parseCategory("x", "name: X\nicon: STONE\nitems:\n  - {item: DIRT, buy: 10}\n  - {item: COBBLESTONE, buy: 10, dynamic: false}");
+    expect(c.items[0].dynamic).toBe(true);
+    expect(c.items[1].dynamic).toBe(false);
+    const text = serializeCategory(c);
+    expect(text).toContain("dynamic: false");
+    // Tylko wylaczenie trafia do pliku - wlaczone nie zasmieca wpisow.
+    expect(text.match(/dynamic/g)?.length).toBe(1);
+    expect(parseCategory("x", text).items[1].dynamic).toBe(false);
+  });
+
+  it("keeps the reset announcement and the tuning through a round trip", () => {
+    const text = `dynamic-prices:\n  announce-reset: false\n  tuning:\n    max-drop-per-cycle: 0.1\n    cycles-to-rise: 4\n`;
+    const s = parseShopSettings(text);
+    expect(s.dynamic.announceReset).toBe(false);
+    expect(s.dynamic.tuning.maxDropPerCycle).toBe(0.1);
+    expect(s.dynamic.tuning.cyclesToRise).toBe(4);
+    // Czego nie ma w pliku, bierzemy domyslne.
+    expect(s.dynamic.tuning.dropAtTop).toBe(defaultTuning().dropAtTop);
+    const back = parseShopSettings(serializeShopSettings(s));
+    expect(back.dynamic.announceReset).toBe(false);
+    expect(back.dynamic.tuning).toEqual(s.dynamic.tuning);
   });
 });

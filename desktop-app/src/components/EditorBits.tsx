@@ -91,3 +91,12 @@ export function StatusBar({ text, onClose }: { text: string; onClose: () => void
     </p>
   );
 }
+
+/** Nagłówek listy, który ją zwija i rozwija (strzałka jak w Questach). */
+export function ListToggle({ open, onToggle, label }: { open: boolean; onToggle: () => void; label: ReactNode }) {
+  return (
+    <button type="button" className="ci-group list-toggle" title={open ? "Zwiń listę" : "Rozwiń listę"} onClick={onToggle}>
+      <span className="quest-list-arrow">{open ? "▾" : "▸"}</span> {label}
+    </button>
+  );
+}

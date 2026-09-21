@@ -1,6 +1,6 @@
 import { useDirtyTracking } from "../state/DirtyContext";
 import { Save } from "lucide-react";
-import { StatusBar } from "../components/EditorBits";
+import { StatusBar, ListToggle } from "../components/EditorBits";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import MaterialIcon from "../components/MaterialIcon";
@@ -59,6 +59,8 @@ export default function CustomItemsPage() {
   const [files, setFiles] = useState<string[]>([]);
   const [category, setCategory] = useState(ALL);
   const [search, setSearch] = useState("");
+  // Ktore grupy itemow sa zwiniete (naglowek grupy dziala jak przycisk).
+  const [closedGroups, setClosedGroups] = useState<string[]>([]);
   const [items, setItems] = useState<CustomItemEntry[]>(EMPTY_ITEMS);
   const [serverItems, setServerItems] = useState<CustomItemEntry[]>(EMPTY_ITEMS);
   const [editing, setEditing] = useState<CustomItemEntry>(EMPTY_ITEM);
@@ -450,10 +452,14 @@ export default function CustomItemsPage() {
           {category === ALL
             ? groups.map((g) => (
                 <div key={g.file}>
-                  <div className="ci-group">
-                    {categoryLabel(g.file)} ({g.items.length})
-                  </div>
-                  {g.items.map(itemRow)}
+                  <ListToggle
+                    open={!closedGroups.includes(g.file)}
+                    onToggle={() =>
+                      setClosedGroups(closedGroups.includes(g.file) ? closedGroups.filter((f) => f !== g.file) : [...closedGroups, g.file])
+                    }
+                    label={`${categoryLabel(g.file)} (${g.items.length})`}
+                  />
+                  {!closedGroups.includes(g.file) && g.items.map(itemRow)}
                 </div>
               ))
             : visible.map(itemRow)}

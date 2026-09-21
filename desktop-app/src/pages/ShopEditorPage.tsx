@@ -1,7 +1,7 @@
 import { ArrowDown, ArrowUp, HelpCircle, Save, Store, Terminal, Trash2, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { CopyRow, Fold, LoreEditor, StatusBar } from "../components/EditorBits";
+import { CopyRow, Fold, ListToggle, LoreEditor, StatusBar } from "../components/EditorBits";
 import ItemRefPicker, { ItemDatalists, MATERIALS_LIST_ID } from "../components/ItemRefPicker";
 import MaterialIcon from "../components/MaterialIcon";
 import MinecraftTextInput from "../components/MinecraftTextInput";
@@ -46,6 +46,7 @@ import {
   type MenuScreenDraft,
   type ShopItemDraft,
   type ShopSettingsDraft,
+  type TuningDraft,
 } from "../lib/shopYaml";
 import { parseSpawnerConfig } from "../lib/spawnersYaml";
 import { useIconPack } from "../lib/useIconPack";
@@ -81,6 +82,18 @@ const ROLES_BY_SCREEN: Record<string, string[]> = {
   "search-results": ["ITEM_SLOT", "NAV_BACK", "FILLER"],
 };
 
+/** Pola strojenia cen dynamicznych: nazwa w kodzie, podpis, krok i podpowiedź z wartością domyślną. */
+const TUNING_FIELDS: Array<[keyof TuningDraft, string, string, string]> = [
+  ["maxDropPerCycle", "Największy spadek skupu na cykl", "0.01", "0.05 = 5% (domyślnie 0.05)"],
+  ["dropAtTop", "Ile razy mocniejszy spadek na maksimum", "0.1", "domyślnie 4.2"],
+  ["recoverFromBelow", "Ile drogi wraca w cyklu ciszy", "0.05", "0.8 = 80% (domyślnie 0.8)"],
+  ["risePerCycle", "Wzrost na cykl, gdy nikt nie sprzedaje", "0.005", "0.125 = 12,5% (domyślnie 0.125)"],
+  ["quietThreshold", "Poniżej jakiej części normy to cisza", "0.05", "0.1 = 10% (domyślnie 0.1)"],
+  ["cyclesToRise", "Ile cykli ciszy przed wzrostem", "1", "domyślnie 2"],
+  ["cyclesFrozen", "Ile cykli cena stoi po zejściu z góry", "1", "domyślnie 2"],
+  ["normLearnRate", "Jak szybko sklep zapomina stare cykle", "0.005", "0.02 ≈ tydzień (domyślnie 0.02)"],
+];
+
 function shopDir(pluginsPath: string): string {
   return `${pluginsPath.replace(/\/+$/, "")}/MainpluginsShop`;
 }
@@ -108,9 +121,10 @@ function refLabel(r: ItemRef): string {
   return r.custom != null ? `custom: ${r.custom}` : (r.item ?? "STONE").toLowerCase().replace(/_/g, " ");
 }
 
+/** Kwota ze znaczkiem, zeby bylo widac, ze to pieniadze, a nie ilosc sztuk. */
 function money(n: number | null): string {
   if (n == null) return "-";
-  return Number.isInteger(n) ? String(n) : n.toFixed(2);
+  return (Number.isInteger(n) ? String(n) : n.toFixed(2)) + " $";
 }
 
 function ShopCommandsModal({ file, onClose }: { file: ShopFile; onClose: () => void }) {
@@ -130,8 +144,8 @@ function ShopCommandsModal({ file, onClose }: { file: ShopFile; onClose: () => v
         <div className="ci-protip">
           <CopyRow cmd="/@shop reload" what="wczytuje sklep od nowa (aplikacja robi to sama po „Wyślij na serwer”)" />
           <CopyRow cmd="/@shop info <przedmiot>" what="ceny i stan rynku przedmiotu" />
-          <CopyRow cmd="/@shop price <przedmiot> buy <kwota>" what="zmienia cenę kupna stacka (zapis w pliku kategorii)" />
-          <CopyRow cmd="/@shop price <przedmiot> sell <kwota>" what="zmienia cenę skupu stacka" />
+          <CopyRow cmd="/@shop price <przedmiot> buy <kwota>" what="zmienia cenę kupna całej porcji (zapis w pliku kategorii)" />
+          <CopyRow cmd="/@shop price <przedmiot> sell <kwota>" what="zmienia cenę skupu całej porcji" />
           <CopyRow cmd="/@shop event <przedmiot> 1.5" what="event: skup x1.5 na stałe, aż wpiszesz ... off" />
           <CopyRow cmd="/@shop event list" what="lista eventów" />
           <CopyRow cmd="/@shop reset <przedmiot>" what="skup przedmiotu wraca do normy" />
@@ -175,8 +189,17 @@ export default function ShopEditorPage() {
   const [busy, setBusy] = useState(false);
   const [showCommands, setShowCommands] = useState(false);
   const [rotationHelp, setRotationHelp] = useState(false);
+  const [priceHelp, setPriceHelp] = useState(false);
+  const [shopHelp, setShopHelp] = useState(false);
+  const [fixedHelp, setFixedHelp] = useState(false);
+  // Duze okienko "Jak dziala sklep" otwarte od razu na rozwinietych cenach dynamicznych.
+  const [shopHelpDynamic, setShopHelpDynamic] = useState(false);
   const [poolPickCat, setPoolPickCat] = useState<string | null>(null);
   const [poolPickBack, setPoolPickBack] = useState(false);
+  // Ktora liste widac w srodkowej kolumnie: stale przedmioty czy pula rotacji.
+  const [showPool, setShowPool] = useState(false);
+  // Lista w srodkowej kolumnie da sie zwinac (jak lista zadan w Questach).
+  const [listOpen, setListOpen] = useState(true);
   // Co jest "podniesione" z listy obok siatki: kategoria albo rola pola (Szukaj, Zamknij, Tło).
   const [picked, setPicked] = useState<{ cat?: string; role?: string } | null>(null);
   // Kategoria pokazywana w podgladzie strony kategorii (jej przedmioty w polach).
@@ -188,7 +211,6 @@ export default function ShopEditorPage() {
   const [fillerMaterial, setFillerMaterial] = useState("BLACK_STAINED_GLASS_PANE");
   const [sortBy, setSortBy] = useState<Record<string, { by: "buy" | "sell"; dir: "asc" | "desc" }>>({});
   const [priceFilter, setPriceFilter] = useState<Record<string, PriceFilter>>({});
-  const [fillCount, setFillCount] = useState(10);
   const [trashConfirm, setTrashConfirm] = useState<string | null>(null);
   const [screen, setScreen] = useState("main-menu");
   const autoLoadedRef = useRef(false);
@@ -690,7 +712,10 @@ export default function ShopEditorPage() {
                 else set({ amount: 1, sellAmount: 1, buy: perPiece(it.buy, it.amount), sell: perPiece(it.sell, it.sellAmount) });
               }}
             />
-            Stacki (np. po 64 sztuki) - gracz skupuje tylko pełne stacki, kupno i tak jest za sztukę
+            Skup po kilka sztuk naraz (kupno zawsze idzie po sztuce)
+            <button type="button" title="Po co to jest" aria-label="Po co to jest" onClick={() => setPriceHelp(true)}>
+              <HelpCircle size={16} strokeWidth={1.75} />
+            </button>
           </label>
           <label className="checkbox">
             <input
@@ -698,7 +723,7 @@ export default function ShopEditorPage() {
               checked={it.buy != null}
               // Cena w pliku jest za cały stack, a pole w aplikacji za sztukę - startowa "1" musi
               // być za sztukę, inaczej przy stacku 64 pokazywało się 0.02.
-              onChange={(e) => set({ buy: e.target.checked ? fromPerPiece(1, it.amount) : null })}
+              onChange={(e) => set({ buy: e.target.checked ? fromPerPiece(20, it.amount) : null })}
             />
             Da się kupić
           </label>
@@ -706,7 +731,8 @@ export default function ShopEditorPage() {
             (lotted ? (
               <div className="row" style={{ alignItems: "center" }}>
                 Kupno za sztukę {numberInput(perPiece(it.buy, it.amount), (n) => set({ buy: fromPerPiece(n, it.amount) }))}
-                <span className="muted small">stack</span>
+                <span className="muted small">$</span>
+                <span className="muted small">porcja</span>
                 {numberInput(
                   it.amount,
                   (n) => {
@@ -716,33 +742,49 @@ export default function ShopEditorPage() {
                   "1",
                   1
                 )}
-                <span className="muted small">szt. = {money(it.buy)} za stack</span>
+                <span className="muted small">szt. = {money(it.buy)} za tyle sztuk</span>
               </div>
             ) : (
               <label>
-                Cena kupna za sztukę {numberInput(it.buy, (n) => set({ buy: n }))}
+                Cena kupna za sztukę {numberInput(it.buy, (n) => set({ buy: n }))} <span className="muted small">$</span>
               </label>
             ))}
           <label className="checkbox">
-            <input type="checkbox" checked={it.sell != null} onChange={(e) => set({ sell: e.target.checked ? 0.5 : null })} />
+            <input
+              type="checkbox"
+              checked={it.sell != null}
+              // Startowy skup to polowa ceny kupna (za sztuke), zeby nowy przedmiot od razu byl
+              // sensowny i nie zapalal ostrzezenia "skup >= kupno". Bez ceny kupna: 10 za sztuke.
+              onChange={(e) =>
+                set({ sell: e.target.checked ? fromPerPiece((perPiece(it.buy, it.amount) ?? 20) / 2, it.sellAmount) : null })
+              }
+            />
             Da się sprzedać
           </label>
           {it.sell != null &&
             (lotted ? (
               <div className="row" style={{ alignItems: "center" }}>
-                Skup: stack {numberInput(it.sellAmount, (n) => set({ sellAmount: Math.max(1, Math.floor(n)) }), "1", 1)} szt. za {numberInput(it.sell, (n) => set({ sell: n }))}
-                <span className="muted small">= {money(perPiece(it.sell, it.sellAmount))} za sztukę</span>
+                Skup: {numberInput(it.sell, (n) => set({ sell: n }))} <span className="muted small">$</span> za{" "}
+                {numberInput(it.sellAmount, (n) => set({ sellAmount: Math.max(1, Math.floor(n)) }), "1", 1)} szt.
+                <span className="muted small">czyli {money(perPiece(it.sell, it.sellAmount))} za sztukę</span>
               </div>
             ) : (
               <label>
-                Cena skupu za sztukę {numberInput(it.sell, (n) => set({ sell: n }))}
+                Cena skupu za sztukę {numberInput(it.sell, (n) => set({ sell: n }))} <span className="muted small">$</span>
               </label>
             ))}
+          <label className="checkbox">
+            <input type="checkbox" checked={!it.dynamic} onChange={(e) => set({ dynamic: !e.target.checked })} />
+            Cena stała - ceny dynamiczne omijają ten przedmiot
+            <button type="button" title="Po co to jest" aria-label="Po co to jest" onClick={() => setFixedHelp(true)}>
+              <HelpCircle size={16} strokeWidth={1.75} />
+            </button>
+          </label>
           <p className="muted small">
             {rounding === "whole"
-              ? "Sklep liczy w pełnych złotówkach (Ustawienia): część stacka zaokrągla się w górę do złotówki."
+              ? "Sklep liczy w pełnych złotówkach (Ustawienia): niepełna porcja zaokrągla się w górę do złotówki."
               : "Sklep liczy z groszami (Ustawienia)."}{" "}
-            Gracz sprzedaje tylko pełne stacki skupu - reszta zostaje mu w ekwipunku.
+            Gracz sprzedaje tylko pełne porcje - reszta zostaje mu w ekwipunku.
           </p>
           {it.buy != null && it.sell != null && it.sell / it.sellAmount >= it.buy / it.amount && (
             <p className="ci-badge warn">Skup za sztukę jest co najmniej taki jak kupno - gracze zarobią na kupowaniu i sprzedawaniu w kółko.</p>
@@ -836,18 +878,13 @@ export default function ShopEditorPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => updateCategory(c.id, movedToPool(c, randomPick(fillCount, c.items.length)))}
+                  title="Losuje 5 przedmiotów z kategorii i przenosi je do puli"
+                  onClick={() => updateCategory(c.id, movedToPool(c, randomPick(5, c.items.length)))}
                   disabled={c.items.length === 0}
                 >
                   Wypełnij losowo
                 </button>
-                {numberInput(fillCount, (n) => setFillCount(Math.max(1, Math.floor(n))), "1", 1)}
-                <span className="muted small">przedmiotów</span>
               </div>
-              <p className="muted small">
-                Wybrane przedmioty przenoszą się ze stałych do puli - przestają być dostępne zawsze. Cofniesz to przyciskiem „Wróć do stałych”
-                przy przedmiocie z puli.
-              </p>
             </>
           )}
         </Fold>
@@ -856,6 +893,316 @@ export default function ShopEditorPage() {
   }
 
   // ---- okienka rotacji ----
+
+  /** Ogolne wytlumaczenie: z czego sklep sie sklada i jakie ma systemy. */
+  function shopHelpModal() {
+    const close = () => {
+      setShopHelp(false);
+      setShopHelpDynamic(false);
+    };
+    return (
+      <div className="modal-overlay" onClick={close}>
+        <div className="modal modal-wide card" onClick={(e) => e.stopPropagation()}>
+          <div className="row">
+            <h2 style={{ margin: 0, flex: 1 }}>Jak działa sklep</h2>
+            <button type="button" onClick={close}>
+              Zamknij
+            </button>
+          </div>
+          <p className="muted small">
+            Gracz wpisuje /shop i dostaje menu z kategoriami. Wchodzi w kategorię, klika przedmiot, wybiera ilość i kupuje. Sprzedaje
+            przedmiotem trzymanym w ręce.
+          </p>
+          <p>
+            <b>Kategorie i przedmioty.</b> Każda kategoria to osobny plik. Kolejność kategorii i przedmiotów w aplikacji to ta sama
+            kolejność, którą gracz widzi w menu.
+          </p>
+          <p>
+            <b>Ceny.</b> Kupno zawsze idzie po sztuce, skup możesz ustawić hurtem (całymi porcjami). W Ustawieniach wybierasz, czy sklep
+            liczy w pełnych złotówkach, czy z groszami.
+          </p>
+          <Fold title="Ceny - szczegóły">
+            <p className="small">
+              W pliku cena zapisana jest za całą porcję (np. 640 za 64 sztuki), a aplikacja pokazuje ją za sztukę i sama przelicza. Gdy
+              gracz kupuje mniej niż porcję, sklep liczy proporcjonalnie i zaokrągla w górę - nigdy na swoją niekorzyść.
+            </p>
+            <p className="small">
+              „Pełne złotówki” znaczy, że najniższa możliwa cena to 1 zł, więc tanie rzeczy lepiej sprzedawać większymi porcjami. Przy
+              „groszach” minimum to 0,01.
+            </p>
+            <p className="small">
+              Skup ma jeszcze jeden bezpiecznik: w <b>Ustawieniach</b> jest sufit „skup najwyżej taka część ceny kupna” (domyślnie 0,9). Nawet
+              gdy ceny dynamiczne podbiją skup, nigdy nie przebije 90% ceny kupna - inaczej gracze zarabialiby, kupując i od razu
+              sprzedając.
+            </p>
+          </Fold>
+          <p>
+            <b>Ceny dynamiczne.</b> Sklep sam obniża skup tego, co gracze masowo sprzedają, i podnosi go z powrotem, gdy przestaną.
+            Granice (o ile może spaść i urosnąć) ustawiasz w <b>Ustawieniach</b>, tam też włączasz ogłoszenia na czacie.
+          </p>
+          <Fold title="Ceny dynamiczne - szczegóły" open={shopHelpDynamic}>
+            <p className="small">
+              Każdy przedmiot ma własną cenę skupu i własną historię - to, co dzieje się z diamentem, nie rusza ceny bruku, nawet jeśli
+              leżą w tej samej kategorii. Cena chodzi w widełkach z Ustawień, domyślnie od połowy do półtora raza zwykłej ceny.
+              Uwaga: rusza się wyłącznie <b>skup</b>, czyli ile sklep płaci graczowi. To, ile gracz płaci przy kupowaniu, nie zmienia się
+              samo nigdy - stoi tak, jak wpisałeś w cenniku.
+            </p>
+            <p className="small">
+              Sklep sam liczy, ile danej rzeczy schodzi <b>normalnie w ciągu godziny</b> - to jest „norma”. Co godzinę porównuje z nią
+              to, co gracze naprawdę sprzedali, i na tej podstawie rusza ceną. Poniżej wszystko na przykładzie diamentu, którego zwykła
+              cena skupu to 100 $, przy domyślnych ustawieniach.
+            </p>
+
+            <div className="ci-section-title">Gracze sprzedają dużo</div>
+            <p className="small">
+              Cena spada najwyżej o 5% na godzinę, czyli ze 100 $ na 95 $, potem 90 $ i tak dalej. Spadek jest tym mocniejszy, im wyżej
+              cena stoi: na samej górze (150 $) schodzi około czterech razy szybciej, więc <b>powrót ze szczytu do zwykłej ceny zajmuje
+              jakieś trzy godziny</b> ciągłego sprzedawania. Na dole zatrzymuje się na 50 $ i niżej nie zejdzie.
+            </p>
+            <p className="small">
+              Ile spadnie, zależy od tego, jak bardzo sprzedaż przebiła normę - ale nie wprost. Dwa razy większa sprzedaż nie znaczy dwa
+              razy większego spadku, bo inaczej jeden gracz z wielkim zapasem ustalałby cenę dla całego serwera. Sama transakcja nie ma
+              żadnego limitu: nawet 3000 sztuk naraz idzie w całości po cenie z tej godziny.
+            </p>
+
+            <div className="ci-section-title">Nikt nie sprzedaje</div>
+            <p className="small">
+              „Cisza” to godzina, w której zeszło mniej niż 10% normy. Wtedy:
+            </p>
+            <ul className="small">
+              <li>
+                <b>Jeśli cena była zbita</b> (np. 60 $), w godzinę odrabia 80% drogi do zwykłej - czyli wraca do jakichś 92 $, a po
+                drugiej godzinie jest praktycznie równo. Powrót jest szybki celowo, bo w realnej grze zawsze ktoś coś sprzedaje i
+                inaczej cena nigdy by nie wstała.
+              </li>
+              <li>
+                <b>Jeśli cena stoi na zwykłej</b>, przez pierwsze dwie godziny ciszy nic się nie dzieje. Dopiero potem zaczyna rosnąć,
+                po 12,5% na godzinę: 112 $, 125 $, 137 $, 150 $ - czyli <b>cztery godziny od zwykłej ceny na szczyt</b>. To zachęta dla
+                graczy: nikt tego nie przynosi, więc opłaca się przynieść.
+              </li>
+              <li>
+                <b>Po zejściu ze szczytu</b> cena zatrzymuje się na zwykłej na dwie godziny, zanim zwykły ruch zepchnie ją niżej - żeby
+                nie skakała w górę i w dół co chwilę.
+              </li>
+            </ul>
+
+            <div className="ci-section-title">Zabezpieczenia - czego sklep nie przekroczy</div>
+            <p className="small">
+              Cena skupu nigdy nie ucieka w kosmos ani nie spada do zera. Pilnują tego trzy rzeczy:
+            </p>
+            <ul className="small">
+              <li>
+                <b>Widełki</b> - cena chodzi tylko między dolną a górną granicą z <b>Ustawień</b> (domyślnie od połowy do półtora raza
+                zwykłej ceny). Przy diamencie za 100 $ znaczy to, że skup nie zejdzie poniżej 50 $ i nie przebije 150 $, choćby gracze
+                sprzedawali go bez przerwy albo nie sprzedawali wcale. Obie granice ustawiasz sam.
+              </li>
+              <li>
+                <b>Sufit skupu</b> - skup nigdy nie da więcej niż ustalona część ceny kupna (domyślnie 90%). To blokada na „kup w sklepie
+                taniej, sprzedaj do sklepu drożej”: bez niej wystarczyłoby kupować i od razu sprzedawać, żeby robić pieniądze z niczego.
+                Ten sufit działa <b>nawet wtedy, gdy ceny dynamiczne albo event podbiją skup</b> - wtedy cena po prostu zatrzyma się na
+                90% kupna.
+              </li>
+              <li>
+                <b>Cena stała</b> - przełącznik przy przedmiocie, który całkiem wyłącza wahania. Dla rzeczy farmowalnych, które i tak
+                osiadłyby na dnie.
+              </li>
+            </ul>
+            <p className="small">
+              Do tego aplikacja i plugin pilnują Cię przy samym ustawianiu cen: gdy wpiszesz skup równy albo wyższy od kupna, aplikacja
+              zapali czerwone ostrzeżenie przy przedmiocie i wypisze problem na dole listy, a komenda <code>/@shop price</code> taką
+              zmianę wprost odrzuci.
+            </p>
+
+            <div className="ci-section-title">Drobiazgi, które pilnują uczciwości</div>
+            <p className="small">
+              Próg ciszy jest zapamiętywany w chwili, gdy cisza się zaczyna. Bez tego kurczyłby się razem z normą (a norma przy braku
+              sprzedaży maleje) i cisza nigdy by się nie kończyła. Jedna przypadkowa transakcja pod koniec ciszy tylko cofa licznik o
+              godzinę, zamiast kasować cały postęp. Nowy przedmiot przy pierwszej sprzedaży jeszcze nie rusza ceny - ta sprzedaż ustawia
+              mu normę, bo nie ma jeszcze z czym porównywać.
+            </p>
+
+            <div className="ci-section-title">Reset co 14 dni</div>
+            <p className="small">
+              Wszystkie ceny wracają do zwykłych naraz, z ogłoszeniem na czacie (do wyłączenia w <b>Ustawieniach</b>). Normy zostają - sklep nie
+              zapomina, ile czego zwykle schodzi. Przedmioty z trwającym eventem reset pomija.
+            </p>
+            <p className="small">
+              14 dni to tylko wartość domyślna - w <b>Ustawieniach</b>, przy „co ile dni wszystkie ceny wracają do normy”, wpisujesz co chcesz:
+              częściej, żeby rynek często startował od zera, albo rzadziej, żeby ceny dłużej pamiętały, co się działo.
+            </p>
+
+            <div className="ci-section-title">Tempo da się zmienić</div>
+            <p className="small">
+              Te wszystkie liczby - godzinny cykl, 5% spadku, 12,5% wzrostu, dwie godziny ciszy - to gotowy zestaw ustawiony pod
+              <b> dość szybką grę</b>, gdzie ceny zauważalnie ruszają się w ciągu jednego wieczoru. Jeśli wolisz, żeby rynek zmieniał się
+              wolniej i spokojniej, zmienisz to sam w <b>Ustawieniach</b>: „co ile minut przeliczać” wydłuż np. do 180, a w sekcji
+              <b> Strojenie (zaawansowane)</b> zmniejsz spadek i wzrost na cykl. W drugą stronę też działa - da się ustawić rynek, który
+              szaleje z godziny na godzinę.
+            </p>
+
+            <div className="ci-section-title">Czego ten system nie zrobi</div>
+            <p className="small">
+              Rzeczy, które da się farmić bez końca (bruk, drewno, dropy ze spawnerów), i tak osiądą na dole - farma sprzedaje niezależnie
+              od ceny, bo nic jej nie kosztuje. Dla nich lepiej zaznaczyć przy przedmiocie „cena stała”. Da się też grać pod system:
+              wstrzymać sprzedaż, doczekać szczytu i wysypać zapas, albo poczekać na reset. To świadoma zgoda, nie błąd.
+            </p>
+          </Fold>
+          <p>
+            <b>Eventy.</b> Komendą <code>/@shop event</code> podbijasz skup wybranego przedmiotu na jakiś czas - przydaje się na akcje
+            typu „weekend z diamentami”.
+          </p>
+          <Fold title="Eventy - szczegóły">
+            <p className="small">
+              Event ustawia cenę skupu ręcznie i <b>blokuje ją</b> - dopóki trwa, ceny dynamiczne tego przedmiotu nie ruszają, choćby
+              gracze znieśli pół świata. Podajesz procent (np. +50) i opcjonalnie czas; bez czasu trwa, aż go wyłączysz.
+            </p>
+            <p className="small">
+              <code>/@shop event list</code> pokazuje trwające eventy, <code>/@shop reset</code> zdejmuje event z jednego przedmiotu, a
+              <code>/@shop resetall</code> przywraca wszystkie ceny do normy. Ogłoszenie na czacie przy starcie i końcu eventu włączasz w
+              <b>Ustawieniach</b>.
+            </p>
+            <p className="small">
+              Wyłączenie eventu przywraca zwykłą cenę <b>od razu</b>, a nie stopniowo - inaczej podbite ceny ciągnęłyby się jeszcze
+              godzinami po ogłoszeniu końca akcji. Globalny reset cen pomija przedmioty zablokowane eventem, więc trwająca akcja nie
+              zostanie skasowana w połowie.
+            </p>
+            <p className="small">
+              Resety (<code>/@shop reset</code>, <code>/@shop resetall</code>) proszą o potwierdzenie komendą <code>/@shop confirm</code>,
+              bo kasują historię rynkową przedmiotu.
+            </p>
+          </Fold>
+          <p>
+            <b>Rotacja.</b> Kategoria może mieć drugą listę - pulę. Sklep co kilka dni losuje z niej kilka przedmiotów, więc oferta się
+            zmienia i nie wszystko jest dostępne od ręki.
+          </p>
+          <Fold title="Rotacja - szczegóły">
+            <p className="small">
+              Ustawiasz dwie rzeczy: ile przedmiotów ma być w ofercie naraz i co ile dni losowanie. Przedmiot, który był w ofercie, przez
+              5 kolejnych losowań nie może wrócić - dzięki temu to samo nie kręci się w kółko. Gdy pula jest za mała, sklep dobiera te,
+              którym zostało najmniej przerwy, więc oferta nigdy nie będzie pusta.
+            </p>
+            <p className="small">
+              Czas liczy się kalendarzowo, nie od obecności graczy: data następnego losowania siedzi w pliku na serwerze i jest sprawdzana
+              co kilka minut oraz po restarcie. Zmiana puli z aplikacji powoduje losowanie od razu.
+            </p>
+          </Fold>
+          <p>
+            <b>Wygląd menu.</b> W osobnej zakładce ustawiasz rozmiar okien i to, co w którym kwadracie stoi: kategorie, przedmioty,
+            przyciski, tło. Widzisz dokładnie to, co zobaczy gracz.
+          </p>
+          <Fold title="Wygląd menu - szczegóły">
+            <p className="small">
+              Są cztery okna: menu główne (kategorie), strona kategorii (przedmioty), wybór ilości i wyniki szukania. W każdym ustawiasz
+              wielkość (od 1 do 6 rzędów) i rozkładasz pola.
+            </p>
+            <p className="small">
+              Kategorie i przedmioty wchodzą w swoje pola <b>po kolei</b> - dlatego kolejność na liście to jednocześnie miejsce w oknie.
+              Strzałki stron pokazują się graczowi tylko wtedy, gdy jest dokąd iść, więc mała kategoria ich nie wyświetli.
+            </p>
+            <p className="small">
+              Ikonki przycisków (szukanie, zamknij, sortowanie) wybierasz z listy przedmiotów, a ich napisy siedzą w plikach językowych
+              pluginu.
+            </p>
+          </Fold>
+          <p>
+            <b>Statystyki.</b> Po włączeniu sklep zapisuje, co i za ile gracze sprzedają. Podgląd jest w zakładce Statystyki, a pełny
+            raport w pliku na serwerze.
+          </p>
+          <Fold title="Statystyki - szczegóły">
+            <p className="small">
+              Zbierane jest: ile sztuk łącznie i dzisiaj, ile pieniędzy wypłacono, ile było transakcji i jaki jest teraz mnożnik skupu.
+              Widać dzięki temu, co naprawdę napędza gospodarkę i które ceny są za wysokie.
+            </p>
+            <p className="small">
+              Sklep liczy też, ile cykli przedmiot przesiedział na dole, ile na górze, a ile pośrodku. To najprostsza podpowiedź, czy
+              cena bazowa w cenniku jest trafiona: coś, co stale leży na dnie, jest wycenione za wysoko, a coś, co ciągle stoi na
+              szczycie - za nisko.
+            </p>
+            <p className="small">
+              Na serwerze powstaje plik z raportem do otwarcia w Excelu, z kolumną sugestii („obniż cenę bazową”, „podnieś”, „ok”), plus
+              liczniki dobowe i archiwum dzień po dniu. Statystyki przeżywają globalny reset cen - to osobna, długa historia. Zbieranie
+              można wyłączyć: stare dane zostają, nowe nie dochodzą.
+            </p>
+          </Fold>
+          <p className="muted small">
+            Zmiany w aplikacji trafiają na serwer dopiero po „Zapisz” i „Wyślij na serwer”. Listę komend znajdziesz pod przyciskiem
+            „Komendy”.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  function fixedPriceHelpModal() {
+    return (
+      <div className="modal-overlay" onClick={() => setFixedHelp(false)}>
+        <div className="modal card" onClick={(e) => e.stopPropagation()}>
+          <div className="row">
+            <h2 style={{ margin: 0, flex: 1 }}>Cena stała</h2>
+            <button type="button" onClick={() => setFixedHelp(false)}>
+              Zamknij
+            </button>
+          </div>
+          <p>
+            Zwykle sklep sam rusza ceną skupu: spada, gdy gracze masowo coś sprzedają, i wraca, gdy przestaną. Ten przełącznik to
+            wyłącza - przedmiot zawsze skupuje się po cenie z cennika.
+          </p>
+          <p>
+            <b>Kiedy się przydaje:</b> rzeczy, które da się farmić bez końca (bruk, drewno, dropy ze spawnerów). Farma sprzedaje
+            niezależnie od ceny, bo nic nie kosztuje, więc ich skup i tak osiadłby na dnie i nigdy nie wrócił. Lepiej z góry ustawić im
+            cenę, na której Ci zależy.
+          </p>
+          <p className="muted small">
+            Cena kupna nie zmienia się nigdy, niezależnie od tego ustawienia - ceny dynamiczne dotyczą tylko skupu.
+          </p>
+          <div className="row">
+            <button
+              type="button"
+              onClick={() => {
+                setFixedHelp(false);
+                setShopHelpDynamic(true);
+                setShopHelp(true);
+              }}
+            >
+              Dowiedz się więcej
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function priceHelpModal() {
+    return (
+      <div className="modal-overlay" onClick={() => setPriceHelp(false)}>
+        <div className="modal card" onClick={(e) => e.stopPropagation()}>
+          <div className="row">
+            <h2 style={{ margin: 0, flex: 1 }}>Kupno i skup</h2>
+            <button type="button" onClick={() => setPriceHelp(false)}>
+              Zamknij
+            </button>
+          </div>
+          <p>
+            <b>Kupno zawsze idzie po sztuce.</b> Cenę podajesz za jedną sztukę, a sklep przelicza ją na tyle sztuk, ile gracz wybierze.
+          </p>
+          <p>
+            W grze gracz nie wpisuje liczby - klika jeden z gotowych przycisków, domyślnie <b>1, 8, 16, 32 i 64</b>. Te liczby możesz
+            zmienić na dowolne (np. 2, 10, 20), dodać kolejne albo usunąć: zakładka <b>Wygląd menu</b>, ekran <b>Wybór ilości</b>, sekcja
+            <b>Przyciski</b> pod siatką - wpisujesz liczbę i stawiasz przycisk w oknie. Najwyżej 64, bo tyle mieści się w jednym miejscu
+            w ekwipunku.
+          </p>
+          <p>
+            <b>Skup może iść hurtem.</b> Po włączeniu tej opcji sklep odkupuje od gracza tylko całe porcje - ustawiasz, ile sztuk to
+            jedna porcja i ile za nią płacisz. Reszta, która nie wypełni porcji, zostaje graczowi w ekwipunku.
+          </p>
+          <p>
+            <b>Po co?</b> Żeby nie skupować pojedynczych sztuk za grosze i żeby ceny skupu były okrągłe. Przykład: 640 $ za 64 sztuki
+            bruku zamiast 10 $ za każdą.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   function rotationHelpModal() {
     return (
@@ -874,6 +1221,10 @@ export default function ShopEditorPage() {
           <p>
             Przedmioty w kategorii dzielą się na dwie listy: <b>stałe</b> (zawsze w sklepie) i <b>pulę</b> (zapas, z którego sklep losuje te
             zmieniające się). Stałe zostają na miejscu, rotują się tylko te z puli.
+          </p>
+          <p>
+            Wybrane przedmioty przenoszą się ze stałych do puli - przestają być dostępne zawsze. Cofniesz to przyciskiem „Wróć do stałych”
+            przy przedmiocie z puli.
           </p>
           <p>
             <b>Przykład:</b> pula 30 rzeczy, 5 przedmiotów naraz, nowa oferta co 14 dni. Gracz wchodzi i widzi 5 przedmiotów, za dwa tygodnie 5
@@ -1068,11 +1419,11 @@ export default function ShopEditorPage() {
         <Fold title="Ceny" open>
           <label className="checkbox">
             <input type="radio" checked={s.rounding === "whole"} onChange={() => setSettings({ rounding: "whole" })} />
-            Pełne złotówki (1 sztuka ze stacka „64 za 10” kosztuje 1)
+            Pełne złotówki (1 sztuka z „64 za 10” kosztuje 1)
           </label>
           <label className="checkbox">
             <input type="radio" checked={s.rounding === "cents"} onChange={() => setSettings({ rounding: "cents" })} />
-            Grosze (1 sztuka ze stacka „64 za 10” kosztuje 0.16)
+            Grosze (1 sztuka z „64 za 10” kosztuje 0.16)
           </label>
         </Fold>
         <Fold title="Ceny dynamiczne skupu" open>
@@ -1104,6 +1455,25 @@ export default function ShopEditorPage() {
                 <input type="checkbox" checked={d.announceEvents} onChange={(e) => setDyn({ announceEvents: e.target.checked })} />
                 Ogłoś na czacie, gdy zaczyna się albo kończy event (/@shop event)
               </label>
+              <label className="checkbox">
+                <input type="checkbox" checked={d.announceReset} onChange={(e) => setDyn({ announceReset: e.target.checked })} />
+                Ogłoś na czacie, gdy wszystkie ceny wracają do normy
+              </label>
+              <Fold title="Strojenie (zaawansowane)">
+                <p className="muted small">
+                  Domyślne wartości są przemyślane i przetestowane - zmieniaj tylko, gdy wiesz, co robisz. Jak coś pójdzie nie tak,
+                  wpisz wartości z nawiasów.
+                </p>
+                {TUNING_FIELDS.map(([field, label, step, hint]) => (
+                  <label key={field}>
+                    {label}
+                    <span className="row" style={{ alignItems: "center", gap: "0.4rem", margin: 0 }}>
+                      {numberInput(d.tuning[field], (n) => setDyn({ tuning: { ...d.tuning, [field]: n } }), step, 0)}
+                      <span className="muted small">{hint}</span>
+                    </span>
+                  </label>
+                ))}
+              </Fold>
             </>
           )}
         </Fold>
@@ -1500,6 +1870,9 @@ export default function ShopEditorPage() {
             </option>
           ))}
         </select>
+        <button type="button" title="Jak działa sklep" aria-label="Jak działa sklep" onClick={() => setShopHelp(true)}>
+          <HelpCircle size={16} strokeWidth={1.75} />
+        </button>
         <span style={{ flex: 1 }} />
         {notSent && !unsaved && <span className="muted small">zapisane, jeszcze niewysłane</span>}
         <button
@@ -1520,6 +1893,9 @@ export default function ShopEditorPage() {
       {showCommands && <ShopCommandsModal file={file} onClose={() => setShowCommands(false)} />}
       <ItemDatalists materials={allMaterials} customIds={customIds} />
       {rotationHelp && rotationHelpModal()}
+      {priceHelp && priceHelpModal()}
+      {shopHelp && shopHelpModal()}
+      {fixedHelp && fixedPriceHelpModal()}
       {poolPickCat && poolPickModal()}
 
       {tab === "settings" && renderSettings()}
@@ -1585,26 +1961,56 @@ export default function ShopEditorPage() {
                     <span className="small muted">ustawienia kategorii</span>
                   </span>
                 </button>
-                <div className="ci-group">
-                  Przedmioty ({shownCount(category, false)}
-                  {shownCount(category, false) === category.items.length ? "" : ` z ${category.items.length}`})
-                </div>
-                {category.items.length > 1 && listToolbar(category, false)}
-                {category.items.map((it, i) =>
-                  matchesPriceFilter(it, priceFilter[`${category.id}:false`] ?? "all") ? itemRow(category, false, it, i) : null
-                )}
-                <button type="button" onClick={() => addItem(category, false)}>
-                  + Dodaj przedmiot
-                </button>
+                {/* Dwie listy naraz to bylo za duzo przewijania - przelaczamy sie miedzy nimi. */}
                 {category.rotation && (
+                  <div className="row" style={{ gap: "0.25rem" }}>
+                    <button type="button" className={!showPool ? "ci-publish" : undefined} onClick={() => {
+                        setShowPool(false);
+                        setSel({ kind: "cat" });
+                      }}>
+                      Przedmioty ({category.items.length})
+                    </button>
+                    <button type="button" className={showPool ? "ci-publish" : undefined} onClick={() => {
+                        setShowPool(true);
+                        setSel({ kind: "cat" });
+                      }}>
+                      Pula rotacji ({category.rotation.pool.length})
+                    </button>
+                  </div>
+                )}
+                {(!category.rotation || !showPool) && (
                   <>
-                    <div className="ci-group" style={{ marginTop: "0.8rem" }}>
-                      Pula rotacji ({category.rotation.pool.length}){category.rotation.enabled ? "" : " - rotacja wyłączona"}
-                    </div>
-                    {category.rotation.pool.length > 1 && listToolbar(category, true)}
-                    {category.rotation.pool.map((it, i) =>
-                      matchesPriceFilter(it, priceFilter[`${category.id}:true`] ?? "all") ? itemRow(category, true, it, i) : null
-                    )}
+                    <ListToggle
+                      open={listOpen}
+                      onToggle={() => setListOpen(!listOpen)}
+                      label={`Przedmioty (${shownCount(category, false)}${
+                        shownCount(category, false) === category.items.length ? "" : ` z ${category.items.length}`
+                      })`}
+                    />
+                    {listOpen && category.items.length > 1 && listToolbar(category, false)}
+                    {listOpen &&
+                      category.items.map((it, i) =>
+                        matchesPriceFilter(it, priceFilter[`${category.id}:false`] ?? "all") ? itemRow(category, false, it, i) : null
+                      )}
+                    <button type="button" onClick={() => addItem(category, false)}>
+                      + Dodaj przedmiot
+                    </button>
+                  </>
+                )}
+                {category.rotation && showPool && (
+                  <>
+                    <ListToggle
+                      open={listOpen}
+                      onToggle={() => setListOpen(!listOpen)}
+                      label={`Pula rotacji (${shownCount(category, true)}${
+                        shownCount(category, true) === category.rotation.pool.length ? "" : ` z ${category.rotation.pool.length}`
+                      })${category.rotation.enabled ? "" : " - rotacja wyłączona"}`}
+                    />
+                    {listOpen && category.rotation.pool.length > 1 && listToolbar(category, true)}
+                    {listOpen &&
+                      category.rotation.pool.map((it, i) =>
+                        matchesPriceFilter(it, priceFilter[`${category.id}:true`] ?? "all") ? itemRow(category, true, it, i) : null
+                      )}
                     <button type="button" onClick={() => addItem(category, true)}>
                       + Dodaj do puli
                     </button>

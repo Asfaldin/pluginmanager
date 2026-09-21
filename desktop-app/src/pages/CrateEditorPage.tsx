@@ -1,7 +1,7 @@
 import { Gift, Save, Terminal, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { CommandTip, CopyRow, Fold, LoreEditor, StatusBar } from "../components/EditorBits";
+import { CommandTip, CopyRow, Fold, ListToggle, LoreEditor, StatusBar } from "../components/EditorBits";
 import ItemRefPicker, { ItemDatalists } from "../components/ItemRefPicker";
 import MaterialIcon from "../components/MaterialIcon";
 import MinecraftTextInput from "../components/MinecraftTextInput";
@@ -154,6 +154,8 @@ export default function CrateEditorPage() {
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [trashConfirm, setTrashConfirm] = useState<string | null>(null);
+  // Lista wygranych da sie zwinac (jak lista zadan w Questach).
+  const [listOpen, setListOpen] = useState(true);
   const [showCommands, setShowCommands] = useState(false);
   const autoLoadedRef = useRef(false);
   const { iconPackDir, allMaterials } = useIconPack(setStatus);
@@ -649,8 +651,9 @@ export default function CrateEditorPage() {
                   <span className="muted small">nazwa, wygląd, klucze</span>
                 </span>
               </button>
-              <div className="ci-group">Wygrane ({crate.prizes.length})</div>
-              {crate.prizes.map((p, i) =>
+              <ListToggle open={listOpen} onToggle={() => setListOpen(!listOpen)} label={`Wygrane (${crate.prizes.length})`} />
+              {listOpen &&
+                crate.prizes.map((p, i) =>
                 trashConfirm === `prize:${crate.id}:${i}` ? (
                   <div key={i}>{confirmRow(`Usunąć wygraną ${i + 1}?`, () => doRemovePrize(crate, i))}</div>
                 ) : (
@@ -675,7 +678,7 @@ export default function CrateEditorPage() {
                     {trashButton(`prize:${crate.id}:${i}`, `Usuń wygraną ${i + 1}`)}
                   </div>
                 )
-              )}
+                )}
               <button
                 type="button"
                 onClick={() => {

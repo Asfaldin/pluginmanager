@@ -2667,6 +2667,8 @@ button:disabled:hover {
 }
 
 /* Questy - nagłówek „Zadania (N)” jako przycisk zwijania listy. */
+/* Naglowek listy, ktory ja zwija (Questy, Sklep, Skrzynki, Custom itemy). */
+.list-toggle,
 .quest-list-toggle {
   display: flex;
   align-items: center;
@@ -2679,6 +2681,7 @@ button:disabled:hover {
   text-align: left;
 }
 
+.list-toggle:hover,
 .quest-list-toggle:hover {
   color: var(--text);
 }

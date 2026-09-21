@@ -11,6 +11,8 @@ export interface ShopItemDraft {
   ref: ItemRef;
   buy: number | null;
   sell: number | null;
+  /** false = cena stała: ceny dynamiczne omijają ten przedmiot (np. rzeczy, które da się farmić). */
+  dynamic: boolean;
   amount: number;
   sellAmount: number;
   name: string;
@@ -57,7 +59,46 @@ export interface DynamicDraft {
   resetDays: number;
   maxSellShare: number;
   announceEvents: boolean;
+  announceReset: boolean;
+  tuning: TuningDraft;
 }
+
+/** Strojenie mechaniki cen dynamicznych - te same nazwy i domyślne wartości co w pluginie. */
+export interface TuningDraft {
+  maxDropPerCycle: number;
+  dropAtTop: number;
+  recoverFromBelow: number;
+  risePerCycle: number;
+  quietThreshold: number;
+  cyclesToRise: number;
+  cyclesFrozen: number;
+  normLearnRate: number;
+}
+
+export function defaultTuning(): TuningDraft {
+  return {
+    maxDropPerCycle: 0.05,
+    dropAtTop: 4.2,
+    recoverFromBelow: 0.8,
+    risePerCycle: 0.125,
+    quietThreshold: 0.1,
+    cyclesToRise: 2,
+    cyclesFrozen: 2,
+    normLearnRate: 0.02,
+  };
+}
+
+/** Nazwy pól w pliku (shop.yml dynamic-prices.tuning) - jeden słownik na odczyt i zapis. */
+const TUNING_KEYS: Array<[keyof TuningDraft, string]> = [
+  ["maxDropPerCycle", "max-drop-per-cycle"],
+  ["dropAtTop", "drop-at-top"],
+  ["recoverFromBelow", "recover-from-below"],
+  ["risePerCycle", "rise-per-cycle"],
+  ["quietThreshold", "quiet-threshold"],
+  ["cyclesToRise", "cycles-to-rise"],
+  ["cyclesFrozen", "cycles-frozen"],
+  ["normLearnRate", "norm-learn-rate"],
+];
 
 export interface ShopSettingsDraft {
   categoryOrder: string[];
@@ -146,7 +187,17 @@ export function defaultMenus(): Record<string, MenuScreenDraft> {
 }
 
 export function defaultDynamic(): DynamicDraft {
-  return { enabled: true, cycleMinutes: 60, minMultiplier: 0.5, maxMultiplier: 1.5, resetDays: 14, maxSellShare: 0.9, announceEvents: true };
+  return {
+    enabled: true,
+    cycleMinutes: 60,
+    minMultiplier: 0.5,
+    maxMultiplier: 1.5,
+    resetDays: 14,
+    maxSellShare: 0.9,
+    announceEvents: true,
+    announceReset: true,
+    tuning: defaultTuning(),
+  };
 }
 
 export function defaultSettings(): ShopSettingsDraft {
@@ -167,6 +218,14 @@ function obj(v: unknown): Obj {
 
 function num(v: unknown, fallback: number): number {
   return typeof v === "number" && Number.isFinite(v) ? v : fallback;
+}
+
+/** Strojenie z pliku; czego nie ma, bierzemy domyślne (tak samo jak plugin). */
+function parseTuning(raw: Obj): TuningDraft {
+  const d = defaultTuning();
+  const out = { ...d };
+  for (const [field, key] of TUNING_KEYS) out[field] = num(raw[key], d[field]);
+  return out;
 }
 
 function without(o: Obj, keys: string[]): Obj {
@@ -214,6 +273,8 @@ export function parseShopSettings(text: string): ShopSettingsDraft {
       resetDays: num(dyn["reset-days"], d.dynamic.resetDays),
       maxSellShare: num(dyn["max-sell-share"], d.dynamic.maxSellShare),
       announceEvents: typeof dyn["announce-events"] === "boolean" ? (dyn["announce-events"] as boolean) : d.dynamic.announceEvents,
+      announceReset: typeof dyn["announce-reset"] === "boolean" ? (dyn["announce-reset"] as boolean) : d.dynamic.announceReset,
+      tuning: parseTuning(obj(dyn.tuning)),
     },
     statsEnabled: typeof obj(raw.stats).enabled === "boolean" ? Boolean(obj(raw.stats).enabled) : d.statsEnabled,
     menus,
@@ -252,6 +313,8 @@ export function serializeShopSettings(s: ShopSettingsDraft): string {
       "reset-days": s.dynamic.resetDays,
       "max-sell-share": s.dynamic.maxSellShare,
       "announce-events": s.dynamic.announceEvents,
+      "announce-reset": s.dynamic.announceReset,
+      tuning: { ...obj(dynRaw.tuning), ...Object.fromEntries(TUNING_KEYS.map(([field, key]) => [key, s.dynamic.tuning[field]])) },
     },
     stats: { ...obj(s.raw.stats), enabled: s.statsEnabled },
     menus,
@@ -262,7 +325,7 @@ export function serializeShopSettings(s: ShopSettingsDraft): string {
 
 // ---------- categories/<id>.yml ----------
 
-const ITEM_KEYS = ["item", "custom", "buy", "sell", "amount", "sell-amount", "name", "lore", "instrument"];
+const ITEM_KEYS = ["item", "custom", "buy", "sell", "amount", "sell-amount", "name", "lore", "instrument", "dynamic"];
 
 function parseItem(v: unknown): ShopItemDraft {
   const o = obj(v);
@@ -276,6 +339,8 @@ function parseItem(v: unknown): ShopItemDraft {
     name: o.name != null ? String(o.name) : "",
     lore: Array.isArray(o.lore) ? o.lore.map(String) : [],
     instrument: o.instrument != null ? String(o.instrument) : "",
+    // Brak wpisu = ceny dynamiczne działają (tak było, zanim ta opcja powstała).
+    dynamic: typeof o.dynamic === "boolean" ? o.dynamic : true,
     raw: without(o, ITEM_KEYS),
   };
 }
@@ -289,6 +354,8 @@ function itemOut(i: ShopItemDraft): Obj {
   if (i.name.trim()) o.name = i.name;
   if (i.lore.length) o.lore = i.lore;
   if (i.instrument) o.instrument = i.instrument;
+  // Zapisujemy tylko wyłączenie - domyślnie ceny dynamiczne działają i nie ma czego pisać.
+  if (!i.dynamic) o.dynamic = false;
   return { ...o, ...i.raw };
 }
 
@@ -492,7 +559,8 @@ export function isLotted(i: ShopItemDraft): boolean {
 }
 
 export function newItem(ref: ItemRef): ShopItemDraft {
-  return { ref, buy: 10, sell: null, amount: 1, sellAmount: 1, name: "", lore: [], instrument: "", raw: {} };
+  // Nowy przedmiot dostaje przykladowa cene 20 za sztuke - widac od razu, o co chodzi, i latwo poprawic.
+  return { ref, buy: 20, sell: null, amount: 1, sellAmount: 1, name: "", lore: [], instrument: "", dynamic: true, raw: {} };
 }
 
 export function newCategory(id: string, name: string): CategoryDraft {
