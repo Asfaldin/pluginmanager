@@ -1,5 +1,5 @@
-import { X } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { BookOpen, CircleAlert, HelpCircle, X } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 import MinecraftTextInput from "./MinecraftTextInput";
 
 // Wspólne kawałki edytorów (Skrzynki, Questy): zwijane sekcje, komendy do skopiowania, edytor linijek opisu.
@@ -99,6 +99,108 @@ export function ListToggle({ open, onToggle, label }: { open: boolean; onToggle:
   return (
     <button type="button" className="ci-group list-toggle" title={open ? "Zwiń listę" : "Rozwiń listę"} onClick={onToggle}>
       <span className="quest-list-arrow">{open ? "▾" : "▸"}</span> {label}
+    </button>
+  );
+}
+
+// Które "?" i "!" użytkownik już otworzył - zapamiętane na tym komputerze (localStorage),
+// żeby nowe podpowiedzi świeciły się tylko do pierwszego kliknięcia.
+const HELP_SEEN_KEY = "pm-help-seen";
+
+function readHelpSeen(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(HELP_SEEN_KEY) ?? "[]") as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+/** Przycisk podpowiedzi: `kind="help"` to "?" (jak to działa), `kind="info"` to "!" (ważna informacja).
+    Dopóki nie był otwarty, świeci się (? na żółto, ! na czerwono); po pierwszym kliknięciu już zawsze normalny.
+    `id` musi być unikalne w całej aplikacji - po nim pamiętamy, że był otwarty. */
+export function HelpButton({
+  id,
+  title,
+  onClick,
+  kind = "help",
+  label,
+}: {
+  id: string;
+  title: string;
+  onClick: () => void;
+  kind?: "help" | "info";
+  /** Z napisem = główny przewodnik po stronie (np. "Jak działa sklep"): większy, z ikonką książki. */
+  label?: string;
+}) {
+  const [seen, setSeen] = useState(() => readHelpSeen().has(id));
+  const Icon = label ? BookOpen : kind === "info" ? CircleAlert : HelpCircle;
+  return (
+    <button
+      type="button"
+      className={`ci-help-btn ci-help-${kind}${label ? " ci-help-guide" : ""}${seen ? "" : " ci-help-new"}`}
+      title={title}
+      aria-label={title}
+      onClick={(e) => {
+        e.preventDefault();
+        if (!seen) {
+          const all = readHelpSeen();
+          all.add(id);
+          try {
+            localStorage.setItem(HELP_SEEN_KEY, JSON.stringify([...all]));
+          } catch {
+            // brak localStorage - trudno, po prostu będzie świecić dalej
+          }
+          setSeen(true);
+        }
+        onClick();
+      }}
+    >
+      <Icon size={16} strokeWidth={1.75} />
+      {label && <span>{label}</span>}
+    </button>
+  );
+}
+
+/** Przycisk, który działa dopiero po DRUGIM kliknięciu - na rzeczy typu "Przywróć domyślne", które
+    kasują czyjąś pracę. Pierwszy klik zmienia go na czerwone "Na pewno? Kliknij jeszcze raz";
+    po kilku sekundach albo po kliknięciu gdzie indziej wraca do zwykłego wyglądu. */
+export function ConfirmButton({
+  children,
+  onConfirm,
+  confirmText = "Na pewno? Kliknij jeszcze raz",
+  disabled,
+  title,
+}: {
+  children: ReactNode;
+  onConfirm: () => void;
+  confirmText?: string;
+  disabled?: boolean;
+  title?: string;
+}) {
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const t = setTimeout(() => setArmed(false), 4000);
+    return () => clearTimeout(t);
+  }, [armed]);
+  return (
+    <button
+      type="button"
+      className={armed ? "ci-danger" : undefined}
+      disabled={disabled}
+      title={title}
+      onBlur={() => setArmed(false)}
+      onClick={(e) => {
+        e.preventDefault();
+        if (!armed) {
+          setArmed(true);
+          return;
+        }
+        setArmed(false);
+        onConfirm();
+      }}
+    >
+      {armed ? confirmText : children}
     </button>
   );
 }
