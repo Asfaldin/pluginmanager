@@ -169,6 +169,13 @@ const ICON_CROPS: Record<string, IconCrop> = {
   WITHER_SKELETON_SKULL: headCrop("skeleton/wither_skeleton"),
   CREEPER_HEAD: headCrop("creeper/creeper"),
   PIGLIN_HEAD: headCrop("piglin/piglin", 10),
+  // Smok ma jedną dużą teksturę 256x256 - przód głowy (z oczami) to kwadrat 16x16 w (128,46).
+  DRAGON_HEAD: {
+    texture: "assets/minecraft/textures/entity/enderdragon/dragon.png",
+    width: 16,
+    height: 16,
+    parts: [{ sx: 128, sy: 46, sw: 16, sh: 16, dx: 0, dy: 0 }],
+  },
 };
 
 export function iconCropForMaterial(material: string): IconCrop | undefined {
