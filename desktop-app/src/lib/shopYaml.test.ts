@@ -145,6 +145,17 @@ describe("shopYaml rotation pool", () => {
     expect(out.rotation!.pool.map((i) => (i.ref as any).item)).toEqual(["SAND"]);
   });
 
+  it("puts a pool item back in its old place, not at the end", () => {
+    const home = ["MUD", "COBBLESTONE", "SNOW_BLOCK", "STONE"].map((item) => ({ item }));
+    const c = cat(["COBBLESTONE", "SNOW_BLOCK", "STONE"]);
+    c.rotation!.pool = [newItem({ item: "MUD" })];
+    expect(moveBackFromPool(c, [0], home).items.map((i) => (i.ref as any).item)).toEqual(["MUD", "COBBLESTONE", "SNOW_BLOCK", "STONE"]);
+    const mid = cat(["MUD", "COBBLESTONE", "STONE"]);
+    mid.rotation!.pool = [newItem({ item: "SNOW_BLOCK" }), newItem({ item: "ICE" })];
+    // SNOW_BLOCK wraca miedzy bruk a kamien, ICE (nie bylo go w stalych) na koniec
+    expect(moveBackFromPool(mid, [0, 1], home).items.map((i) => (i.ref as any).item)).toEqual(["MUD", "COBBLESTONE", "SNOW_BLOCK", "STONE", "ICE"]);
+  });
+
   it("draws random items without repeating and never more than there are", () => {
     const picked = randomPick(4, 10, () => 0.5);
     expect(picked).toHaveLength(4);

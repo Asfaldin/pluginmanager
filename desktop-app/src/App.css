@@ -2967,3 +2967,309 @@ button:disabled:hover {
   width: 100%;
   justify-self: stretch;
 }
+
+/* Przyciski podpowiedzi "?" (pomoc) i "!" (informacja). Nieotwarte jeszcze świecą się na kolor,
+   po pierwszym kliknięciu wracają do zwykłego wyglądu (zapamiętane w HelpButton). */
+.ci-help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+.ci-help-new.ci-help-help {
+  color: #facc15;
+  border-color: #facc15;
+  box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.35), 0 0 10px rgba(250, 204, 21, 0.35);
+  animation: ci-help-pulse 1.8s ease-in-out infinite;
+}
+.ci-help-new.ci-help-info {
+  color: var(--danger);
+  border-color: var(--danger);
+  box-shadow: 0 0 0 1px rgba(248, 81, 73, 0.4), 0 0 10px rgba(248, 81, 73, 0.4);
+  animation: ci-help-pulse 1.8s ease-in-out infinite;
+}
+@keyframes ci-help-pulse {
+  50% {
+    box-shadow: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ci-help-new {
+    animation: none;
+  }
+}
+
+/* Podgląd ogłoszenia rotacji w kategorii - kilka linijek czatu jedna pod drugą. */
+.ci-announce-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.25rem 0 0.5rem;
+}
+.ci-chat-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  white-space: pre-wrap;
+}
+
+/* Teksty ogłoszeń: linijki czatu do klikania i pole edycji pod okienkiem. */
+.ci-chat-line {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 0.15rem 0.35rem;
+  font: inherit;
+  cursor: pointer;
+}
+.ci-chat-line:hover {
+  border-color: var(--border-strong);
+}
+.ci-chat-line.active {
+  border-color: var(--accent);
+}
+.ci-chat-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0.4rem 0 0.6rem;
+}
+.mc-inserts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.3rem;
+}
+.mc-inserts button {
+  padding: 0.1rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+/* Pole z kolorami "jak w Wordzie" (MinecraftTextInput). Tło zawsze ciemne jak czat w grze
+   (patrz .mc-preview) - inaczej żółty czy biały tekst byłby nieczytelny w jasnym motywie. */
+.mc-rich {
+  flex: 1;
+  min-width: 0;
+  background: #16141c;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  min-height: 1.5em;
+  white-space: pre;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  cursor: text;
+  color: #e6e8ee;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.mc-rich:focus {
+  outline: none;
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.22);
+}
+.mc-rich:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+/* Zaszyfrowany tekst (&k) w polu nie miga, bo nie dałoby się go edytować - tylko kropkowana ramka. */
+.mc-rich .mc-rich-obf {
+  outline: 1px dotted currentColor;
+  outline-offset: 1px;
+}
+/* Wstawka {category} itp. jako jeden klocek z opisem. */
+.mc-chip {
+  display: inline-block;
+  border: 1px dashed currentColor;
+  border-radius: 4px;
+  padding: 0 0.3rem;
+  margin: 0 1px;
+  font-size: 0.85em;
+  line-height: 1.3;
+  user-select: none;
+  cursor: default;
+}
+.mc-raw-toggle {
+  min-width: 1.8rem;
+  height: 1.8rem;
+  padding: 0;
+  font-family: "Consolas", monospace;
+  color: var(--text-muted);
+}
+.mc-raw-toggle.active {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.mc-toolbar-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  max-width: 22rem;
+}
+
+/* Przykładowa wartość w podglądzie ogłoszenia (w grze wstawi się prawdziwa) - kropkowane podkreślenie + dymek. */
+.ci-sample {
+  border-bottom: 1px dotted currentColor;
+  cursor: help;
+}
+
+/* Ostrzeżenie w okienkach pomocy ("łatwo coś zepsuć") - żółta ramka z lewej, żeby rzucało się w oczy. */
+.ci-warning {
+  border-left: 3px solid #facc15;
+  background: rgba(250, 204, 21, 0.1);
+  color: var(--text);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0 6px 6px 0;
+}
+.ci-warning b {
+  color: #facc15;
+}
+
+/* Nazwa pola nad okienkiem z liczbą - wyraźniejsza niż szara podpowiedź pod nim. */
+.ci-field-title {
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Okienko z liczbą + jednostka obok (min, %, dni...). */
+.ci-unit-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.ci-unit {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* Zakładka Ustawienia (Sklep i kolejne pluginy): lista sekcji z lewej jak lista kategorii,
+   z prawej tylko wybrana sekcja - w wąskiej kolumnie, zamiast rozciągać się na cały ekran. */
+.ci-settings-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 820px) minmax(220px, 320px);
+  gap: 1rem;
+  align-items: start;
+}
+.ci-settings-nav {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+}
+.ci-settings-panel h2 {
+  margin-top: 0;
+}
+/* Jedno ustawienie w linijce: nazwa | okienko + jednostka, przykład pod spodem. */
+.ci-field-row,
+.form label.ci-field-row {
+  display: grid;
+  text-align: left;
+  justify-items: start;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 1rem;
+  row-gap: 0.1rem;
+  padding: 0.45rem 0;
+  margin: 0;
+  border-bottom: 1px solid var(--border);
+}
+.ci-field-hint {
+  grid-column: 1 / -1;
+}
+/* Okienko z jednostką zawsze przy prawej krawędzi - wszystkie pola jedno pod drugim, równo. */
+.ci-field-row > .ci-unit-input,
+.ci-field-row > input {
+  justify-self: end;
+}
+.ci-field-row .ci-unit {
+  min-width: 6.5rem;
+}
+@media (max-width: 800px) {
+  .ci-settings-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Ustawienia: z prawej lista zmian, których jeszcze nie ma na serwerze - każda z przyciskiem cofnięcia. */
+.ci-changes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  position: sticky;
+  top: 1rem;
+}
+.ci-change {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-left: 3px solid var(--accent);
+  padding-left: 0.5rem;
+}
+.ci-change-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  text-align: left;
+  background: none;
+  border: 1px solid transparent;
+  padding: 0.3rem 0.4rem;
+}
+.ci-change-text:hover {
+  border-color: var(--border-strong);
+}
+.ci-change-label {
+  font-size: 0.85rem;
+}
+.ci-change-undo {
+  padding: 0.3rem 0.45rem;
+}
+@media (max-width: 1250px) {
+  .ci-settings-layout {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+  .ci-changes {
+    grid-column: 1 / -1;
+    position: static;
+  }
+}
+
+/* Główny przewodnik po stronie ("Jak działa sklep") - większy, z napisem i w kolorze akcentu,
+   żeby odróżniał się od małych "?" przy pojedynczych opcjach. */
+.ci-help-btn.ci-help-guide {
+  gap: 0.4rem;
+  padding: 0.45rem 0.8rem;
+  font-weight: 600;
+  color: var(--accent-strong);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.ci-help-btn.ci-help-guide:hover {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+/* Nieotwarty przewodnik świeci na fioletowo (a nie na żółto jak małe "?"). */
+.ci-help-new.ci-help-guide {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.4), 0 0 12px rgba(168, 85, 247, 0.45);
+}
+
+/* Ważna informacja (nie ostrzeżenie) - fioletowa kreska z lewej, jak żółte ci-warning, tylko w kolorze akcentu. */
+.ci-note {
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--text);
+  padding: 0.45rem 0.75rem;
+  border-radius: 0 6px 6px 0;
+}
+.ci-note b {
+  color: var(--accent-strong);
+}

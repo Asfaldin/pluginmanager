@@ -1,15 +1,17 @@
-import { ask } from "@tauri-apps/plugin-dialog";
-import { ArrowDown, ArrowUp, HelpCircle, Save, Store, Terminal, Trash2, Undo2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { desktopDir, join } from "@tauri-apps/api/path";
+import { ask, open as openDialog } from "@tauri-apps/plugin-dialog";
+import { ArrowDown, ArrowUp, Download, Redo2, Save, Store, Terminal, Trash2, Undo2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { CopyRow, Fold, ListToggle, LoreEditor, StatusBar } from "../components/EditorBits";
+import { ConfirmButton, CopyRow, Fold, HelpButton, ListToggle, LoreEditor, StatusBar } from "../components/EditorBits";
 import ItemRefPicker, { ItemDatalists, MATERIALS_LIST_ID } from "../components/ItemRefPicker";
 import MaterialIcon from "../components/MaterialIcon";
-import MinecraftTextInput from "../components/MinecraftTextInput";
+import MinecraftTextInput, { type MinecraftTextHandle } from "../components/MinecraftTextInput";
 import MinecraftTextPreview from "../components/MinecraftTextPreview";
 import { showPrompt } from "../components/PromptModal";
+import SamplePreview from "../components/SamplePreview";
 import SlotGrid, { type SlotContent } from "../components/SlotGrid";
-import { rconSendCommand, sftpDeleteFile, sftpListDir, sftpReadFile, sftpWriteFile } from "../lib/api";
+import { rconSendCommand, sftpDeleteFile, sftpDownloadFile, sftpListDir, sftpReadFile, sftpWriteFile } from "../lib/api";
 import { readSetting } from "../lib/coreSettings";
 import { idFromName } from "../lib/cratesYaml";
 import { loadItemCatalog } from "../lib/itemCatalogRemote";
@@ -20,7 +22,9 @@ import { shopTemplateChoices, shopTemplateFor, type ShopTemplate } from "../lib/
 import {
   BUTTON_LABELS,
   categoryBySlot,
+  defaultDynamic,
   defaultSettings,
+  defaultTuning,
   detectSort,
   fromPerPiece,
   isLotted,
@@ -49,6 +53,19 @@ import {
   type ShopSettingsDraft,
   type TuningDraft,
 } from "../lib/shopYaml";
+import {
+  ANNOUNCE_FIELDS,
+  defaultAnnounceTexts,
+  fillPlaceholders,
+  parseAnnounceTexts,
+  patchLangFile,
+  PLACEHOLDER_HELP,
+  PLACEHOLDER_LABELS,
+  SAMPLE_VALUES,
+  sameTexts,
+  type AnnounceGroup,
+  type AnnounceTexts,
+} from "../lib/shopAnnounce";
 import { parseSpawnerConfig } from "../lib/spawnersYaml";
 import { useIconPack } from "../lib/useIconPack";
 import { useDirtyTracking } from "../state/DirtyContext";
@@ -57,12 +74,21 @@ import { useProfiles } from "../state/ProfilesContext";
 interface ShopFile {
   settings: ShopSettingsDraft;
   cats: CategoryDraft[];
+  /** Teksty ogłoszeń na czacie - z lang/<język>.yml pluginu, nie z shop.yml. */
+  texts: AnnounceTexts;
 }
 
 type Sel = { kind: "cat" } | { kind: "item"; pool: boolean; index: number };
 type Tab = "cats" | "settings" | "stats" | "menu";
+type SettingsSection = "prices" | "dynamic" | "texts";
 
-const EMPTY: ShopFile = { settings: defaultSettings(), cats: [] };
+const EMPTY: ShopFile = { settings: defaultSettings(), cats: [], texts: defaultAnnounceTexts("en") };
+
+const ANNOUNCE_GROUPS: Array<[AnnounceGroup, string]> = [
+  ["rotation", "Rotacja - nowa oferta w kategorii"],
+  ["reset", "Reset cen"],
+  ["event", "Eventy na skup"],
+];
 const GOAT_HORNS = ["ponder_goat_horn", "sing_goat_horn", "seek_goat_horn", "feel_goat_horn", "admire_goat_horn", "call_goat_horn", "yearn_goat_horn", "dream_goat_horn"];
 // Ktory przycisk z "Ikonki przyciskow" odpowiada ktorej roli pola w ukladzie. "sort-sell"
 // to tylko druga ikonka tego samego przycisku sortowania, wiec nie ma wlasnej roli.
@@ -83,16 +109,17 @@ const ROLES_BY_SCREEN: Record<string, string[]> = {
   "search-results": ["ITEM_SLOT", "NAV_BACK", "FILLER"],
 };
 
-/** Pola strojenia cen dynamicznych: nazwa w kodzie, podpis, krok i podpowiedź z wartością domyślną. */
-const TUNING_FIELDS: Array<[keyof TuningDraft, string, string, string]> = [
-  ["maxDropPerCycle", "Największy spadek skupu na cykl", "0.01", "0.05 = 5% (domyślnie 0.05)"],
-  ["dropAtTop", "Ile razy mocniejszy spadek na maksimum", "0.1", "domyślnie 4.2"],
-  ["recoverFromBelow", "Ile drogi wraca w cyklu ciszy", "0.05", "0.8 = 80% (domyślnie 0.8)"],
-  ["risePerCycle", "Wzrost na cykl, gdy nikt nie sprzedaje", "0.005", "0.125 = 12,5% (domyślnie 0.125)"],
-  ["quietThreshold", "Poniżej jakiej części normy to cisza", "0.05", "0.1 = 10% (domyślnie 0.1)"],
-  ["cyclesToRise", "Ile cykli ciszy przed wzrostem", "1", "domyślnie 2"],
-  ["cyclesFrozen", "Ile cykli cena stoi po zejściu z góry", "1", "domyślnie 2"],
-  ["normLearnRate", "Jak szybko sklep zapomina stare cykle", "0.005", "0.02 ≈ tydzień (domyślnie 0.02)"],
+/** Pola strojenia cen dynamicznych: nazwa w kodzie, podpis, krok, podpowiedź, jednostka i mnożnik
+    (100 = w pliku ułamek 0.05, a w aplikacji pokazujemy 5 %). */
+const TUNING_FIELDS: Array<[keyof TuningDraft, string, string, string, string, number]> = [
+  ["maxDropPerCycle", "Największy spadek skupu na cykl", "1", "5 = w jednym cyklu skup spada najwyżej o 5% (domyślnie 5)", "%", 100],
+  ["dropAtTop", "Ile razy mocniejszy spadek na maksimum", "0.1", "4.2 = gdy skup jest najwyżej, spada 4,2 raza szybciej (domyślnie 4.2)", "razy", 1],
+  ["recoverFromBelow", "Ile drogi wraca w cyklu ciszy", "5", "80 = gdy nikt nie sprzedaje, cena odrabia 80% straty w cyklu (domyślnie 80)", "%", 100],
+  ["risePerCycle", "Wzrost na cykl, gdy nikt nie sprzedaje", "0.5", "12.5 = skup rośnie o 12,5% na cykl (domyślnie 12.5)", "%", 100],
+  ["quietThreshold", "Poniżej jakiej części normy to cisza", "5", "10 = sprzedaż poniżej 10% zwykłej to „cisza” (domyślnie 10)", "% normy", 100],
+  ["cyclesToRise", "Ile cykli ciszy przed wzrostem", "1", "2 = cena zaczyna rosnąć po 2 cyklach ciszy (domyślnie 2)", "cykle", 1],
+  ["cyclesFrozen", "Ile cykli cena stoi po zejściu z góry", "1", "2 = po zejściu z maksimum cena stoi 2 cykle (domyślnie 2)", "cykle", 1],
+  ["normLearnRate", "Jak szybko sklep zapomina stare cykle", "0.5", "2 ≈ sklep pamięta mniej więcej ostatni tydzień (domyślnie 2)", "%", 100],
 ];
 
 function shopDir(pluginsPath: string): string {
@@ -100,7 +127,7 @@ function shopDir(pluginsPath: string): string {
 }
 
 function serializeAll(f: ShopFile): string {
-  return serializeShopSettings(f.settings) + f.cats.map((c) => `\n#### ${c.id}\n${serializeCategory(c)}`).join("");
+  return serializeShopSettings(f.settings) + f.cats.map((c) => `\n#### ${c.id}\n${serializeCategory(c)}`).join("") + `\n#### texts\n${JSON.stringify(f.texts)}`;
 }
 
 /** Kategorie w kolejności z shop.yml, reszta na końcu. */
@@ -109,9 +136,18 @@ function ordered(settings: ShopSettingsDraft, cats: CategoryDraft[]): CategoryDr
   return [...inOrder, ...cats.filter((c) => !settings.categoryOrder.includes(c.id))];
 }
 
-function fromTemplate(t: ShopTemplate): ShopFile {
+function fromTemplate(t: ShopTemplate, texts: AnnounceTexts): ShopFile {
   const settings = parseShopSettings(t["shop.yml"]);
-  return { settings, cats: ordered(settings, Object.entries(t.categories).map(([id, text]) => parseCategory(id, text))) };
+  return { settings, cats: ordered(settings, Object.entries(t.categories).map(([id, text]) => parseCategory(id, text))), texts };
+}
+
+/** Czy dwa obiekty mają te same wartości, niezależnie od kolejności pól (do wyszarzania "Przywróć domyślne"). */
+function sameValues(a: unknown, b: unknown): boolean {
+  const sorted = (v: unknown): unknown =>
+    v && typeof v === "object" && !Array.isArray(v)
+      ? Object.fromEntries(Object.keys(v as object).sort().map((k) => [k, sorted((v as Record<string, unknown>)[k])]))
+      : v;
+  return JSON.stringify(sorted(a)) === JSON.stringify(sorted(b));
 }
 
 function plain(text: string): string {
@@ -193,8 +229,20 @@ export default function ShopEditorPage() {
   const [priceHelp, setPriceHelp] = useState(false);
   const [shopHelp, setShopHelp] = useState(false);
   const [fixedHelp, setFixedHelp] = useState(false);
+  const [dynamicHelp, setDynamicHelp] = useState(false);
+  const [statsHelp, setStatsHelp] = useState(false);
+  const [collectionInfo, setCollectionInfo] = useState(false);
+  const [textsHelp, setTextsHelp] = useState(false);
+  // "Zmień tekst" przy rotacji otwiera sekcję tekstów w Ustawieniach i do niej przewija.
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>("prices");
+  // Ktory tekst ogloszenia jest teraz edytowany (klik w linijke w okienku czatu).
+  const [editingText, setEditingText] = useState<string | null>(null);
+  const textInputRef = useRef<MinecraftTextHandle>(null);
+  const [textHistory, setTextHistory] = useState({ canUndo: false, canRedo: false });
   // Duze okienko "Jak dziala sklep" otwarte od razu na rozwinietych cenach dynamicznych.
   const [shopHelpDynamic, setShopHelpDynamic] = useState(false);
+  // To samo dla tekstów ogłoszeń ("Dowiedz się więcej" z małego "?").
+  const [shopHelpTexts, setShopHelpTexts] = useState(false);
   const [poolPickCat, setPoolPickCat] = useState<string | null>(null);
   const [poolPickBack, setPoolPickBack] = useState(false);
   // Ktora liste widac w srodkowej kolumnie: stale przedmioty czy pula rotacji.
@@ -239,6 +287,13 @@ export default function ShopEditorPage() {
       // brak configu core - zostaje angielski
     }
     setLanguage(lang);
+    let langText: string | null = null;
+    try {
+      langText = await sftpReadFile(pid, `${dir}/lang/${lang}.yml`);
+    } catch {
+      // pliku jeszcze nie ma - plugin bierze teksty z jara, czyli domyślne
+    }
+    const texts = parseAnnounceTexts(langText, lang);
     try {
       const settings = parseShopSettings(await sftpReadFile(pid, `${dir}/shop.yml`));
       let ids: string[] = [];
@@ -249,7 +304,7 @@ export default function ShopEditorPage() {
       }
       const cats: CategoryDraft[] = [];
       for (const id of ids) cats.push(parseCategory(id, await sftpReadFile(pid, `${dir}/categories/${id}.yml`)));
-      const f = { settings, cats: ordered(settings, cats) };
+      const f = { settings, cats: ordered(settings, cats), texts };
       setFile(f);
       setSaved(f);
       setServerFile(f);
@@ -258,10 +313,10 @@ export default function ShopEditorPage() {
       setSel({ kind: "cat" });
     } catch {
       // Na serwerze nie ma jeszcze nowego sklepu - pokazujemy Mały (jak plugin przy pierwszym starcie).
-      const f = fromTemplate(shopTemplateFor(lang));
+      const f = fromTemplate(shopTemplateFor(lang), texts);
       setFile(f);
       setSaved(f);
-      setServerFile(EMPTY);
+      setServerFile({ ...EMPTY, texts });
       setServerCatIds([]);
       setCatId(f.cats[0]?.id ?? null);
       setSel({ kind: "cat" });
@@ -345,12 +400,26 @@ export default function ShopEditorPage() {
       await sftpWriteFile(profileId, `${dir}/shop.yml`, serializeShopSettings(toSend.settings));
       for (const c of toSend.cats) await sftpWriteFile(profileId, `${dir}/categories/${c.id}.yml`, serializeCategory(c));
       for (const id of removed) await sftpDeleteFile(profileId, `${dir}/categories/${id}.yml`);
+      const textsChanged = !sameTexts(toSend.texts, serverFile.texts);
+      if (textsChanged) {
+        // Czytamy plik świeżo z serwera i zmieniamy w nim tylko linijki ogłoszeń.
+        const langPath = `${dir}/lang/${language}.yml`;
+        let current = "";
+        try {
+          current = await sftpReadFile(profileId, langPath);
+        } catch {
+          // brak pliku - powstanie z samymi ogłoszeniami, resztę plugin weźmie z jara
+        }
+        await sftpWriteFile(profileId, langPath, patchLangFile(current, toSend.texts));
+      }
       setServerFile(toSend);
       setServerCatIds(toSend.cats.map((c) => c.id));
       let msg = "Wysłano na serwer.";
       try {
         const r = await rconSendCommand(profileId, "@shop reload");
         msg += ` Przeładowano (RCON: ${r || "OK"}).`;
+        // Teksty z lang/ wczytuje od nowa core, nie sam Sklep.
+        if (textsChanged) await rconSendCommand(profileId, "@reloadlang");
       } catch (e) {
         msg += ` ${String(e)}`;
       }
@@ -362,6 +431,28 @@ export default function ShopEditorPage() {
     }
   }
 
+  /** Pobiera raport sprzedaży (plik do Excela, który plugin sam robi na serwerze) do wybranego folderu. */
+  async function downloadReport() {
+    if (!profileId || !pluginsPath) return;
+    let folder: string | null = null;
+    try {
+      const picked = await openDialog({ directory: true, defaultPath: await desktopDir(), title: "Gdzie zapisać raport sprzedaży?" });
+      folder = typeof picked === "string" ? picked : null;
+    } catch (e) {
+      setStatus(String(e));
+      return;
+    }
+    if (!folder) return;
+    const day = new Date().toISOString().slice(0, 10);
+    const target = await join(folder, `raport-sklepu-${day}.csv`);
+    try {
+      await sftpDownloadFile(profileId, `${shopDir(pluginsPath)}/stats.csv`, target);
+      setStatus(`Zapisano raport: ${target} - otwórz go w Excelu.`);
+    } catch {
+      setStatus("Raportu jeszcze nie ma na serwerze - sklep tworzy go sam, gdy gracze zaczną coś sprzedawać. Spróbuj później.");
+    }
+  }
+
   async function loadTemplate(id: string) {
     const t = shopTemplateChoices(language).find((x) => x.id === id);
     if (!t) return;
@@ -370,7 +461,7 @@ export default function ShopEditorPage() {
       { title: "Wczytać szablon?", kind: "warning" }
     );
     if (!confirmed) return;
-    const f = fromTemplate(t.template);
+    const f = fromTemplate(t.template, file.texts);
     setFile(f);
     setCatId(f.cats[0]?.id ?? null);
     setSel({ kind: "cat" });
@@ -379,6 +470,15 @@ export default function ShopEditorPage() {
   }
 
   // ---- zmiany ----
+
+  function setTexts(patch: AnnounceTexts) {
+    setFile({ ...file, texts: { ...file.texts, ...patch } });
+  }
+
+  function openTexts() {
+    setTab("settings");
+    setSettingsSection("texts");
+  }
 
   function setSettings(patch: Partial<ShopSettingsDraft>) {
     setFile({ ...file, settings: { ...file.settings, ...patch } });
@@ -414,7 +514,9 @@ export default function ShopEditorPage() {
 
   /** Cofnięcie: pozycja z puli wraca na stałą listę. Zaznaczenie wraca na kategorię, bo numery się przesuwają. */
   function moveBack(c: CategoryDraft, indexes: number[]) {
-    const next = moveBackFromPool(c, indexes);
+    // Wraca na swoje miejsce: kolejność stałych z serwera (a jak tam kategorii nie ma - z zapisanej).
+    const home = serverFile.cats.find((x) => x.id === c.id) ?? saved.cats.find((x) => x.id === c.id);
+    const next = moveBackFromPool(c, indexes, home?.items.map((it) => it.ref) ?? []);
     updateCategory(c.id, { items: next.items, rotation: next.rotation });
     setSel({ kind: "cat" });
   }
@@ -645,8 +747,9 @@ export default function ShopEditorPage() {
     return (p >= 0 ? "+" : "") + p;
   }
 
-  function numberInput(value: number | null, onChange: (n: number) => void, step = "0.01", min = 0) {
-    return (
+  /** Okienko z liczbą; `unit` (np. "min", "%", "dni") stoi zaraz obok, żeby było wiadomo, w czym to jest. */
+  function numberInput(value: number | null, onChange: (n: number) => void, step = "0.01", min = 0, unit?: string) {
+    const input = (
       <input
         type="number"
         min={min}
@@ -655,6 +758,13 @@ export default function ShopEditorPage() {
         onChange={(e) => onChange(Math.max(min, Number(e.target.value) || 0))}
         style={{ width: "8rem" }}
       />
+    );
+    if (!unit) return input;
+    return (
+      <span className="ci-unit-input">
+        {input}
+        <span className="ci-unit">{unit}</span>
+      </span>
     );
   }
 
@@ -721,10 +831,8 @@ export default function ShopEditorPage() {
                 else set({ amount: 1, sellAmount: 1, buy: perPiece(it.buy, it.amount), sell: perPiece(it.sell, it.sellAmount) });
               }}
             />
-            Skup po kilka sztuk naraz (kupno zawsze idzie po sztuce)
-            <button type="button" title="Po co to jest" aria-label="Po co to jest" onClick={() => setPriceHelp(true)}>
-              <HelpCircle size={16} strokeWidth={1.75} />
-            </button>
+            Skup po kilka sztuk naraz
+            <HelpButton id="shop-price-portion" title="Po co to jest" onClick={() => setPriceHelp(true)} />
           </label>
           <label className="checkbox">
             <input
@@ -784,16 +892,19 @@ export default function ShopEditorPage() {
             ))}
           <label className="checkbox">
             <input type="checkbox" checked={!it.dynamic} onChange={(e) => set({ dynamic: !e.target.checked })} />
-            Cena stała - ceny dynamiczne omijają ten przedmiot
-            <button type="button" title="Po co to jest" aria-label="Po co to jest" onClick={() => setFixedHelp(true)}>
-              <HelpCircle size={16} strokeWidth={1.75} />
-            </button>
+            Cena stała
+            <HelpButton id="shop-fixed-price" title="Po co to jest" onClick={() => setFixedHelp(true)} />
           </label>
-          <p className="muted small">
-            {rounding === "whole"
-              ? "Sklep liczy w pełnych złotówkach (Ustawienia): niepełna porcja zaokrągla się w górę do złotówki."
-              : "Sklep liczy z groszami (Ustawienia)."}{" "}
-            Gracz sprzedaje tylko pełne porcje - reszta zostaje mu w ekwipunku.
+          <p className="ci-note small">
+            {rounding === "whole" ? (
+              <>
+                <b>Pełne złotówki:</b> niepełna porcja zaokrągla się w górę do złotówki. Zmienisz to w Ustawieniach → Ceny.
+              </>
+            ) : (
+              <>
+                <b>Z groszami:</b> ceny liczą się co do grosza. Zmienisz to w Ustawieniach → Ceny.
+              </>
+            )}
           </p>
           {it.buy != null && it.sell != null && it.sell / it.sellAmount >= it.buy / it.amount && (
             <p className="ci-badge warn">Skup za sztukę jest co najmniej taki jak kupno - gracze zarobią na kupowaniu i sprzedawaniu w kółko.</p>
@@ -814,6 +925,12 @@ export default function ShopEditorPage() {
           <span className="muted small" title="Nazwa pliku na serwerze">
             plik: categories/{c.id}.yml
           </span>
+          {c.id === "kolekcja" && (
+            <>
+              {" "}
+              <HelpButton id="shop-collection-info" kind="info" title="Na czym polega Kolekcja" onClick={() => setCollectionInfo(true)} />
+            </>
+          )}
         </h2>
         <Fold title="Nazwa i ikonka" open>
           <label>
@@ -823,7 +940,7 @@ export default function ShopEditorPage() {
           <div className="ci-section-title">Ikonka w menu głównym</div>
           <ItemRefPicker value={c.icon} onChange={(ref) => updateCategory(c.id, { icon: ref.custom != null ? { custom: ref.custom } : { item: ref.item } })} materials={allMaterials} customIds={customIds} iconPackDir={iconPackDir} />
         </Fold>
-        <Fold title="Rotacja (przedmioty wymieniają się co kilka dni)" open={r != null}>
+        <Fold title="Rotacja (przedmioty wymieniają się co kilka dni)">
           <label className="checkbox">
             <input
               type="checkbox"
@@ -835,22 +952,19 @@ export default function ShopEditorPage() {
               }
             />
             Włącz rotację
+            <HelpButton id="shop-rotation" title="Po co jest rotacja" onClick={() => setRotationHelp(true)} />
           </label>
-          <div className="row" style={{ alignItems: "center" }}>
-            <span className="muted small" style={{ flex: 1 }}>
-              Przedmioty w tej kategorii wymieniają się co kilka dni - część jest do kupienia tylko wtedy, gdy sklep je wylosuje.
-            </span>
-            <button type="button" title="Po co jest rotacja" aria-label="Po co jest rotacja" onClick={() => setRotationHelp(true)}>
-              <HelpCircle size={16} strokeWidth={1.75} />
-            </button>
-          </div>
           {r && (
             <>
               <label>
-                Ilość przedmiotów w rotacji {numberInput(r.show, (n) => updateCategory(c.id, { rotation: { ...r, show: Math.max(1, Math.floor(n)) } }), "1", 1)}
+                <span className="ci-field-title">Ilość przedmiotów w rotacji</span>
+                {numberInput(r.show, (n) => updateCategory(c.id, { rotation: { ...r, show: Math.max(1, Math.floor(n)) } }), "1", 1, "szt.")}
+                <span className="muted small">5 = w sklepie naraz widać 5 przedmiotów wylosowanych z puli</span>
               </label>
               <label>
-                Co ile dni nowa oferta {numberInput(r.everyDays, (n) => updateCategory(c.id, { rotation: { ...r, everyDays: Math.max(1, Math.floor(n)) } }), "1", 1)}
+                <span className="ci-field-title">Co ile dni nowa oferta</span>
+                {numberInput(r.everyDays, (n) => updateCategory(c.id, { rotation: { ...r, everyDays: Math.max(1, Math.floor(n)) } }), "1", 1, "dni")}
+                <span className="muted small">14 = co dwa tygodnie sklep losuje nowe przedmioty</span>
               </label>
               <label className="checkbox">
                 <input
@@ -860,9 +974,12 @@ export default function ShopEditorPage() {
                 />
                 Ogłoś na czacie, gdy oferta się zmieni
               </label>
-              <div className="ci-section-title">Pula - z czego sklep losuje</div>
+              {r.announce && rotationAnnouncePreview(c, r)}
+              <div className="ci-field-title" style={{ marginTop: "0.6rem" }}>
+                Pula - z czego sklep losuje
+              </div>
               <p className="muted small">
-                Pula ma {r.pool.length} przedmiotów, stałych jest {c.items.length}. Przedmioty z puli edytujesz na liście w środku, pod stałymi.
+                Pula ma {r.pool.length} przedmiotów, stałych jest {c.items.length}.
               </p>
               <div className="row" style={{ alignItems: "center" }}>
                 <button
@@ -908,6 +1025,7 @@ export default function ShopEditorPage() {
     const close = () => {
       setShopHelp(false);
       setShopHelpDynamic(false);
+      setShopHelpTexts(false);
     };
     return (
       <div className="modal-overlay" onClick={close}>
@@ -1114,8 +1232,8 @@ export default function ShopEditorPage() {
             </p>
           </Fold>
           <p>
-            <b>Statystyki.</b> Po włączeniu sklep zapisuje, co i za ile gracze sprzedają. Podgląd jest w zakładce Statystyki, a pełny
-            raport w pliku na serwerze.
+            <b>Statystyki.</b> Po włączeniu sklep zapisuje, co i za ile gracze sprzedają. Wszystko jest w zakładce Statystyki, razem z
+            raportem do pobrania.
           </p>
           <Fold title="Statystyki - szczegóły">
             <p className="small">
@@ -1128,9 +1246,52 @@ export default function ShopEditorPage() {
               szczycie - za nisko.
             </p>
             <p className="small">
-              Na serwerze powstaje plik z raportem do otwarcia w Excelu, z kolumną sugestii („obniż cenę bazową”, „podnieś”, „ok”), plus
-              liczniki dobowe i archiwum dzień po dniu. Statystyki przeżywają globalny reset cen - to osobna, długa historia. Zbieranie
+              Przyciskiem „Pobierz raport do Excela” w zakładce Statystyki zapiszesz raport na swoim komputerze - z kolumną sugestii
+              („obniż cenę bazową”, „podnieś”, „ok”). Sklep liczy też wyniki dzień po dniu. Statystyki przeżywają globalny reset cen - to osobna, długa historia. Zbieranie
               można wyłączyć: stare dane zostają, nowe nie dochodzą.
+            </p>
+          </Fold>
+          <p>
+            <b>Teksty ogłoszeń.</b> To, co sklep sam pisze na czacie (nowa oferta, reset cen, eventy), zmieniasz w Ustawieniach → Teksty
+            ogłoszeń.
+          </p>
+          <Fold title="Teksty ogłoszeń - szczegóły" open={shopHelpTexts}>
+            <div className="ci-section-title">Co jest prawdziwe, a co przykładem</div>
+            <p className="small">
+              Tekst w czarnym okienku jest prawdziwy - dokładnie tak, tymi kolorami, pojawi się na czacie. Przykładem są tylko rzeczy{" "}
+              <span className="ci-sample">podkreślone kropkami</span> (Kolekcja, Płyta: Cat, 20000, 14 dni, 50%, 2h). Najedź na nie myszką -
+              dymek powie, co wstawi się tam w grze.
+            </p>
+            <div className="ci-section-title">Edycja</div>
+            <p className="small">
+              Klik w linijkę otwiera pole pod okienkiem, zmiany widać od razu. Enter albo „Gotowe” zamyka pole, „Cofnij” i „Ponów” (też
+              Ctrl+Z / Ctrl+Y) cofają krok po kroku, „Przywróć domyślny” wraca do tekstu z pluginu - też da się to cofnąć. Kolor: zaznacz
+              kawałek tekstu i kliknij kolorowy kwadracik; bez zaznaczenia kolor działa na to, co zaraz napiszesz. Ctrl+B pogrubia.
+              Przycisk „&” z prawej pokazuje surowe kody kolorów - tylko dla zaawansowanych.
+            </p>
+            <div className="ci-section-title">Ramki „+ nazwa kategorii”, „+ cena” itd.</div>
+            <p className="small">
+              Ramka to miejsce, w które sklep w chwili ogłoszenia sam wpisze właściwą rzecz. Tekst jest jeden dla wszystkich kategorii,
+              więc nie wpisuj nazwy na sztywno - „NOWA OFERTA: Kolekcja” pokazałoby się też w Blokach. Ramka pojawia się tam, gdzie stoi
+              kursor; Backspace usuwa ją w całości. Przydaje się, gdy skasujesz ramkę przez przypadek, chcesz ją przestawić („Kolekcja ma
+              nową ofertę!”) albo dodać gdzie indziej, np. w stopce.
+            </p>
+            <ul className="small">
+              {Object.entries(PLACEHOLDER_LABELS).map(([k, v]) => (
+                <li key={k}>
+                  <b>{v}</b> - {PLACEHOLDER_HELP[k]}
+                </li>
+              ))}
+            </ul>
+            <div className="ci-section-title">Kolory nazw</div>
+            <p className="small">
+              Nazwa kategorii i przedmiotu wchodzi w swoim własnym kolorze - takim, jaki ma w sklepie. Kolekcja ma żółtą nazwę, więc w
+              ogłoszeniu też będzie żółta. Tekst za ramką aplikacja koloruje od nowa, więc kolor nazwy nie „rozlewa się” dalej.
+            </p>
+            <div className="ci-section-title">Włączanie i wyłączanie</div>
+            <p className="small">
+              Ogłoszenie nowej oferty włączasz przy rotacji w każdej kategorii osobno, a ogłoszenia eventów i resetu cen - w Ustawieniach →
+              Ceny dynamiczne. „Przywróć domyślne” obok „?” wraca do wszystkich tekstów z pluginu naraz (po drugim kliknięciu).
             </p>
           </Fold>
           <p className="muted small">
@@ -1213,6 +1374,213 @@ export default function ShopEditorPage() {
     );
   }
 
+  /** Jak ogłoszenie nowej oferty wygląda na czacie dla tej kategorii - jej nazwa i przedmioty z puli. */
+  function rotationAnnouncePreview(c: CategoryDraft, r: NonNullable<CategoryDraft["rotation"]>) {
+    const num = (n: number | null) => (n == null ? "0" : Number.isInteger(n) ? String(n) : n.toFixed(2));
+    const shown = r.pool.slice(0, Math.min(r.show, 3));
+    const head = { category: c.name, days: String(r.everyDays) };
+    const lines = shown.length
+      ? shown.map((it) => ({
+          item: it.name.trim() ? it.name : refLabel(it.ref),
+          price: num(it.buy ?? it.sell),
+          amount: String(it.buy != null ? it.amount : it.sellAmount),
+        }))
+      : [{ item: SAMPLE_VALUES.item, price: SAMPLE_VALUES.price, amount: SAMPLE_VALUES.amount }];
+    return (
+      <div className="ci-announce-preview">
+        <div className="row" style={{ alignItems: "center", margin: 0 }}>
+          <span className="muted small" style={{ flex: 1 }}>
+            Tak to wygląda na czacie{shown.length ? "" : " (przykładowy przedmiot - pula jest pusta)"}:
+          </span>
+          <button type="button" onClick={openTexts} title="Tekst jest wspólny dla wszystkich kategorii - zmieniasz go w Ustawieniach">
+            Zmień tekst
+          </button>
+        </div>
+        <div className="mc-preview ci-chat-lines">
+          <div>
+            <MinecraftTextPreview text={fillPlaceholders(file.texts["rotation.broadcast-header"] ?? "", head)} emptyLabel="(pusty nagłówek)" />
+          </div>
+          {lines.map((ph, i) => (
+            <div key={i}>
+              <MinecraftTextPreview text={fillPlaceholders(file.texts["rotation.broadcast-item"] ?? "", ph)} emptyLabel="(pusta linijka)" />
+            </div>
+          ))}
+          {r.show > lines.length && shown.length > 0 && <div className="muted small">... i jeszcze {r.show - lines.length} takich linijek</div>}
+          <div>
+            <MinecraftTextPreview text={fillPlaceholders(file.texts["rotation.broadcast-footer"] ?? "", head)} emptyLabel="(pusta stopka)" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /** Żółte ostrzeżenie przy cenach dynamicznych - od razu w Ustawieniach, nad polami z liczbami. */
+  function dynamicWarning() {
+    return (
+      <p className="ci-warning small">
+        <b>Uwaga:</b> to ustawienia dla zaawansowanych i łatwo tu coś przesadzić - np. za duży spadek sprawi, że sprzedawanie przestanie
+        się opłacać, a za duży wzrost da graczom łatwy sposób na zarobek. Wartości domyślne są przemyślane i przetestowane, dlatego
+        zalecamy ostrożność: zmieniaj po trochę i obserwuj, jak reaguje ekonomia serwera.
+      </p>
+    );
+  }
+
+  function statsHelpModal() {
+    const close = () => setStatsHelp(false);
+    return (
+      <div className="modal-overlay" onClick={close}>
+        <div className="modal card" onClick={(e) => e.stopPropagation()}>
+          <div className="row">
+            <h2 style={{ margin: 0, flex: 1 }}>Statystyki sprzedaży</h2>
+            <button type="button" onClick={close}>
+              Zamknij
+            </button>
+          </div>
+          <p>
+            Sklep zapisuje, <b>co gracze sprzedają</b>: ile sztuk, ile pieniędzy wypłacił i jak zmieniały się ceny skupu. Wszystko widać w
+            tabeli poniżej.
+          </p>
+          <p>
+            <b>Raport do Excela</b> to ta sama wiedza w tabeli, którą możesz posortować. Ostatnia kolumna, „SUGESTIA”, podpowiada, którym
+            przedmiotom warto zmienić cenę - np. gdy skup czegoś prawie cały czas leży na dnie, bo gracze znoszą tego za dużo.
+          </p>
+          <p className="muted small">Przycisk „Pobierz raport” zapisuje go na Twoim komputerze - nie musisz niczego szukać na serwerze.</p>
+        </div>
+      </div>
+    );
+  }
+
+  function dynamicHelpModal() {
+    const close = () => setDynamicHelp(false);
+    return (
+      <div className="modal-overlay" onClick={close}>
+        <div className="modal card" onClick={(e) => e.stopPropagation()}>
+          <div className="row">
+            <h2 style={{ margin: 0, flex: 1 }}>Ceny dynamiczne skupu</h2>
+            <button type="button" onClick={close}>
+              Zamknij
+            </button>
+          </div>
+          <p>
+            Sklep sam zmienia, <b>ile płaci graczom</b> za sprzedawane przedmioty. Ceny kupna się nie zmieniają - tylko skup.
+          </p>
+          <p>
+            Gdy gracze sprzedają czegoś dużo, sklep płaci za to coraz mniej. Gdy nikt tego nie sprzedaje, cena powoli wraca w górę. Dzięki
+            temu nie da się zbić fortuny, farmiąc bez końca jedną rzecz.
+          </p>
+          <p>
+            <b>Przykład:</b> wszyscy sprzedają bruk po 50 $. Po kilku godzinach sklep płaci już 40 $, potem 30 $. Kiedy gracze przestaną,
+            cena wraca do 50 $.
+          </p>
+          <p className="muted small">
+            Poniżej ustawiasz, jak często ceny się przeliczają, o ile najwyżej mogą spaść i wzrosnąć i co ile dni wszystko wraca do normy.
+          </p>
+          <div className="row">
+            <button
+              type="button"
+              onClick={() => {
+                setDynamicHelp(false);
+                setShopHelpDynamic(true);
+                setShopHelp(true);
+              }}
+            >
+              Dowiedz się więcej
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function textsHelpModal() {
+    const close = () => setTextsHelp(false);
+    return (
+      <div className="modal-overlay" onClick={close}>
+        <div className="modal card" onClick={(e) => e.stopPropagation()}>
+          <div className="row">
+            <h2 style={{ margin: 0, flex: 1 }}>Teksty ogłoszeń na czacie</h2>
+            <button type="button" onClick={close}>
+              Zamknij
+            </button>
+          </div>
+          <p>Wiadomości, które sklep sam wysyła na czat: nowa oferta w rotacji, reset cen i eventy.</p>
+
+          <h3>Jak zmienić tekst</h3>
+          <p>
+            Kliknij linijkę w czarnym okienku i pisz w polu pod spodem. Kolor: zaznacz tekst myszką i kliknij kolorowy kwadracik przed
+            polem.
+          </p>
+
+          <h3>Przyciski „+ nazwa kategorii”, „+ cena” itd.</h3>
+          <p>
+            Wstawiają ramkę <span className="mc-chip">nazwa kategorii</span>. W jej miejsce sklep sam wpisze to, czego dotyczy ogłoszenie:
+          </p>
+          <ul>
+            <li>w Blokach: „NOWA OFERTA: Bloki”</li>
+            <li>w Spawnerach: „NOWA OFERTA: Spawnery”</li>
+          </ul>
+          <p>Nazwa wchodzi w swoim kolorze - tym, który ma w kategorii.</p>
+
+          <p className="muted small">
+            <span className="ci-sample">Podkreślone kropkami</span> w okienku to tylko przykład. Zmiany działają w grze po „Wyślij na
+            serwer”.
+          </p>
+          <div className="row">
+            <button
+              type="button"
+              onClick={() => {
+                setTextsHelp(false);
+                setShopHelpTexts(true);
+                setShopHelp(true);
+              }}
+            >
+              Dowiedz się więcej
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function collectionInfoModal() {
+    const r = file.cats.find((c) => c.id === "kolekcja")?.rotation;
+    const close = () => setCollectionInfo(false);
+    return (
+      <div className="modal-overlay" onClick={close}>
+        <div className="modal card" onClick={(e) => e.stopPropagation()}>
+          <div className="row">
+            <h2 style={{ margin: 0, flex: 1 }}>Kolekcja - przedmioty kolekcjonerskie</h2>
+            <button type="button" onClick={close}>
+              Zamknij
+            </button>
+          </div>
+          <p>
+            To specjalna kategoria na rzeczy, które gracze chcą <b>mieć i zbierać</b>, a nie tylko zużyć: płyty muzyczne, głowy, rzadkie
+            dekoracje. Normalnie trudno je zdobyć, a tutaj można je kupić - ale nie zawsze.
+          </p>
+          <p>
+            Kolekcja nie ma stałych przedmiotów - wszystko siedzi w <b>puli rotacji</b>.
+            {r
+              ? ` Sklep co ${r.everyDays} dni losuje z niej ${r.show} przedmiotów, a reszta czeka na swoją kolej.`
+              : " Sklep co kilka dni losuje z niej kilka przedmiotów, a reszta czeka na swoją kolej."}
+          </p>
+          <p>
+            Dzięki temu każdy przedmiot staje się <b>rzadki</b>. Kto przegapi swoją płytę, może czekać tygodnie, aż wróci. Gracze zaglądają
+            do sklepu, żeby sprawdzić nową ofertę, a rzeczy z Kolekcji nabierają wartości - można się nimi chwalić albo odsprzedać drożej
+            na Targu komuś, kto nie zdążył.
+          </p>
+          <p>
+            <b>Wysokie ceny są celowe.</b> To cel dla najbogatszych graczy i sposób na wyciąganie nadmiaru pieniędzy z serwera, żeby waluta
+            nie traciła wartości.
+          </p>
+          <p className="muted small">
+            Wskazówka: zostaw włączone „Ogłoś na czacie, gdy oferta się zmieni” - wtedy wszyscy wiedzą, że właśnie pojawiło się coś nowego.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   function rotationHelpModal() {
     return (
       <div className="modal-overlay" onClick={() => setRotationHelp(false)}>
@@ -1232,8 +1600,8 @@ export default function ShopEditorPage() {
             zmieniające się). Stałe zostają na miejscu, rotują się tylko te z puli.
           </p>
           <p>
-            Wybrane przedmioty przenoszą się ze stałych do puli - przestają być dostępne zawsze. Cofniesz to przyciskiem „Wróć do stałych”
-            przy przedmiocie z puli.
+            Wybrane przedmioty przenoszą się ze stałych do puli - przestają być dostępne zawsze. Przedmioty z puli zobaczysz i zmienisz po
+            kliknięciu „Pula rotacji” nad listą w środku. Cofniesz przeniesienie przyciskiem „Wróć do stałych” przy przedmiocie z puli.
           </p>
           <p>
             <b>Przykład:</b> pula 30 rzeczy, 5 przedmiotów naraz, nowa oferta co 14 dni. Gracz wchodzi i widzi 5 przedmiotów, za dwa tygodnie 5
@@ -1419,81 +1787,298 @@ export default function ShopEditorPage() {
     );
   }
 
+  /** Jedno ustawienie w linijce: nazwa z lewej, okienko z jednostką z prawej, przykład pod spodem. */
+  function fieldRow(title: string, input: ReactNode, hint?: string) {
+    return (
+      <label className="ci-field-row">
+        <span className="ci-field-title">{title}</span>
+        {input}
+        {hint && <span className="muted small ci-field-hint">{hint}</span>}
+      </label>
+    );
+  }
+
   function renderSettings() {
     const s = file.settings;
     const d = s.dynamic;
     const setDyn = (patch: Partial<typeof d>) => setSettings({ dynamic: { ...d, ...patch } });
+    const sections: Array<[SettingsSection, string, string]> = [
+      ["prices", "Ceny", s.rounding === "whole" ? "pełne złotówki" : "z groszami"],
+      ["dynamic", "Ceny dynamiczne", d.enabled ? "włączone" : "wyłączone"],
+      ["texts", "Teksty ogłoszeń", "co sklep pisze na czacie"],
+    ];
     return (
-      <section className="card form">
-        <Fold title="Ceny" open>
-          <label className="checkbox">
-            <input type="radio" checked={s.rounding === "whole"} onChange={() => setSettings({ rounding: "whole" })} />
-            Pełne złotówki (1 sztuka z „64 za 10” kosztuje 1)
-          </label>
-          <label className="checkbox">
-            <input type="radio" checked={s.rounding === "cents"} onChange={() => setSettings({ rounding: "cents" })} />
-            Grosze (1 sztuka z „64 za 10” kosztuje 0.16)
-          </label>
-        </Fold>
-        <Fold title="Ceny dynamiczne skupu" open>
-          <label className="checkbox">
-            <input type="checkbox" checked={d.enabled} onChange={(e) => setDyn({ enabled: e.target.checked })} />
-            Włączone - gdy gracze dużo czegoś sprzedają, skup tego spada; gdy nikt nie sprzedaje, rośnie
-          </label>
-          {d.enabled && (
+      <div className="ci-settings-layout">
+        <aside className="card ci-cats">
+          <div className="ci-section-title">Ustawienia</div>
+          {sections.map(([id, label, sub]) => (
+            <button key={id} type="button" className={`ci-cat ci-settings-nav${settingsSection === id ? " active" : ""}`} onClick={() => setSettingsSection(id)}>
+              <span className="ci-item-name">{label}</span>
+              <span className="muted small">{sub}</span>
+            </button>
+          ))}
+        </aside>
+        <section className="card form ci-settings-panel">
+          {settingsSection === "prices" && (
             <>
-              <label>
-                Co ile minut przeliczać {numberInput(d.cycleMinutes, (n) => setDyn({ cycleMinutes: Math.max(1, Math.floor(n)) }), "1", 1)}
-              </label>
-              <label>
-                Skup może spaść najwyżej o (%) {numberInput(pct(d.minMultiplier), (n) => setDyn({ minMultiplier: fromPct(-Math.abs(n)) }), "5")}
-                <span className="muted small">50 = skup spadnie najwyżej do połowy zwykłej ceny</span>
-              </label>
-              <label>
-                Skup może wzrosnąć najwyżej o (%) {numberInput(pct(d.maxMultiplier), (n) => setDyn({ maxMultiplier: fromPct(Math.abs(n)) }), "5")}
-                <span className="muted small">50 = skup urośnie najwyżej do półtora raza zwykłej ceny</span>
-              </label>
-              <label>
-                Co ile dni wszystkie ceny wracają do normy {numberInput(d.resetDays, (n) => setDyn({ resetDays: Math.max(1, Math.floor(n)) }), "1", 1)}
-              </label>
-              <label>
-                Skup najwyżej taka część ceny kupna {numberInput(d.maxSellShare, (n) => setDyn({ maxSellShare: Math.min(1, n) }), "0.05")}
-                <span className="muted small">0.9 = skup nigdy nie da więcej niż 90% ceny kupna</span>
+              <h2>Ceny</h2>
+              <div className="ci-field-title">Zaokrąglanie ceny za sztukę</div>
+              <label className="checkbox">
+                <input type="radio" checked={s.rounding === "whole"} onChange={() => setSettings({ rounding: "whole" })} />
+                Pełne złotówki (1 sztuka z „64 za 10” kosztuje 1)
               </label>
               <label className="checkbox">
-                <input type="checkbox" checked={d.announceEvents} onChange={(e) => setDyn({ announceEvents: e.target.checked })} />
-                Ogłoś na czacie, gdy zaczyna się albo kończy event (/@shop event)
+                <input type="radio" checked={s.rounding === "cents"} onChange={() => setSettings({ rounding: "cents" })} />
+                Grosze (1 sztuka z „64 za 10” kosztuje 0.16)
               </label>
-              <label className="checkbox">
-                <input type="checkbox" checked={d.announceReset} onChange={(e) => setDyn({ announceReset: e.target.checked })} />
-                Ogłoś na czacie, gdy wszystkie ceny wracają do normy
-              </label>
-              <Fold title="Strojenie (zaawansowane)">
-                <p className="muted small">
-                  Domyślne wartości są przemyślane i przetestowane - zmieniaj tylko, gdy wiesz, co robisz. Jak coś pójdzie nie tak,
-                  wpisz wartości z nawiasów.
-                </p>
-                {TUNING_FIELDS.map(([field, label, step, hint]) => (
-                  <label key={field}>
-                    {label}
-                    <span className="row" style={{ alignItems: "center", gap: "0.4rem", margin: 0 }}>
-                      {numberInput(d.tuning[field], (n) => setDyn({ tuning: { ...d.tuning, [field]: n } }), step, 0)}
-                      <span className="muted small">{hint}</span>
-                    </span>
-                  </label>
-                ))}
-              </Fold>
             </>
           )}
-        </Fold>
-        <Fold title="Statystyki sprzedaży">
-          <label className="checkbox">
-            <input type="checkbox" checked={s.statsEnabled} onChange={(e) => setSettings({ statsEnabled: e.target.checked })} />
-            Zbieraj statystyki (stats.yml + raport stats.csv do Excela z podpowiedziami cen)
-          </label>
-        </Fold>
-        <p className="muted small">Układ okien w grze i ikonki przycisków są w osobnej zakładce „Wygląd menu” u góry.</p>
-      </section>
+
+          {settingsSection === "dynamic" && (
+            <>
+              <h2>Ceny dynamiczne skupu</h2>
+              <label className="checkbox">
+                <input type="checkbox" checked={d.enabled} onChange={(e) => setDyn({ enabled: e.target.checked })} />
+                Włącz ceny dynamiczne skupu
+                <HelpButton id="shop-dynamic-toggle" title="Jak działają ceny dynamiczne" onClick={() => setDynamicHelp(true)} />
+                {d.enabled && (
+                  <ConfirmButton
+                    title="Wszystkie liczby, ogłoszenia i strojenie cen dynamicznych wracają do wartości domyślnych"
+                    disabled={sameValues({ ...d, enabled: true }, defaultDynamic())}
+                    onConfirm={() => setSettings({ dynamic: { ...defaultDynamic(), enabled: d.enabled } })}
+                  >
+                    <Undo2 size={14} strokeWidth={1.75} /> Przywróć domyślne
+                  </ConfirmButton>
+                )}
+              </label>
+              {d.enabled && (
+                <>
+                  {dynamicWarning()}
+                  {fieldRow(
+                    "Co ile minut przeliczać",
+                    numberInput(d.cycleMinutes, (n) => setDyn({ cycleMinutes: Math.max(1, Math.floor(n)) }), "1", 1, "min"),
+                    "60 = ceny skupu zmieniają się raz na godzinę"
+                  )}
+                  {fieldRow(
+                    "Skup może spaść najwyżej o",
+                    numberInput(pct(d.minMultiplier), (n) => setDyn({ minMultiplier: fromPct(-Math.abs(n)) }), "5", 0, "%"),
+                    "50 = skup spadnie najwyżej do połowy zwykłej ceny"
+                  )}
+                  {fieldRow(
+                    "Skup może wzrosnąć najwyżej o",
+                    numberInput(pct(d.maxMultiplier), (n) => setDyn({ maxMultiplier: fromPct(Math.abs(n)) }), "5", 0, "%"),
+                    "50 = skup urośnie najwyżej do półtora raza zwykłej ceny"
+                  )}
+                  {fieldRow(
+                    "Co ile dni wszystkie ceny wracają do normy",
+                    numberInput(d.resetDays, (n) => setDyn({ resetDays: Math.max(1, Math.floor(n)) }), "1", 1, "dni"),
+                    "14 = raz na dwa tygodnie skup wszystkiego wraca do zwykłej ceny"
+                  )}
+                  {fieldRow(
+                    "Skup najwyżej taka część ceny kupna",
+                    numberInput(Math.round(d.maxSellShare * 100), (n) => setDyn({ maxSellShare: Math.min(1, n / 100) }), "5", 0, "% ceny kupna"),
+                    "90 = skup nigdy nie da więcej niż 90% ceny kupna"
+                  )}
+                  <div className="ci-field-title" style={{ marginTop: "0.6rem" }}>
+                    Ogłoszenia na czacie
+                  </div>
+                  <label className="checkbox">
+                    <input type="checkbox" checked={d.announceEvents} onChange={(e) => setDyn({ announceEvents: e.target.checked })} />
+                    Gdy zaczyna się albo kończy event (/@shop event)
+                  </label>
+                  <label className="checkbox">
+                    <input type="checkbox" checked={d.announceReset} onChange={(e) => setDyn({ announceReset: e.target.checked })} />
+                    Gdy wszystkie ceny wracają do normy
+                  </label>
+                  <Fold title="Strojenie (zaawansowane)">
+                    <div className="row" style={{ alignItems: "center", gap: "0.6rem" }}>
+                      <p className="ci-warning small" style={{ margin: 0, flex: 1 }}>
+                        <b>Uwaga:</b> domyślne wartości są przemyślane i przetestowane - zmieniaj tylko, gdy wiesz, co robisz. Jak coś
+                        pójdzie nie tak, wpisz wartości domyślne podane pod każdym polem albo kliknij „Przywróć domyślne”.
+                      </p>
+                      <ConfirmButton
+                        title="Tylko te 8 liczb strojenia wraca do wartości domyślnych"
+                        disabled={sameValues(d.tuning, defaultTuning())}
+                        onConfirm={() => setDyn({ tuning: defaultTuning() })}
+                      >
+                        <Undo2 size={14} strokeWidth={1.75} /> Przywróć domyślne
+                      </ConfirmButton>
+                    </div>
+                    {TUNING_FIELDS.map(([field, label, step, hint, unit, scale]) => (
+                      <div key={field}>
+                        {fieldRow(
+                          label,
+                          numberInput(
+                            Math.round(d.tuning[field] * scale * 1000) / 1000,
+                            (n) => setDyn({ tuning: { ...d.tuning, [field]: Math.round((n / scale) * 1e6) / 1e6 } }),
+                            step,
+                            0,
+                            unit
+                          ),
+                          hint
+                        )}
+                      </div>
+                    ))}
+                  </Fold>
+                </>
+              )}
+            </>
+          )}
+
+          {settingsSection === "texts" && (
+            <>
+              <h2>Teksty ogłoszeń na czacie</h2>
+              <div className="row" style={{ alignItems: "center", gap: "0.5rem" }}>
+                <span className="muted small">Kliknij linijkę, żeby ją zmienić.</span>
+                <HelpButton id="shop-announce-texts-v4" title="Jak działają teksty ogłoszeń" onClick={() => setTextsHelp(true)} />
+                <ConfirmButton
+                  title="Wszystkie teksty ogłoszeń wracają do tych z pluginu"
+                  disabled={sameTexts(file.texts, defaultAnnounceTexts(language))}
+                  onConfirm={() => {
+                    setEditingText(null);
+                    setTexts(defaultAnnounceTexts(language));
+                  }}
+                >
+                  <Undo2 size={14} strokeWidth={1.75} /> Przywróć domyślne
+                </ConfirmButton>
+              </div>
+                {ANNOUNCE_GROUPS.map(([group, title]) => {
+                  const fields = ANNOUNCE_FIELDS.filter((f) => f.group === group);
+                  const editing = fields.find((f) => f.key === editingText);
+                  return (
+                    <div key={group}>
+                      <div className="ci-section-title">{title}</div>
+                      <div className="mc-preview ci-chat-lines">
+                        {fields.map((f) => (
+                          <button
+                            key={f.key}
+                            type="button"
+                            className={`ci-chat-line${editingText === f.key ? " active" : ""}`}
+                            title={`${f.label} - kliknij, żeby zmienić`}
+                            onClick={() => setEditingText(editingText === f.key ? null : f.key)}
+                          >
+                            <SamplePreview text={file.texts[f.key] ?? ""} values={SAMPLE_VALUES} labels={PLACEHOLDER_LABELS} emptyLabel="(pusta linijka - nic się nie wyświetli)" />
+                          </button>
+                        ))}
+                      </div>
+                      {editing && (
+                        <div className="ci-chat-edit">
+                          <div className="row" style={{ alignItems: "center", margin: 0, gap: "0.4rem" }}>
+                            <b style={{ marginRight: "0.4rem" }}>{editing.label}</b>
+                            <button type="button" title="Cofnij (Ctrl+Z)" disabled={!textHistory.canUndo} onClick={() => textInputRef.current?.undo()}>
+                              <Undo2 size={14} strokeWidth={1.75} /> Cofnij
+                            </button>
+                            <button type="button" title="Ponów (Ctrl+Y)" disabled={!textHistory.canRedo} onClick={() => textInputRef.current?.redo()}>
+                              <Redo2 size={14} strokeWidth={1.75} /> Ponów
+                            </button>
+                            <button
+                              type="button"
+                              disabled={file.texts[editing.key] === defaultAnnounceTexts(language)[editing.key]}
+                              onClick={() => textInputRef.current?.replaceAll(defaultAnnounceTexts(language)[editing.key])}
+                            >
+                              Przywróć domyślny
+                            </button>
+                            <button type="button" onClick={() => setEditingText(null)}>
+                              Gotowe
+                            </button>
+                          </div>
+                          <MinecraftTextInput
+                            ref={textInputRef}
+                            onHistoryChange={setTextHistory}
+                            value={file.texts[editing.key] ?? ""}
+                            onChange={(v) => setTexts({ [editing.key]: v })}
+                            onEnter={() => setEditingText(null)}
+                            hidePreview
+                            inserts={editing.placeholders.map((ph) => ({ code: `{${ph}}`, label: PLACEHOLDER_LABELS[ph] }))}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+            </>
+          )}
+        </section>
+        {settingsChangesPanel()}
+      </div>
+    );
+  }
+
+  /** Lista ustawień, które różnią się od tego, co jest teraz na serwerze - każde da się cofnąć osobno. */
+  function settingsChanges(): Array<{ key: string; section: SettingsSection; label: string; from: string; to: string; revert: () => void }> {
+    const a = serverFile.settings;
+    const b = file.settings;
+    const da = a.dynamic;
+    const db = b.dynamic;
+    const out: Array<{ key: string; section: SettingsSection; label: string; from: string; to: string; revert: () => void }> = [];
+    const add = (key: string, section: SettingsSection, label: string, from: string, to: string, revert: () => void) => {
+      if (from !== to) out.push({ key, section, label, from, to, revert });
+    };
+    const setD = (patch: Partial<typeof db>) => setSettings({ dynamic: { ...db, ...patch } });
+    const yesNo = (v: boolean) => (v ? "tak" : "nie");
+    const round = (r: string) => (r === "whole" ? "pełne złotówki" : "z groszami");
+    add("rounding", "prices", "Zaokrąglanie", round(a.rounding), round(b.rounding), () => setSettings({ rounding: a.rounding }));
+    add("dyn-enabled", "dynamic", "Ceny dynamiczne", da.enabled ? "włączone" : "wyłączone", db.enabled ? "włączone" : "wyłączone", () =>
+      setD({ enabled: da.enabled })
+    );
+    add("cycle", "dynamic", "Co ile minut przeliczać", `${da.cycleMinutes} min`, `${db.cycleMinutes} min`, () => setD({ cycleMinutes: da.cycleMinutes }));
+    add("min", "dynamic", "Skup może spaść o", `${pct(da.minMultiplier)} %`, `${pct(db.minMultiplier)} %`, () => setD({ minMultiplier: da.minMultiplier }));
+    add("max", "dynamic", "Skup może wzrosnąć o", `${pct(da.maxMultiplier)} %`, `${pct(db.maxMultiplier)} %`, () => setD({ maxMultiplier: da.maxMultiplier }));
+    add("reset", "dynamic", "Ceny wracają do normy co", `${da.resetDays} dni`, `${db.resetDays} dni`, () => setD({ resetDays: da.resetDays }));
+    add("share", "dynamic", "Skup najwyżej", `${Math.round(da.maxSellShare * 100)} %`, `${Math.round(db.maxSellShare * 100)} %`, () =>
+      setD({ maxSellShare: da.maxSellShare })
+    );
+    add("ann-events", "dynamic", "Ogłoszenie eventów", yesNo(da.announceEvents), yesNo(db.announceEvents), () => setD({ announceEvents: da.announceEvents }));
+    add("ann-reset", "dynamic", "Ogłoszenie resetu cen", yesNo(da.announceReset), yesNo(db.announceReset), () => setD({ announceReset: da.announceReset }));
+    for (const [field, label, , , unit, scale] of TUNING_FIELDS) {
+      const show = (v: number) => `${Math.round(v * scale * 1000) / 1000} ${unit}`;
+      add(`tune-${field}`, "dynamic", `Strojenie: ${label}`, show(da.tuning[field]), show(db.tuning[field]), () =>
+        setD({ tuning: { ...db.tuning, [field]: da.tuning[field] } })
+      );
+    }
+    for (const f of ANNOUNCE_FIELDS) {
+      add(`text-${f.key}`, "texts", `Tekst: ${f.label}`, serverFile.texts[f.key] ?? "", file.texts[f.key] ?? "", () =>
+        setTexts({ [f.key]: serverFile.texts[f.key] ?? "" })
+      );
+    }
+    return out;
+  }
+
+  function settingsChangesPanel() {
+    const changes = settingsChanges();
+    const noShopOnServer = serverCatIds.length === 0;
+    return (
+      <aside className="card ci-changes">
+        <div className="ci-section-title">Zmiany do wysłania</div>
+        {noShopOnServer ? (
+          <p className="muted small">Na serwerze nie ma jeszcze sklepu - wszystko pójdzie przy pierwszym wysłaniu.</p>
+        ) : changes.length === 0 ? (
+          <p className="muted small">Wszystko jak na serwerze - nic nie zmieniłeś.</p>
+        ) : (
+          <>
+            {changes.map((ch) => (
+              <div key={ch.key} className="ci-change">
+                <button type="button" className="ci-change-text" title="Pokaż to ustawienie" onClick={() => setSettingsSection(ch.section)}>
+                  <span className="ci-change-label">{ch.label}</span>
+                  {ch.section === "texts" ? (
+                    <span className="small">zmieniony</span>
+                  ) : (
+                    <span className="small">
+                      <span className="muted">{ch.from}</span> → <b>{ch.to}</b>
+                    </span>
+                  )}
+                </button>
+                <button type="button" className="ci-change-undo" title="Cofnij tę zmianę (wróć do tego, co jest na serwerze)" onClick={ch.revert}>
+                  <Undo2 size={14} strokeWidth={1.75} />
+                </button>
+              </div>
+            ))}
+            <p className="muted small" style={{ marginBottom: 0 }}>
+              Żeby zmiany zadziałały w grze: „Zapisz” na dole, potem „Wyślij na serwer” u góry.
+            </p>
+          </>
+        )}
+      </aside>
     );
   }
 
@@ -1788,13 +2373,26 @@ export default function ShopEditorPage() {
     return (
       <section className="card">
         <h2>Statystyki sprzedaży</h2>
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={file.settings.statsEnabled}
+            onChange={(e) => setSettings({ statsEnabled: e.target.checked })}
+          />
+          Zbieraj statystyki sprzedaży
+          <HelpButton id="shop-stats" title="Co dają statystyki" onClick={() => setStatsHelp(true)} />
+        </label>
         <p className="muted small">
-          Dane z serwera (stats.yml i prices.yml) - tylko podgląd. {file.settings.statsEnabled ? "" : "Statystyki są wyłączone w Ustawieniach, więc nowe dane się nie zbierają."}
+          Dane prosto z serwera - tylko podgląd.{" "}
+          {file.settings.statsEnabled ? "" : "Zbieranie jest wyłączone, więc nowe dane się nie pojawiają (zaznacz wyżej, zapisz i wyślij na serwer)."}
         </p>
         <div className="row">
           <input placeholder="Szukaj po nazwie lub kluczu..." value={statsFilter} onChange={(e) => setStatsFilter(e.target.value)} />
           <button type="button" onClick={() => refreshStats()} disabled={!profileId}>
             Odśwież
+          </button>
+          <button type="button" onClick={downloadReport} disabled={!profileId} title="Zapisz raport sprzedaży do Excela na tym komputerze">
+            <Download size={14} strokeWidth={1.75} /> Pobierz raport do Excela
           </button>
         </div>
         {rows.length === 0 ? (
@@ -1879,9 +2477,7 @@ export default function ShopEditorPage() {
             </option>
           ))}
         </select>
-        <button type="button" title="Jak działa sklep" aria-label="Jak działa sklep" onClick={() => setShopHelp(true)}>
-          <HelpCircle size={16} strokeWidth={1.75} />
-        </button>
+        <HelpButton id="shop-how-it-works" title="Przewodnik: jak działa sklep, krok po kroku" label="Jak działa sklep" onClick={() => setShopHelp(true)} />
         <span style={{ flex: 1 }} />
         {notSent && !unsaved && <span className="muted small">zapisane, jeszcze niewysłane</span>}
         <button
@@ -1905,6 +2501,10 @@ export default function ShopEditorPage() {
       {priceHelp && priceHelpModal()}
       {shopHelp && shopHelpModal()}
       {fixedHelp && fixedPriceHelpModal()}
+      {dynamicHelp && dynamicHelpModal()}
+      {statsHelp && statsHelpModal()}
+      {collectionInfo && collectionInfoModal()}
+      {textsHelp && textsHelpModal()}
       {poolPickCat && poolPickModal()}
 
       {tab === "settings" && renderSettings()}
@@ -1936,8 +2536,11 @@ export default function ShopEditorPage() {
                         poza menu
                       </span>
                     )}
-                    <span className="ci-prize-count" title={`${c.items.length} przedmiotów`}>
-                      <Store size={12} strokeWidth={2} /> {c.items.length}
+                    <span
+                      className="ci-prize-count"
+                      title={c.rotation ? `${c.items.length} stałych + ${c.rotation.pool.length} w puli rotacji` : `${c.items.length} przedmiotów`}
+                    >
+                      <Store size={12} strokeWidth={2} /> {c.items.length + (c.rotation?.pool.length ?? 0)}
                     </span>
                   </button>
                   <button

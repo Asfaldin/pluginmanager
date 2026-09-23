@@ -531,14 +531,35 @@ export function moveToPool(c: CategoryDraft, indexes: number[]): CategoryDraft {
 }
 
 /** Wyjmuje wskazane przedmioty z puli z powrotem na stałą listę (cofnięcie przeniesienia). */
-export function moveBackFromPool(c: CategoryDraft, indexes: number[]): CategoryDraft {
+const refKey = (r: ItemRef) => (r.custom != null ? `custom:${r.custom}` : `item:${r.item ?? ""}`);
+
+/**
+ * Cofa przedmioty z puli do stałych. `order` = kolejność stałych przedmiotów, do której wracamy
+ * (np. ta z serwera) - przedmiot wraca na SWOJE miejsce między sąsiadów, a nie na koniec listy.
+ * Przedmiot, którego tam nie ma (np. od początku był w puli), idzie na koniec.
+ */
+export function moveBackFromPool(c: CategoryDraft, indexes: number[], order: ItemRef[] = []): CategoryDraft {
   if (!c.rotation) return c;
   const taken = new Set(indexes);
   const moved = c.rotation.pool.filter((_, i) => taken.has(i));
   if (moved.length === 0) return c;
+  const rank = new Map(order.map((r, i) => [refKey(r), i] as const));
+  const items = [...c.items];
+  for (const it of moved) {
+    const mine = rank.get(refKey(it.ref));
+    let at = items.length;
+    if (mine != null) {
+      const after = items.findIndex((x) => {
+        const other = rank.get(refKey(x.ref));
+        return other != null && other > mine;
+      });
+      if (after >= 0) at = after;
+    }
+    items.splice(at, 0, it);
+  }
   return {
     ...c,
-    items: [...c.items, ...moved],
+    items,
     rotation: { ...c.rotation, pool: c.rotation.pool.filter((_, i) => !taken.has(i)) },
   };
 }
