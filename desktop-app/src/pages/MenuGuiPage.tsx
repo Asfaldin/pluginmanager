@@ -69,7 +69,7 @@ export default function MenuGuiPage() {
         await sftpWriteFile(pid, path, serializeMenuGuiContent(DEFAULT_MENU_GUI));
         setContent(DEFAULT_MENU_GUI);
         setServerContent(DEFAULT_MENU_GUI);
-        setStatus("menu-gui.yml nie istniało - wgrano domyślną wersję. Serwer użyje jej po /@reloadmenu albo restarcie.");
+        setStatus("Na serwerze nie było jeszcze ustawień - wgrano domyślne. Serwer użyje ich po /@reloadmenu albo restarcie.");
       }
       setLastUsed(LAST_USED_KEY, { profileId: pid, remotePath: path });
     } catch (e) {

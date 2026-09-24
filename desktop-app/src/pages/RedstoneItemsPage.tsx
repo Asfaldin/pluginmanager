@@ -321,7 +321,7 @@ export default function RedstoneItemsPage() {
       <Link to="/tools" className="back-link">← Twoje pluginy</Link>
       <h1>Redstone (drony + golemy)</h1>
       <p className="muted">
-        Rejestr redstone-itemów mainplugins-redstone (redstone-items.yml). Prawdziwy wanilijski redstone
+        Przedmioty redstone. Prawdziwy wanilijski redstone
         występuje tylko jako lokalna bramka on/off (RedstonePower) na STATION/HARVESTER - żaden graf/zanik
         sygnału. CABLE (kabel przesyłowy, łącze danych bez zaniku), STATION (dron sadzi puste pola na siatce 5x5
         wokół sadzarki), HARVESTER (dron zbiera dojrzałe uprawy z siatki 5x5 wokół siebie do skrzynki),

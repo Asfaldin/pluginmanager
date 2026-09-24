@@ -56,7 +56,7 @@ export default function DungeonsPage() {
         await sftpWriteFile(pid, path, serializeDungeonConfig(DEFAULT_DUNGEON_CONFIG));
         setConfig(DEFAULT_DUNGEON_CONFIG);
         setServerConfig(DEFAULT_DUNGEON_CONFIG);
-        setStatus("dungeons-config.yml nie istniało - wgrano domyślną wersję. Serwer użyje jej po /@reloaddungeons albo restarcie.");
+        setStatus("Na serwerze nie było jeszcze ustawień - wgrano domyślne. Serwer użyje ich po /@reloaddungeons albo restarcie.");
       }
       setLastUsed(LAST_USED_KEY, { profileId: pid, remotePath: path });
     } catch (e) {

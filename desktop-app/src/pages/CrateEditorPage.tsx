@@ -185,7 +185,7 @@ export default function CrateEditorPage() {
       setSaved(EMPTY);
       setServerFile(EMPTY);
       setView(null);
-      setStatus(`Nie udało się wczytać crates.yml (${String(e)}). Czy na serwerze jest nowa wersja pluginu Skrzynek?`);
+      setStatus(`Nie udało się wczytać skrzynek z serwera (${String(e)}). Czy na serwerze jest nowa wersja pluginu Skrzynek?`);
     } finally {
       setBusy(false);
     }

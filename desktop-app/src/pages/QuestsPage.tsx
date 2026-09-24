@@ -184,7 +184,7 @@ export default function QuestsPage() {
       setSaved(def);
       setServerFile(EMPTY);
       setView({ kind: "category", id: def.categories[0].id, quest: "settings" });
-      setStatus(`Na serwerze nie ma jeszcze quests.yml - wczytano domyślne questy (język: ${language}). Kliknij „Wyślij na serwer”, żeby je tam zapisać.`);
+      setStatus(`Na serwerze nie ma jeszcze questów - wczytano domyślne (język: ${language}). Kliknij „Wyślij na serwer”, żeby je tam zapisać.`);
     } finally {
       setBusy(false);
     }
@@ -726,11 +726,21 @@ export default function QuestsPage() {
         ← Twoje pluginy
       </Link>
       <h1>Questy</h1>
-      <p className="muted">
-        Kategorie i zadania: co gracz musi zrobić (przynieść przedmioty, zapłacić, pokazać przedmiot albo nic) i co za to dostaje.
-      </p>
+      <div className="ci-page-intro">
+        <p className="muted">
+          Kategorie i zadania: co gracz musi zrobić (przynieść przedmioty, zapłacić, pokazać przedmiot albo nic) i co za to dostaje.
+        </p>
+        <select value="" onChange={(e) => loadTemplate(e.target.value)} disabled={!profileId} title="Gotowe zestawy questów - podmieniają wszystkie questy w edytorze">
+          <option value="">Wczytaj szablon...</option>
+          {templateChoices(language).map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      <div className="row">
+      <div className="row ci-toolbar">
         <select value={profileId} onChange={(e) => selectProfile(e.target.value)}>
           <option value="">Wybierz serwer...</option>
           {profiles.map((p) => (
@@ -753,14 +763,6 @@ export default function QuestsPage() {
         <button type="button" className={view?.kind === "menu" ? "ci-publish" : undefined} onClick={() => setView({ kind: "menu" })}>
           Wygląd menu
         </button>
-        <select value="" onChange={(e) => loadTemplate(e.target.value)} disabled={!profileId} title="Gotowe zestawy questów">
-          <option value="">Wczytaj szablon...</option>
-          {templateChoices(language).map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.label}
-            </option>
-          ))}
-        </select>
         <span style={{ flex: 1 }} />
         {notSent && !unsaved && <span className="muted small">zapisane, jeszcze niewysłane</span>}
         <button

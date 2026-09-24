@@ -53,7 +53,7 @@ export default function FarmingPage() {
         await sftpWriteFile(pid, path, serializeFarmingConfig(DEFAULT_FARMING_CONFIG));
         setConfig(DEFAULT_FARMING_CONFIG);
         setServerConfig(DEFAULT_FARMING_CONFIG);
-        setStatus("farming-config.yml nie istniało - wgrano domyślną wersję. Serwer użyje jej po /@reloadfarming albo restarcie.");
+        setStatus("Na serwerze nie było jeszcze ustawień - wgrano domyślne. Serwer użyje ich po /@reloadfarming albo restarcie.");
       }
       setLastUsed(LAST_USED_KEY, { profileId: pid, remotePath: path });
     } catch (e) {

@@ -90,7 +90,7 @@ export default function MarketPage() {
       setFile(d);
       setSaved(d);
       setServerFile(null);
-      setStatus("Na serwerze nie ma jeszcze market.yml - pokazano ustawienia domyślne. Kliknij „Wyślij na serwer”, żeby je tam zapisać.");
+      setStatus("Na serwerze nie ma jeszcze ustawień Targu - pokazano domyślne. Kliknij „Wyślij na serwer”, żeby je tam zapisać.");
     } finally {
       setBusy(false);
     }
