@@ -8,6 +8,15 @@ import {
   isLotted,
   parseCategory,
   moveBackFromPool,
+  switchLot,
+  displayOrder,
+  pageSlots,
+  placeItemAt,
+  placeCategoryAt,
+  hideCategoryFromMenu,
+  removeMenuSlot,
+  pruneBlankCategorySlots,
+  ensureCategorySlots,
   moveToPool,
   newItem,
   parseShopSettings,
@@ -79,14 +88,19 @@ describe("shopYaml categories", () => {
 describe("shopYaml settings", () => {
   it("empty text gives defaults", () => {
     const s = parseShopSettings("");
-    expect({ ...s, raw: {} }).toEqual(defaultSettings());
+    const d = defaultSettings();
+    // bez kategorii menu główne nie ma pustych "miejsc na kategorie"
+    const expected = { ...d, menus: { ...d.menus, "main-menu": { ...d.menus["main-menu"], layout: pruneBlankCategorySlots(d.menus["main-menu"].layout, []) } } };
+    expect({ ...s, raw: {} }).toEqual(expected);
   });
 
   it("round-trips and keeps unknown fields", () => {
     const s = parseShopSettings("categories: [a, b]\nprice-rounding: whole\ndynamic-prices:\n  enabled: false\n  secret: 5\nmystery: yes\n");
     expect(s.rounding).toBe("whole");
     expect(s.dynamic.enabled).toBe(false);
-    expect(s.menus).toEqual(defaultMenus());
+    const dm = defaultMenus();
+    expect(s.menus).toEqual({ ...dm, "main-menu": { ...dm["main-menu"], layout: pruneBlankCategorySlots(dm["main-menu"].layout, ["a", "b"]) } });
+    expect(s.menus["main-menu"].layout.filter((e) => e.role === "CATEGORY_SLOT")).toHaveLength(2);
     const text = serializeShopSettings(s);
     const back = yaml.load(text) as Record<string, any>;
     expect(back.mystery).toBe("yes");
@@ -310,5 +324,110 @@ describe("shopYaml dynamic prices", () => {
     const back = parseShopSettings(serializeShopSettings(s));
     expect(back.dynamic.announceReset).toBe(false);
     expect(back.dynamic.tuning).toEqual(s.dynamic.tuning);
+  });
+});
+
+describe("switchLot", () => {
+  it("po kilka sztuk i z powrotem daje DOKŁADNIE te same ceny", () => {
+    const single = { amount: 1, sellAmount: 64, buy: 10, sell: 50 };
+    const lotted = switchLot(single, true);
+    expect(lotted).toEqual({ amount: 64, sellAmount: 64, buy: 640, sell: 50 });
+    const back = switchLot(lotted, false, single);
+    expect(back).toEqual(single);
+    // skup 50 za 64 = 0.78 za sztukę - bez pamięci wyszłoby 0.78, z pamięcią wraca 50
+    const again = switchLot(back, true, lotted);
+    expect(again.sell).toBe(50);
+  });
+
+  it("zmieniona w międzyczasie cena się przelicza, a nie wraca stara", () => {
+    const lotted = { amount: 64, sellAmount: 64, buy: 640, sell: 50 };
+    const single = switchLot(lotted, false);
+    const edited = { ...single, buy: 12 };
+    expect(switchLot(edited, true, lotted).buy).toBe(768);
+  });
+
+  it("wyłączone kupno albo skup zostaje wyłączone", () => {
+    expect(switchLot({ amount: 1, sellAmount: 1, buy: null, sell: 5 }, true)).toEqual({ amount: 64, sellAmount: 64, buy: null, sell: 320 });
+  });
+});
+
+describe("kategorie w menu głównym", () => {
+  const L = (slots: number[], extra: { slot: number; role: string }[] = []) => [
+    ...extra,
+    ...slots.map((slot) => ({ slot, role: "CATEGORY_SLOT" })),
+  ];
+  const where = (m: { layout: { slot: number; role: string }[]; order: string[] }) =>
+    Object.fromEntries([...categoryBySlot(m.layout, m.order)].filter(([, c]) => c).map(([s, c]) => [c, s]));
+
+  it("kategoria idzie dokładnie w kliknięte puste pole, inne zostają na miejscu", () => {
+    const m = placeCategoryAt(L([19, 20, 21]), ["bloki", "drewno", "rudy"], "bloki", 40);
+    expect(where(m)).toEqual({ bloki: 40, drewno: 20, rudy: 21 });
+  });
+
+  it("na polu innej kategorii zamieniają się miejscami", () => {
+    const m = placeCategoryAt(L([19, 20, 21]), ["bloki", "drewno", "rudy"], "bloki", 21);
+    expect(where(m)).toEqual({ bloki: 21, drewno: 20, rudy: 19 });
+  });
+
+  it("kategoria spoza menu wypycha tamtą z menu", () => {
+    const m = placeCategoryAt(L([19, 20]), ["bloki", "drewno"], "spawnery", 20);
+    expect(where(m)).toEqual({ bloki: 19, spawnery: 20 });
+    expect(m.order).not.toContain("drewno");
+  });
+
+  it("przycisk albo tło w polu ustępuje kategorii", () => {
+    const m = placeCategoryAt(L([19], [{ slot: 4, role: "SEARCH" }, { slot: 30, role: "FILLER" }]), ["bloki"], "bloki", 30);
+    expect(where(m)).toEqual({ bloki: 30 });
+    expect(m.layout.find((e) => e.slot === 30)?.role).toBe("CATEGORY_SLOT");
+    expect(m.layout.find((e) => e.slot === 4)?.role).toBe("SEARCH");
+  });
+
+  it("puste miejsca na kategorie znikają, nowe kategorie dostają wolne pole", () => {
+    expect(pruneBlankCategorySlots(L([19, 20, 21, 22]), ["a", "b"]).map((e) => e.slot)).toEqual([19, 20]);
+    const withSearch = L([19, 20], [{ slot: 21, role: "SEARCH" }]);
+    const grown = ensureCategorySlots(withSearch, ["a", "b", "c"], 54);
+    expect(where({ layout: grown, order: ["a", "b", "c"] })).toEqual({ a: 19, b: 20, c: 22 });
+  });
+
+  it("schowanie kategorii nie przesuwa pozostałych", () => {
+    const m = hideCategoryFromMenu(L([19, 20, 21]), ["bloki", "drewno", "rudy"], "bloki");
+    expect(where(m)).toEqual({ drewno: 20, rudy: 21 });
+  });
+
+  it("usunięcie pola z kategorią nie przesuwa pozostałych", () => {
+    const m = removeMenuSlot(L([19, 20, 21]), ["bloki", "drewno", "rudy"], 20);
+    expect(where(m)).toEqual({ bloki: 19, rudy: 21 });
+  });
+});
+
+describe("strona kategorii jak w grze", () => {
+  const it3 = [
+    { ...newItem({ item: "A" }), buy: 30 },
+    { ...newItem({ item: "B" }), buy: 10 },
+    { ...newItem({ item: "C" }), buy: null, sell: 5 },
+  ];
+  it("kolejność: Twoja / od najtańszego / od najwyższego skupu", () => {
+    expect(displayOrder(it3, "order")).toEqual([0, 1, 2]);
+    expect(displayOrder(it3, "buy")).toEqual([1, 0, 2]);
+    expect(displayOrder(it3, "sell")[0]).toBe(2);
+  });
+
+  it("wyśrodkowanie małej kategorii jak w pluginie", () => {
+    const grid = [10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34];
+    expect(pageSlots(grid, 3, true)).toEqual([21, 22, 23]);
+    expect(pageSlots(grid, 3, false)).toEqual(grid);
+    expect(pageSlots(grid, 9, true)).toEqual(grid);
+  });
+
+  it("przedmiot trafia w kliknięte pole, także na szachownicy", () => {
+    const layout = [10, 12, 14].map((slot) => ({ slot, role: "ITEM_SLOT" }));
+    const items = ["A", "B", "C"].map((item) => newItem({ item }));
+    // C w pole 10 -> C jest pierwsze
+    const a = placeItemAt(layout, items, 2, 10, 0);
+    expect(a.items.map((i) => (i.ref as any).item)).toEqual(["C", "A", "B"]);
+    // nowe pole 11 (miedzy 10 a 12) staje sie drugim polem na przedmiot, B tam trafia
+    const b = placeItemAt(layout, items, 1, 11, 0);
+    expect(b.layout.filter((e) => e.role === "ITEM_SLOT").map((e) => e.slot)).toEqual([10, 11, 12, 14]);
+    expect(b.items.map((i) => (i.ref as any).item)).toEqual(["A", "B", "C"]);
   });
 });

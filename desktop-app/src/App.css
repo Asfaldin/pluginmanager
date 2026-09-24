@@ -3273,3 +3273,294 @@ button:disabled:hover {
 .ci-note b {
   color: var(--accent-strong);
 }
+
+/* Nagłówek prawego panelu (nazwa kategorii, przedmiotu, skrzynki, questa, sekcji ustawień) -
+   większy, żeby od razu było widać, co się edytuje. */
+.ci-editor > h2,
+.ci-settings-panel > h2 {
+  font-size: 1.45rem;
+  line-height: 1.25;
+  margin: 0.1rem 0 0.8rem;
+}
+
+/* Na liście kategorii: ile przedmiotów w tej kategorii nie pokaże się w sklepie (np. brak pluginu Spawnery).
+   Czerwone, bo coś NIE DZIAŁA (żółte = ważne/ostrożnie, fioletowe = informacja). */
+.ci-cat-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin-left: auto;
+  margin-right: 0.3rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  background: rgba(248, 81, 73, 0.12);
+}
+
+/* Coś nie działa (np. przedmiot nie pokaże się w sklepie) - czerwona kreska z lewej.
+   Kolory ramek: czerwona = nie działa, żółta (ci-warning) = ważne/ostrożnie, fioletowa (ci-note) = informacja. */
+.ci-error {
+  border-left: 3px solid var(--danger);
+  background: rgba(248, 81, 73, 0.1);
+  color: var(--text);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0 6px 6px 0;
+}
+.ci-error b {
+  color: var(--danger);
+}
+
+/* Duża czerwona ramka "Ten przedmiot nie działa" na górze panelu. */
+.ci-error.ci-error-big {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.85rem 1rem;
+  border-left-width: 5px;
+  border: 1px solid var(--danger);
+  border-left: 5px solid var(--danger);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  margin-bottom: 0.8rem;
+}
+.ci-error-big > svg {
+  color: var(--danger);
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+.ci-error-big b {
+  font-size: 1.05rem;
+}
+.ci-error-big p {
+  margin: 0.25rem 0 0.4rem;
+}
+.ci-error-link {
+  color: var(--danger);
+  font-weight: 600;
+}
+/* Ustawienia, których nie ma sensu ruszać (przedmiot i tak nie działa) - rozmyte i nieklikalne. */
+.ci-disabled {
+  opacity: 0.35;
+  filter: blur(1.5px) grayscale(0.6);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Pasek po "Wczytaj z serwera": odłożone zmiany można przywrócić jednym kliknięciem. */
+.ci-restore-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 0.5rem 0;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.ci-restore-bar > span {
+  flex: 1;
+  min-width: 14rem;
+}
+
+/* Włącznik jednej funkcji w Ustawieniach (np. "Automatyczny reset cen") - odstęp od pola nad nim. */
+.form label.checkbox.ci-toggle-row {
+  margin-top: 0.6rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.ci-toggle-off {
+  margin: 0.1rem 0 0.4rem 1.6rem;
+}
+
+/* Góra strony pluginu: nazwa, pod nią krótki opis, a zaraz za opisem wybór szablonu. */
+.ci-page-intro {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  margin: 0.4rem 0 0.9rem;
+}
+.ci-page-intro > p {
+  margin: 0;
+}
+.ci-page-intro > select {
+  width: auto;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.6rem;
+}
+/* Pasek narzędzi w jednej linii (zwykły rozmiar przycisków), "Wyślij na serwer" zawsze na końcu z prawej. */
+.row.ci-toolbar {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+.ci-toolbar > button,
+.ci-toolbar > select {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ci-toolbar > .muted.small {
+  white-space: nowrap;
+}
+/* Na naprawdę wąskim oknie lepiej zawinąć niż uciąć przyciski. */
+@media (max-width: 1150px) {
+  .row.ci-toolbar {
+    flex-wrap: wrap;
+  }
+}
+
+/* Paski przewijania w całej aplikacji: cienkie, zaokrąglone, bez strzałek, w kolorach aplikacji.
+   (WebView2 = Chromium, więc działa ::-webkit-scrollbar; celowo BEZ scrollbar-color, bo ten
+   w nowym Chromium wyłącza poniższe style.) */
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+/* Delikatna rynna z odstępem od górnej i dolnej krawędzi karty - pasek nie wchodzi w zaokrąglone rogi. */
+::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border-radius: 999px;
+  margin-block: 10px;
+  margin-inline: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-strong) 70%, transparent), color-mix(in srgb, var(--accent) 55%, transparent));
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  min-height: 40px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--accent-strong), var(--accent));
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:active {
+  background: var(--accent-strong);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+/* Pasek całej strony (przy prawej krawędzi okna): węższy od tych w listach i bez rynny - sam suwak. */
+.content::-webkit-scrollbar {
+  width: 7px;
+}
+.content::-webkit-scrollbar-track {
+  background: transparent;
+}
+.content::-webkit-scrollbar-thumb {
+  border-width: 1px;
+}
+
+/* Opcja, która dotyczy tylko zaznaczonej rzeczy nad nią (np. "Skup po kilka sztuk" pod "Da się sprzedać") - wcięta. */
+.form label.checkbox.ci-sub-option {
+  margin-left: 1.6rem;
+}
+
+/* Mała akcja w wierszu listy obok kosza (np. "Do puli rotacji") - ten sam styl co kosz, fioletowa po najechaniu. */
+.ci-row-action {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  padding: 0.3rem 0.45rem;
+  display: flex;
+  align-items: center;
+}
+.ci-row-action:hover {
+  color: var(--accent-strong);
+  border-color: var(--accent);
+}
+
+/* Zakładka "Pula rotacji" przy wyłączonej rotacji: krótka informacja i przycisk "Włącz rotację". */
+.ci-rotation-off {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  padding: 0.7rem 0.9rem;
+  margin: 0.4rem 0;
+}
+.ci-rotation-off p {
+  margin: 0;
+}
+
+
+/* Nagłówki zwijanych list (Rotacja, Przedmioty, Zadania...) - pogrubione i jasne jak inne nazwy, nie szare. */
+.list-toggle.ci-group,
+.list-toggle {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Okienko "Co ma być w tym polu?" (Wygląd menu) - kafelki z ikonką do kliknięcia. */
+.ci-slot-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 0.35rem;
+  margin: 0.35rem 0;
+}
+.ci-slot-pick {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: left;
+  background: none;
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.5rem;
+}
+.ci-slot-pick:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.ci-slot-pick.active {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+/* Przełącznik widoku (np. "Tło" w Wygląd menu): włączony - fioletowa ramka, wyłączony - szary. */
+.ci-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-muted);
+}
+.ci-view-toggle.on {
+  color: var(--accent-strong);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+/* Siatka w "Wygląd menu" zaczyna się na samej górze; przełącznik "Tło" stoi w lewym górnym rogu obok niej. */
+.ci-grid-wrap {
+  position: relative;
+}
+.ci-grid-wrap > .ci-grid-tools {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+/* Na wąskim oknie siatka zajmuje całą szerokość - wtedy przełącznik nad nią, żeby jej nie zasłaniał. */
+@media (max-width: 1300px) {
+  .ci-grid-wrap > .ci-grid-tools {
+    position: static;
+    margin-bottom: 0.4rem;
+  }
+}
