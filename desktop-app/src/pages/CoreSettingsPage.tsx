@@ -5,7 +5,9 @@ import { Link } from "react-router-dom";
 import { showPrompt } from "../components/PromptModal";
 import { sftpReadFile, sftpWriteFile } from "../lib/api";
 import {
+  CURRENCY_PRESETS,
   parseCommandsYml,
+  readCurrency,
   readSetting,
   serializeCommandsYml,
   writeSetting,
@@ -18,10 +20,11 @@ interface Loaded {
   configText: string;
   language: string;
   economy: string;
+  currency: string;
   commands: CommandRow[];
 }
 
-const EMPTY: Loaded = { configText: "", language: "en", economy: "own", commands: [] };
+const EMPTY: Loaded = { configText: "", language: "en", economy: "own", currency: "$", commands: [] };
 
 function coreDir(pluginsPath: string): string {
   return `${pluginsPath.replace(/\/+$/, "")}/MainpluginsCore`;
@@ -33,6 +36,7 @@ export default function CoreSettingsPage() {
   const [server, setServer] = useState<Loaded>(EMPTY);
   const [language, setLanguage] = useState("en");
   const [economy, setEconomy] = useState("own");
+  const [currency, setCurrency] = useState("$");
   const [commands, setCommands] = useState<CommandRow[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -40,8 +44,9 @@ export default function CoreSettingsPage() {
 
   const langChanged = language !== server.language;
   const ecoChanged = economy !== server.economy;
+  const curChanged = currency !== server.currency;
   const cmdChanged = serializeCommandsYml(commands) !== serializeCommandsYml(server.commands);
-  const dirty = langChanged || ecoChanged || cmdChanged;
+  const dirty = langChanged || ecoChanged || curChanged || cmdChanged;
   useDirtyTracking(dirty);
 
   function selectProfile(id: string) {
@@ -64,11 +69,13 @@ export default function CoreSettingsPage() {
         configText,
         language: readSetting(configText, "language") ?? "en",
         economy: readSetting(configText, "economy") ?? "own",
+        currency: readCurrency(configText),
         commands: parseCommandsYml(commandsText),
       };
       setServer(loaded);
       setLanguage(loaded.language);
       setEconomy(loaded.economy);
+      setCurrency(loaded.currency);
       setCommands(loaded.commands);
     } catch (e) {
       setStatus(`Nie udało się wczytać ustawień core (${String(e)}). Czy na serwerze jest nowa wersja MainpluginsCore?`);
@@ -91,20 +98,21 @@ export default function CoreSettingsPage() {
     try {
       const dir = coreDir(pluginsPath);
       const hints: string[] = [];
-      if (langChanged || ecoChanged) {
+      if (langChanged || ecoChanged || curChanged) {
         let text = server.configText;
         if (langChanged) text = writeSetting(text, "language", language);
         if (ecoChanged) text = writeSetting(text, "economy", economy);
+        if (curChanged) text = writeSetting(text, "currency", JSON.stringify(currency));
         await sftpWriteFile(profileId, `${dir}/config.yml`, text);
         setServer((s) => ({ ...s, configText: text }));
-        if (langChanged) hints.push("język: wpisz w konsoli serwera @reloadlang");
+        if (langChanged || curChanged) hints.push("język i waluta: wpisz w konsoli serwera @reloadlang");
         if (ecoChanged) hints.push("pieniądze: zrestartuj serwer");
       }
       if (cmdChanged) {
         await sftpWriteFile(profileId, `${dir}/commands.yml`, serializeCommandsYml(commands));
         hints.push("komendy: zrestartuj serwer");
       }
-      setServer((s) => ({ ...s, language, economy, commands }));
+      setServer((s) => ({ ...s, language, economy, currency, commands }));
       setStatus(`Wysłano na serwer. Żeby zadziałało - ${hints.join("; ")}.`);
     } catch (e) {
       setStatus(String(e));
@@ -116,6 +124,7 @@ export default function CoreSettingsPage() {
   function revert() {
     setLanguage(server.language);
     setEconomy(server.economy);
+    setCurrency(server.currency);
     setCommands(server.commands);
     setStatus("Przywrócono stan z serwera.");
   }
@@ -184,6 +193,33 @@ export default function CoreSettingsPage() {
           <p className="muted small">
             Przy kasie innego pluginu nie działa ranking najbogatszych graczy. Potrzebne są pluginy Vault i ten z kasą.
             Zmiana działa po restarcie serwera.
+          </p>
+
+          <h2 style={{ marginTop: "1.5rem" }}>Znaczek waluty</h2>
+          <p className="muted small">Pokazuje się przy każdej kwocie we wszystkich pluginach: w Sklepie, na Targu, w Questach, w portfelu i przy przelewach.</p>
+          <div className="row" style={{ gap: "0.4rem", flexWrap: "wrap" }}>
+            {CURRENCY_PRESETS.map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                className={`ci-view-toggle${currency === p.value ? " on" : ""}`}
+                onClick={() => setCurrency(p.value)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <label>
+            Własny znaczek
+            <input
+              value={currency}
+              maxLength={12}
+              placeholder="$"
+              onChange={(e) => setCurrency(e.target.value)}
+            />
+          </label>
+          <p className="muted small">
+            Spacja na początku robi odstęp od liczby. Tak zobaczą to gracze: <b>100{currency}</b>, <b>2,500{currency}</b>
           </p>
         </div>
 

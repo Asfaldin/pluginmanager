@@ -16,7 +16,7 @@ export interface AnnounceField {
 
 export const ANNOUNCE_FIELDS: AnnounceField[] = [
   { key: "rotation.broadcast-header", group: "rotation", label: "Nagłówek", placeholders: ["category", "days"] },
-  { key: "rotation.broadcast-item", group: "rotation", label: "Linijka z każdym przedmiotem", placeholders: ["item", "price", "amount"] },
+  { key: "rotation.broadcast-item", group: "rotation", label: "Linijka z każdym przedmiotem", placeholders: ["item", "price", "currency", "amount"] },
   { key: "rotation.broadcast-footer", group: "rotation", label: "Stopka", placeholders: ["category", "days"] },
   { key: "dynamic.reset-broadcast", group: "reset", label: "Ceny wróciły do normy", placeholders: [] },
   { key: "event.broadcast-up", group: "event", label: "Skup drożej (bez końca)", placeholders: ["item", "percent"] },
@@ -32,6 +32,7 @@ export const PLACEHOLDER_LABELS: Record<string, string> = {
   days: "ile dni",
   item: "nazwa przedmiotu",
   price: "cena",
+  currency: "znaczek waluty",
   amount: "ilość sztuk",
   percent: "procent",
   time: "czas trwania",
@@ -42,7 +43,8 @@ export const PLACEHOLDER_HELP: Record<string, string> = {
   category: "nazwa kategorii, w której wylosowała się nowa oferta (np. Bloki, Kolekcja)",
   days: "za ile dni oferta się zmieni (ustawienie „Co ile dni nowa oferta” w kategorii)",
   item: "nazwa przedmiotu (w ogłoszeniu rotacji - każdy wylosowany po kolei, w evencie - ten z komendy)",
-  price: "cena przedmiotu w sklepie",
+  price: "cena przedmiotu w sklepie (sama liczba)",
+  currency: "znaczek waluty serwera, np. $ albo zł (ustawiasz go w Ustawieniach serwera)",
   amount: "ile sztuk dostaje się za tę cenę",
   percent: "o ile procent zmienia się skup w evencie (liczba z komendy /@shop event)",
   time: "jak długo trwa event (np. 2h, 30m, 3d - z komendy)",
@@ -54,6 +56,7 @@ export const SAMPLE_VALUES: Record<string, string> = {
   days: "14",
   item: "Płyta: Cat",
   price: "20000",
+  currency: "$",
   amount: "1",
   percent: "50",
   time: "2h",
@@ -65,7 +68,7 @@ export type AnnounceTexts = Record<string, string>;
 const DEFAULTS: Record<string, AnnounceTexts> = {
   en: {
     "rotation.broadcast-header": "&d&l★ NEW OFFER: {category} ★",
-    "rotation.broadcast-item": "&8  • &f{item}  &6{price}$ &7for {amount} pcs",
+    "rotation.broadcast-item": "&8  • &f{item}  &6{price}{currency} &7for {amount} pcs",
     "rotation.broadcast-footer": "&7Check /shop - the offer is gone in {days} days!",
     "dynamic.reset-broadcast": "&6Shop prices are back to normal!",
     "event.broadcast-up": "&d&l★ EVENT! &7The shop pays &a{percent}% &7more for &f{item}&7! &8(/shop)",
@@ -77,7 +80,7 @@ const DEFAULTS: Record<string, AnnounceTexts> = {
   },
   pl: {
     "rotation.broadcast-header": "&d&l★ NOWA OFERTA: {category} ★",
-    "rotation.broadcast-item": "&8  • &f{item}  &6{price}$ &7za {amount} szt.",
+    "rotation.broadcast-item": "&8  • &f{item}  &6{price}{currency} &7za {amount} szt.",
     "rotation.broadcast-footer": "&7Sprawdź /sklep - oferta znika za {days} dni!",
     "dynamic.reset-broadcast": "&6Ceny w sklepie wróciły do wartości bazowych!",
     "event.broadcast-up": "&d&l★ EVENT! &7Sklep skupuje &f{item} &7drożej o &a{percent}%&7! &8(/sklep)",
