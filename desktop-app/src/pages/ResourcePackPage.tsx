@@ -1,6 +1,7 @@
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { StatusBar } from "../components/EditorBits";
 import { useEffect, useState } from "react";
+import ItemTextureBrowser from "../components/ItemTextureBrowser";
 import PixelEditor from "../components/PixelEditor";
 import TextureBrowser from "../components/TextureBrowser";
 import {
@@ -20,13 +21,17 @@ import {
   saveTexturePack,
   sftpUploadLocalFile,
 } from "../lib/api";
+import { primaryTextureRelPath, resolveMaterialTexture } from "../lib/materialIcons";
+import { ALL_ITEMS } from "../lib/minecraftItems";
 import type { McVersionSummary, PackMeta, TexturePackProject, TextureStatus } from "../lib/types";
+import { useIconPack } from "../lib/useIconPack";
 import { useProfiles } from "../state/ProfilesContext";
 
-type SubTab = "source" | "meta" | "gui" | "all" | "export";
+type SubTab = "source" | "items" | "meta" | "gui" | "all" | "export";
 
 const SUB_TABS: Array<{ key: SubTab; label: string }> = [
   { key: "source", label: "Pobierz źródło" },
+  { key: "items", label: "Itemy" },
   { key: "meta", label: "Ustawienia paczki" },
   { key: "gui", label: "Tekstury GUI" },
   { key: "all", label: "Wszystkie tekstury" },
@@ -119,6 +124,7 @@ export default function ResourcePackPage() {
     Object.fromEntries(GUI_TEXTURES.map((t) => [t.key, { w: t.defaultWidth, h: t.defaultHeight }]))
   );
   const [status, setStatus] = useState<string | null>(null);
+  const { iconPackDir: globalIconPackDir, selectIconPack } = useIconPack((msg) => setStatus(msg));
   const [busy, setBusy] = useState(false);
   const [activeTab, setActiveTab] = useState<SubTab>("source");
   const [exportedZipPath, setExportedZipPath] = useState("");
@@ -201,6 +207,31 @@ export default function ResourcePackPage() {
     } catch (e) {
       setStatus(String(e));
     } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Wejście z zakładki "Itemy" - szuka gotowej tekstury tego przedmiotu w paczce, a jeśli
+      jej nie ma (nowa paczka, jeszcze nie pobrana baza Vanilla), tworzy pustą 16x16 pod
+      standardową ścieżką itemu i od razu ją otwiera do edycji. */
+  async function openItemEditor(material: string) {
+    if (!packDir) return;
+    setBusy(true);
+    setStatus(null);
+    try {
+      const existing = await resolveMaterialTexture(packDir, material);
+      if (existing) {
+        setBusy(false);
+        await openEditor(existing.relPath, existing.width, existing.height);
+        return;
+      }
+      const relPath = primaryTextureRelPath(material);
+      await rpMakeTransparent(packDir, relPath, 16, 16);
+      setAllTextures(await rpListAllTextures(packDir));
+      setBusy(false);
+      await openEditor(relPath, 16, 16);
+    } catch (e) {
+      setStatus(String(e));
       setBusy(false);
     }
   }
@@ -567,6 +598,27 @@ export default function ResourcePackPage() {
             </div>
           </div>
           </>
+          )}
+
+          {activeTab === "items" && (
+          <fieldset className="card">
+            <legend>Przeglądaj po przedmiotach ({ALL_ITEMS.length})</legend>
+            <p className="muted">
+              Szukaj przedmiotu tak, jak nazywa się w grze, i kliknij go, żeby od razu edytować jego teksturę -
+              ikonki pokazują aktualny stan TEJ paczki (włącznie z Twoimi zmianami). Przedmiot bez własnej tekstury
+              dostaje nową, pustą (16x16) po kliknięciu.
+            </p>
+            <div className="row" style={{ marginBottom: "0.75rem" }}>
+              {globalIconPackDir === packDir ? (
+                <span className="badge badge-on">Ta paczka jest źródłem ikonek w całej aplikacji</span>
+              ) : (
+                <button type="button" onClick={() => selectIconPack(packDir)} disabled={busy}>
+                  Użyj tej paczki jako źródła ikonek w całej aplikacji
+                </button>
+              )}
+            </div>
+            <ItemTextureBrowser packDir={packDir} onEdit={openItemEditor} />
+          </fieldset>
           )}
 
           {activeTab === "meta" && (
