@@ -13,6 +13,8 @@ interface Props {
   maxAmount?: number;
   /** Paczka tekstur na ikonki; bez tego bierzemy tę wspólną, ustawioną raz dla całej aplikacji. */
   iconPackDir?: string;
+  /** Wygląd custom itemów: id -> zwykły materiał do ikonki (np. spawner_zombie -> SPAWNER). */
+  customIcons?: Record<string, string>;
 }
 
 // Podpowiedzi (ponad 1500 przedmiotow) siedza w JEDNEJ liscie na cala strone - strona
@@ -40,12 +42,20 @@ export function ItemDatalists({ materials, customIds }: { materials: string[]; c
 }
 
 /** Wybór przedmiotu: zwykły item Minecrafta albo custom item z katalogu (items/). */
-export default function ItemRefPicker({ value, onChange, customIds, showAmount, maxAmount, iconPackDir }: Props) {
+export default function ItemRefPicker({ value, onChange, customIds, showAmount, maxAmount, iconPackDir, customIcons }: Props) {
   const custom = value.custom != null;
   const pack = iconPackDir ?? getIconPackDir();
   return (
     <div className="row" style={{ alignItems: "center" }}>
-      {custom ? <span className="ci-badge">custom</span> : <MaterialIcon material={value.item ?? ""} iconPackDir={pack} />}
+      {custom ? (
+        customIcons?.[value.custom ?? ""] ? (
+          <MaterialIcon material={customIcons[value.custom ?? ""]} iconPackDir={pack} />
+        ) : (
+          <span className="ci-badge">custom</span>
+        )
+      ) : (
+        <MaterialIcon material={value.item ?? ""} iconPackDir={pack} />
+      )}
       <select
         value={custom ? "custom" : "item"}
         onChange={(e) =>

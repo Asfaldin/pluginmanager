@@ -133,6 +133,10 @@ export function HelpButton({
   label?: string;
 }) {
   const [seen, setSeen] = useState(() => readHelpSeen().has(id));
+  // Ten sam przycisk może pokazywać różne podpowiedzi (np. inny ekran w "Wygląd menu") - każda świeci osobno.
+  useEffect(() => {
+    setSeen(readHelpSeen().has(id));
+  }, [id]);
   const Icon = label ? BookOpen : kind === "info" ? CircleAlert : HelpCircle;
   return (
     <button
