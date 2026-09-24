@@ -83,7 +83,7 @@ export default function FishingPage() {
         await sftpWriteFile(pid, path, serializeFishingConfig(DEFAULT_FISHING_CONFIG));
         setConfig(DEFAULT_FISHING_CONFIG);
         setServerConfig(DEFAULT_FISHING_CONFIG);
-        setStatus("fishing-config.yml nie istniało - wgrano domyślną wersję. Serwer użyje jej po /@reloadfishing albo restarcie.");
+        setStatus("Na serwerze nie było jeszcze ustawień - wgrano domyślne. Serwer użyje ich po /@reloadfishing albo restarcie.");
       }
       setLastUsed(LAST_USED_KEY, { profileId: pid, remotePath: path });
     } catch (e) {

@@ -75,7 +75,7 @@ export default function ChatFilterPage() {
         await sftpWriteFile(pid, path, serializeChatFilterConfig(DEFAULT_CHATFILTER_CONFIG));
         setConfig(DEFAULT_CHATFILTER_CONFIG);
         setServerConfig(DEFAULT_CHATFILTER_CONFIG);
-        setStatus("chatfilter-config.yml nie istniało - wgrano domyślną wersję. Serwer użyje jej po /@reloadchatfilter albo restarcie.");
+        setStatus("Na serwerze nie było jeszcze ustawień - wgrano domyślne. Serwer użyje ich po /@reloadchatfilter albo restarcie.");
       }
       setLastUsed(LAST_USED_KEY, { profileId: pid, remotePath: path });
     } catch (e) {
@@ -263,7 +263,7 @@ export default function ChatFilterPage() {
               />
             </label>
             <p className="muted small">
-              Gracze z permisją mainplugins.chatfilter.bypass zawsze omijają ten filtr (ustawiane w plugin.yml, nie tutaj).
+              Gracze z permisją mainplugins.chatfilter.bypass zawsze omijają ten filtr (to ustawia się w uprawnieniach serwera, nie tutaj).
             </p>
           </div>
 

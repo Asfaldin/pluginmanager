@@ -66,7 +66,7 @@ export default function SpawnersPage() {
         await sftpWriteFile(pid, path, serializeSpawnerConfig(DEFAULT_SPAWNER_CONFIG));
         setConfig(DEFAULT_SPAWNER_CONFIG);
         setServerConfig(DEFAULT_SPAWNER_CONFIG);
-        setStatus("spawnery-typy.yml nie istniało - wgrano domyślną wersję. Serwer użyje jej po /@reloadspawnery albo restarcie.");
+        setStatus("Na serwerze nie było jeszcze ustawień - wgrano domyślne. Serwer użyje ich po /@reloadspawnery albo restarcie.");
       }
       setLastUsed(LAST_USED_KEY, { profileId: pid, remotePath: path });
     } catch (e) {

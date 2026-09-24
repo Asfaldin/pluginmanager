@@ -121,7 +121,7 @@ export default function IslandsPage() {
         await sftpWriteFile(pid, gui, serializeIslandGuiContent(DEFAULT_ISLAND_GUI));
         setGuiContent(DEFAULT_ISLAND_GUI);
         setServerGuiContent(DEFAULT_ISLAND_GUI);
-        notices.push("wyspy-gui.yml nie istniało - wgrano domyślną wersję");
+        notices.push("na serwerze nie było jeszcze menu wysp - wgrano domyślne");
       }
       try {
         const cfgText = await sftpReadFile(pid, cfgPath);
@@ -132,7 +132,7 @@ export default function IslandsPage() {
         await sftpWriteFile(pid, cfgPath, serializeIslandConfig(DEFAULT_ISLAND_CONFIG));
         setConfig(DEFAULT_ISLAND_CONFIG);
         setServerConfig(DEFAULT_ISLAND_CONFIG);
-        notices.push("wyspy-config.yml nie istniało - wgrano domyślną wersję");
+        notices.push("na serwerze nie było jeszcze ustawień wysp - wgrano domyślne");
       }
       if (notices.length > 0) setStatus(notices.join("; ") + ". Serwer użyje ich po /@reloadwyspy albo restarcie.");
     } catch (e) {

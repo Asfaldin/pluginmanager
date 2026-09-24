@@ -68,7 +68,7 @@ export default function RanksPage() {
         await sftpWriteFile(pid, path, serializeRanksConfig(DEFAULT_RANKS_CONFIG));
         setConfig(DEFAULT_RANKS_CONFIG);
         setServerConfig(DEFAULT_RANKS_CONFIG);
-        setStatus("ranks-config.yml nie istniało - wgrano domyślną wersję. Serwer użyje jej po /@reloadrangi albo restarcie.");
+        setStatus("Na serwerze nie było jeszcze ustawień - wgrano domyślne. Serwer użyje ich po /@reloadrangi albo restarcie.");
       }
       setLastUsed(LAST_USED_KEY, { profileId: pid, remotePath: path });
     } catch (e) {

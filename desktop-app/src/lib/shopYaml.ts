@@ -105,6 +105,10 @@ export interface ShopSettingsDraft {
   rounding: "whole" | "cents";
   dynamic: DynamicDraft;
   statsEnabled: boolean;
+  /** Kolejność na stronie kategorii, zanim gracz kliknie lejek: order = Twoja kolejność, buy / sell = po cenie. */
+  categorySort: "order" | "buy" | "sell";
+  /** Wyśrodkowanie małych kategorii - wyłączone na stałe (przedmioty stoją tam, gdzie je ustawisz); pole zostaje dla starych plików. */
+  centerSmall: boolean;
   menus: Record<string, MenuScreenDraft>;
   buttons: Record<string, string>;
   raw: Obj;
@@ -206,6 +210,8 @@ export function defaultSettings(): ShopSettingsDraft {
     rounding: "cents",
     dynamic: defaultDynamic(),
     statsEnabled: false,
+    categorySort: "order",
+    centerSmall: false,
     menus: defaultMenus(),
     buttons: { ...DEFAULT_BUTTONS },
     raw: {},
@@ -262,8 +268,11 @@ export function parseShopSettings(text: string): ShopSettingsDraft {
   }
   const buttons = { ...DEFAULT_BUTTONS };
   for (const [k, v] of Object.entries(obj(menusRaw.buttons))) if (k in buttons) buttons[k] = String(v);
+  const categoryOrder = Array.isArray(raw.categories) ? raw.categories.map(String) : [];
+  // Menu główne ma tyle pól na kategorie, ile jest kategorii - bez pustych "zarezerwowanych" miejsc.
+  menus["main-menu"] = { ...menus["main-menu"], layout: pruneBlankCategorySlots(menus["main-menu"].layout, categoryOrder) };
   return {
-    categoryOrder: Array.isArray(raw.categories) ? raw.categories.map(String) : [],
+    categoryOrder,
     rounding: raw["price-rounding"] === "whole" ? "whole" : "cents",
     dynamic: {
       enabled: typeof dyn.enabled === "boolean" ? dyn.enabled : d.dynamic.enabled,
@@ -277,6 +286,10 @@ export function parseShopSettings(text: string): ShopSettingsDraft {
       tuning: parseTuning(obj(dyn.tuning)),
     },
     statsEnabled: typeof obj(raw.stats).enabled === "boolean" ? Boolean(obj(raw.stats).enabled) : d.statsEnabled,
+    categorySort: ["order", "buy", "sell"].includes(String(raw["category-page-sort"]).toLowerCase())
+      ? (String(raw["category-page-sort"]).toLowerCase() as "order" | "buy" | "sell")
+      : d.categorySort,
+    centerSmall: false,
     menus,
     buttons,
     raw,
@@ -301,7 +314,7 @@ export function serializeShopSettings(s: ShopSettingsDraft): string {
   }
   menus.buttons = { ...obj(menusRaw.buttons), ...s.buttons };
   const out: Obj = {
-    ...without(s.raw, ["categories", "price-rounding", "dynamic-prices", "stats", "menus"]),
+    ...without(s.raw, ["categories", "price-rounding", "dynamic-prices", "stats", "menus", "category-page-sort", "center-small-categories"]),
     categories: s.categoryOrder,
     "price-rounding": s.rounding,
     "dynamic-prices": {
@@ -317,6 +330,8 @@ export function serializeShopSettings(s: ShopSettingsDraft): string {
       tuning: { ...obj(dynRaw.tuning), ...Object.fromEntries(TUNING_KEYS.map(([field, key]) => [key, s.dynamic.tuning[field]])) },
     },
     stats: { ...obj(s.raw.stats), enabled: s.statsEnabled },
+    "category-page-sort": s.categorySort,
+    "center-small-categories": false,
     menus,
   };
   // Pola okien jako {slot: .., role: ..} w jednej linijce - czytelniej przy ręcznej edycji.
@@ -416,6 +431,42 @@ export function perPiece(price: number | null, lot: number): number | null {
   return price == null ? null : round2(price / Math.max(1, lot));
 }
 
+/** Ceny przedmiotu w jednym trybie ("po sztuce" albo "po kilka sztuk") - do zapamiętania przy przełączaniu. */
+export interface LotSnapshot {
+  amount: number;
+  sellAmount: number;
+  buy: number | null;
+  sell: number | null;
+}
+
+/**
+ * Przełącza przedmiot między sprzedażą po sztuce a po kilka sztuk (64). `back` = ceny zapamiętane
+ * z poprzedniego razu w tym trybie: jeśli cena za sztukę się od tego czasu nie zmieniła, wracają
+ * DOKŁADNIE (50 za 64, a nie 49.92 z przeliczenia 0.78 * 64). Zmienioną cenę się przelicza.
+ * Kupno/skup wyłączone teraz zostają wyłączone.
+ */
+export function switchLot(
+  now: { amount: number; sellAmount: number; buy: number | null; sell: number | null },
+  toLotted: boolean,
+  back?: LotSnapshot
+): LotSnapshot {
+  const amount = back?.amount ?? (toLotted ? 64 : 1);
+  const sellAmount = back?.sellAmount ?? (toLotted ? 64 : 1);
+  const pick = (cur: number | null, curLot: number, old: number | null | undefined, oldLot: number | undefined, lot: number) => {
+    if (cur == null) return null;
+    if (old != null && oldLot != null && perPiece(old, oldLot) === perPiece(cur, curLot)) return old;
+    if (curLot === lot) return cur;
+    // Liczone wprost (cena * nowa porcja / stara porcja), bez zaokrąglonej ceny za sztukę po drodze.
+    return Math.round(((cur * Math.max(1, lot)) / Math.max(1, curLot)) * 100) / 100;
+  };
+  return {
+    amount,
+    sellAmount,
+    buy: pick(now.buy, now.amount, back?.buy, back?.amount, amount),
+    sell: pick(now.sell, now.sellAmount, back?.sell, back?.sellAmount, sellAmount),
+  };
+}
+
 /** Cena za sztukę -> cena stacka (2 miejsca). */
 export function fromPerPiece(piece: number | null, lot: number): number | null {
   return piece == null ? null : round2(piece * Math.max(1, lot));
@@ -491,6 +542,147 @@ export function categoryBySlot(layout: SlotEntryDraft[], categoryOrder: string[]
 }
 
 /**
+ * Kolejność przedmiotów na stronie kategorii dokładnie jak w pluginie: "order" = z pliku,
+ * "buy" = od najtańszego kupna za sztukę, "sell" = od najwyższego skupu za sztukę (bez ceny - na koniec).
+ * Zwraca numery przedmiotów z listy w kolejności wyświetlania.
+ */
+export function displayOrder(items: ShopItemDraft[], mode: "order" | "buy" | "sell"): number[] {
+  const idx = items.map((_, i) => i);
+  if (mode === "order") return idx;
+  const value = (it: ShopItemDraft) =>
+    mode === "buy"
+      ? it.buy != null
+        ? it.buy / Math.max(1, it.amount)
+        : Number.MAX_VALUE
+      : it.sell != null
+        ? -(it.sell / Math.max(1, it.sellAmount))
+        : Number.MAX_VALUE;
+  return idx.sort((a, b) => value(items[a]) - value(items[b]) || a - b);
+}
+
+/** Pola na stronie jak w pluginie (pageSlots): gdy wszystko mieści się w jednym rzędzie, wyśrodkowane w środkowym. */
+export function pageSlots(full: number[], count: number, onePage: boolean): number[] {
+  if (!onePage || count >= full.length) return full;
+  const rows = new Map<number, number[]>();
+  for (const slot of full) rows.set(Math.floor(slot / 9), [...(rows.get(Math.floor(slot / 9)) ?? []), slot]);
+  const list = [...rows.values()];
+  const widest = Math.max(...list.map((r) => r.length));
+  if (count > widest) return full;
+  const row = list[Math.floor((list.length - 1) / 2)];
+  const indent = Math.max(0, Math.floor((row.length - count) / 2));
+  return row.slice(indent, Math.min(row.length, indent + count));
+}
+
+/**
+ * Stawia przedmiot (numer z listy kategorii) w klikniętym polu strony kategorii: pole staje się polem
+ * na przedmiot (pola na przedmioty ułożone po numerach - od lewej do prawej, z góry na dół), a przedmiot
+ * przesuwa się w kolejności tak, żeby wypadł dokładnie tam. Działa przy "Twojej kolejności".
+ */
+export function placeItemAt(
+  layout: SlotEntryDraft[],
+  items: ShopItemDraft[],
+  itemIndex: number,
+  slot: number,
+  page: number
+): { layout: SlotEntryDraft[]; items: ShopItemDraft[] } {
+  const others = layout.filter((e) => e.slot !== slot || e.role === "ITEM_SLOT");
+  const hasItemSlot = others.some((e) => e.slot === slot && e.role === "ITEM_SLOT");
+  const withSlot = hasItemSlot ? others : [...others, { slot, role: "ITEM_SLOT" }];
+  const itemEntries = withSlot.filter((e) => e.role === "ITEM_SLOT").sort((a, b) => a.slot - b.slot);
+  const nextLayout = [...withSlot.filter((e) => e.role !== "ITEM_SLOT"), ...itemEntries];
+  const per = itemEntries.length;
+  const target = Math.min(items.length - 1, page * per + itemEntries.findIndex((e) => e.slot === slot));
+  const moved = items[itemIndex];
+  const rest = items.filter((_, i) => i !== itemIndex);
+  return { layout: nextLayout, items: [...rest.slice(0, target), moved, ...rest.slice(target)] };
+}
+
+/** Usuwa pola na kategorie, na które nie starcza kategorii (w grze i tak byłoby tam tło). */
+export function pruneBlankCategorySlots(layout: SlotEntryDraft[], order: string[]): SlotEntryDraft[] {
+  let n = 0;
+  return layout.filter((e) => e.role !== "CATEGORY_SLOT" || n++ < order.length);
+}
+
+/**
+ * Dokłada pola kategoriom, które są w menu, a nie mają pola (np. po dodaniu nowej kategorii) -
+ * w pierwsze wolne pola za ostatnią kategorią, a jak tam brak miejsca, to od początku okna.
+ */
+export function ensureCategorySlots(layout: SlotEntryDraft[], order: string[], size: number): SlotEntryDraft[] {
+  const out = [...layout];
+  const used = new Set(out.map((e) => e.slot));
+  const catSlots = out.filter((e) => e.role === "CATEGORY_SLOT").map((e) => e.slot);
+  let missing = order.length - catSlots.length;
+  const start = catSlots.length ? Math.max(...catSlots) + 1 : 0;
+  const candidates = [...Array.from({ length: size }, (_, i) => i).filter((i) => i >= start), ...Array.from({ length: start }, (_, i) => i)];
+  for (const slot of candidates) {
+    if (missing <= 0) break;
+    if (used.has(slot)) continue;
+    out.push({ slot, role: "CATEGORY_SLOT" });
+    used.add(slot);
+    missing--;
+  }
+  return out;
+}
+
+/** Układ menu głównego + kolejność kategorii - zmieniane razem, bo plugin łączy je po kolei. */
+export interface MenuCats {
+  layout: SlotEntryDraft[];
+  order: string[];
+}
+
+/**
+ * Stawia kategorię DOKŁADNIE w klikniętym polu. Plugin wkłada kategorie po kolei w pola
+ * CATEGORY_SLOT (1. z kolejności do 1. pola z listy itd.), więc zamiast przesuwać kolejność
+ * układamy pola i kolejność od nowa tak, żeby każda kategoria została tam, gdzie była:
+ * - kategoria znika ze swojego starego pola (pole robi się puste - w grze tło),
+ * - jeśli w klikniętym polu stała inna kategoria, zamieniają się miejscami
+ *   (a gdy nasza nie miała pola - tamta wypada z menu, dalej jest w sklepie),
+ * - przycisk albo tło w klikniętym polu ustępuje kategorii.
+ */
+export function placeCategoryAt(layout: SlotEntryDraft[], order: string[], catId: string, slot: number): MenuCats {
+  const bySlot = categoryBySlot(layout, order);
+  const assign = new Map<number, string>();
+  for (const [s, c] of bySlot) if (c) assign.set(s, c);
+  const oldSlot = [...assign].find(([, c]) => c === catId)?.[0];
+  const displaced = assign.get(slot);
+  let dropped: string | undefined;
+  if (oldSlot != null) assign.delete(oldSlot);
+  if (displaced && displaced !== catId) {
+    assign.delete(slot);
+    if (oldSlot != null) assign.set(oldSlot, displaced);
+    else dropped = displaced;
+  }
+  assign.set(slot, catId);
+  const sorted = [...assign].sort((a, b) => a[0] - b[0]);
+  const taken = new Set(sorted.map(([s]) => s));
+  const others = layout.filter((e) => e.role !== "CATEGORY_SLOT" && !taken.has(e.slot));
+  const placed = new Set(sorted.map(([, c]) => c));
+  // Puste miejsca na kategorie znikają - zostają tylko pola z kategoriami (reszta to tło).
+  return {
+    layout: [...others, ...sorted.map(([s]) => ({ slot: s, role: "CATEGORY_SLOT" }))],
+    order: [...sorted.map(([, c]) => c), ...order.filter((c) => !placed.has(c) && c !== dropped)],
+  };
+}
+
+/**
+ * Zabiera kategorię z menu (dalej jest w sklepie), a jej pole zostaje puste - pozostałe
+ * kategorie NIE przeskakują o jedno pole (puste pole idzie na koniec listy pól).
+ */
+export function hideCategoryFromMenu(layout: SlotEntryDraft[], order: string[], catId: string): MenuCats {
+  const slot = [...categoryBySlot(layout, order)].find(([, c]) => c === catId)?.[0];
+  const nextOrder = order.filter((c) => c !== catId);
+  if (slot == null) return { layout, order: nextOrder };
+  // Pole znika całkiem (w grze będzie tam tło) - bez pustego "miejsca na kategorię".
+  return { layout: layout.filter((e) => !(e.slot === slot && e.role === "CATEGORY_SLOT")), order: nextOrder };
+}
+
+/** Usuwa pole z układu. Jeśli stała w nim kategoria, wypada z menu - reszta zostaje na swoich polach. */
+export function removeMenuSlot(layout: SlotEntryDraft[], order: string[], slot: number): MenuCats {
+  const cat = categoryBySlot(layout, order).get(slot);
+  return { layout: layout.filter((e) => e.slot !== slot), order: cat ? order.filter((c) => c !== cat) : order };
+}
+
+/**
  * Stawia kategorię na wskazanym miejscu w kolejności (a więc w tym polu menu), reszta
  * przesuwa się dalej. Kategoria, która wcześniej nie miała miejsca, po prostu je dostaje.
  */
@@ -531,14 +723,35 @@ export function moveToPool(c: CategoryDraft, indexes: number[]): CategoryDraft {
 }
 
 /** Wyjmuje wskazane przedmioty z puli z powrotem na stałą listę (cofnięcie przeniesienia). */
-export function moveBackFromPool(c: CategoryDraft, indexes: number[]): CategoryDraft {
+const refKey = (r: ItemRef) => (r.custom != null ? `custom:${r.custom}` : `item:${r.item ?? ""}`);
+
+/**
+ * Cofa przedmioty z puli do stałych. `order` = kolejność stałych przedmiotów, do której wracamy
+ * (np. ta z serwera) - przedmiot wraca na SWOJE miejsce między sąsiadów, a nie na koniec listy.
+ * Przedmiot, którego tam nie ma (np. od początku był w puli), idzie na koniec.
+ */
+export function moveBackFromPool(c: CategoryDraft, indexes: number[], order: ItemRef[] = []): CategoryDraft {
   if (!c.rotation) return c;
   const taken = new Set(indexes);
   const moved = c.rotation.pool.filter((_, i) => taken.has(i));
   if (moved.length === 0) return c;
+  const rank = new Map(order.map((r, i) => [refKey(r), i] as const));
+  const items = [...c.items];
+  for (const it of moved) {
+    const mine = rank.get(refKey(it.ref));
+    let at = items.length;
+    if (mine != null) {
+      const after = items.findIndex((x) => {
+        const other = rank.get(refKey(x.ref));
+        return other != null && other > mine;
+      });
+      if (after >= 0) at = after;
+    }
+    items.splice(at, 0, it);
+  }
   return {
     ...c,
-    items: [...c.items, ...moved],
+    items,
     rotation: { ...c.rotation, pool: c.rotation.pool.filter((_, i) => !taken.has(i)) },
   };
 }

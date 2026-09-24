@@ -54,7 +54,7 @@ export default function HudPage() {
         await sftpWriteFile(pid, path, serializeHudConfig(DEFAULT_HUD_CONFIG));
         setConfig(DEFAULT_HUD_CONFIG);
         setServerConfig(DEFAULT_HUD_CONFIG);
-        setStatus("hud-config.yml nie istniało - wgrano domyślną wersję. Serwer użyje jej po /@reloadhud albo restarcie.");
+        setStatus("Na serwerze nie było jeszcze ustawień - wgrano domyślne. Serwer użyje ich po /@reloadhud albo restarcie.");
       }
       setLastUsed(LAST_USED_KEY, { profileId: pid, remotePath: path });
     } catch (e) {

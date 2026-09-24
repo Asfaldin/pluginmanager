@@ -234,7 +234,7 @@ export default function SpawnWarpsPage() {
       setServerSpawnPoint(spawnPoint);
       setServerWarps(warps);
       setServerAreas(areas);
-      setStatus("Wysłano spawn.yml, warps.yml i obszary.yml. Wymaga restartu serwera (brak komendy reload).");
+      setStatus("Wysłano spawn, warpy i obszary. Zadziałają po restarcie serwera (ten plugin nie ma komendy przeładowania).");
     } catch (e) {
       setStatus(String(e));
     } finally {
@@ -323,8 +323,8 @@ export default function SpawnWarpsPage() {
       <Link to="/tools" className="back-link">← Twoje pluginy</Link>
       <h1>Spawn, warpy i obszary</h1>
       <p className="muted">
-        Edytuje spawn.yml, warps.yml i obszary.yml mainplugins-spawn bezpośrednio na serwerze. Ten plugin nie ma
-        komendy reload - zmiany zadziałają po restarcie serwera.
+        Spawn, warpy i obszary na Twoim serwerze. Ten plugin nie ma komendy przeładowania - zmiany zadziałają po restarcie
+        serwera.
       </p>
 
       <div className="row">

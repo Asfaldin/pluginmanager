@@ -882,7 +882,7 @@ export default function EvolvingToolsPage() {
       } catch {
         await sftpWriteFile(pid, path, DEFAULT_TOOLS_YAML);
         text = DEFAULT_TOOLS_YAML;
-        setStatus("ewoluujace-narzedzia.yml nie istniało - wgrano domyślną wersję. Serwer użyje jej po /@reloadnarzedzia albo restarcie.");
+        setStatus("Na serwerze nie było jeszcze ustawień - wgrano domyślne. Serwer użyje ich po /@reloadnarzedzia albo restarcie.");
       }
       const parsed = parseToolsYaml(text);
       setItems(parsed);
@@ -1083,7 +1083,7 @@ export default function EvolvingToolsPage() {
       <Link to="/tools" className="back-link">← Twoje pluginy</Link>
       <h1>Ewoluujące narzędzia</h1>
       <p className="muted">
-        Silnik narzędzi mainplugins-tools (ewoluujace-narzedzia.yml) - poziomy, prawdziwe enczanty rosnące z poziomem,
+        Narzędzia, które rosną razem z graczem - poziomy, prawdziwe enczanty rosnące z poziomem,
         stałe kamienie milowe odblokowujące efekty (na wzór Kilofa Niflheim, który zostaje osobno, poza tym rejestrem),
         custom nazwane staty i cząsteczki otoczenia. Te narzędzia NIE są przypisane do gracza - można je swobodnie
         sprzedać/wyrzucić/wręczyć.

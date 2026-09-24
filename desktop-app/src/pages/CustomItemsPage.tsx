@@ -441,7 +441,6 @@ export default function CustomItemsPage() {
               type="button"
               className={`ci-cat${category === f ? " active" : ""}`}
               onClick={() => setCategory(f)}
-              title={f}
             >
               <span>{categoryLabel(f)}</span>
               <span className="ci-count">{catCount(f)}</span>

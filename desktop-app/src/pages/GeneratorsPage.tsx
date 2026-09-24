@@ -208,7 +208,7 @@ export default function GeneratorsPage() {
       } catch {
         await sftpWriteFile(pid, path, DEFAULT_GENERATORS_YAML);
         text = DEFAULT_GENERATORS_YAML;
-        setStatus("generatory.yml nie istniało - wgrano domyślną wersję. Serwer użyje jej po /@reloadgeneratory albo restarcie.");
+        setStatus("Na serwerze nie było jeszcze ustawień - wgrano domyślne. Serwer użyje ich po /@reloadgeneratory albo restarcie.");
       }
       const parsed = parseGeneratorsYaml(text);
       setItems(parsed);
@@ -359,9 +359,8 @@ export default function GeneratorsPage() {
       <Link to="/tools" className="back-link">← Twoje pluginy</Link>
       <h1>Generatory (tier 2-4)</h1>
       <p className="muted">
-        Nowy silnik generatorów mainplugins-generators (generatory.yml) - dodatkowe tiery obok istniejących, nietkniętych
-        GENERATOR_BRUK_T1/GENERATOR_KRUCHY_T1 (te dwa dalej edytujesz w zakładce „Custom itemy", bo żyją w
-        custom-items.yml). Tryb PRZEPUSZCZAJĄCY (rodzina kilofowa) podmienia blok na prawdziwy materiał i integruje
+        Generatory - dodatkowe tiery obok istniejących, nietkniętych GENERATOR_BRUK_T1/GENERATOR_KRUCHY_T1 (te dwa dalej
+        edytujesz w zakładce „Custom itemy"). Tryb PRZEPUSZCZAJĄCY (rodzina kilofowa) podmienia blok na prawdziwy materiał i integruje
         się z resztą ekonomii kilofa; BEZPOŚREDNI (rodzina łopatowa) sam losuje jeden z „baza-dropy". W obu trybach
         „bonus-dropy" to niezależne % szansy na dodatkowy, rzadszy surowiec - tu ustawiasz balans per tier.
       </p>
