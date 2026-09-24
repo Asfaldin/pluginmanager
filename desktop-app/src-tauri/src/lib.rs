@@ -9,6 +9,7 @@ mod settings;
 mod sftp;
 mod shop;
 mod texturepack_registry;
+mod uninstall;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -60,8 +61,12 @@ pub fn run() {
             shop::shop_catalog,
             shop::shop_checkout_url,
             shop::shop_change_password,
+            shop::shop_ticket_meta,
+            shop::shop_my_tickets,
+            shop::shop_create_ticket,
             settings::open_app_data_dir,
             settings::app_version,
+            uninstall::uninstall_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
