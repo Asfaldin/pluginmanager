@@ -5,6 +5,7 @@ import PluginEcosystem from "../components/PluginEcosystem";
 import { getHasConfigured, getHasDeployed, getHasTestedConnection, setHasTestedConnection } from "../lib/appSettings";
 import { listEmbeddedJars, sftpListDir, shopMyLicenses } from "../lib/api";
 import { FREE_PLUGIN_IDS } from "../lib/freePlugins";
+import { useT, type StringKey } from "../lib/i18n";
 import { useAuth } from "../state/AuthContext";
 import { useProfiles } from "../state/ProfilesContext";
 import { profileWhere, type LicenseRecord } from "../lib/types";
@@ -12,6 +13,7 @@ import { profileWhere, type LicenseRecord } from "../lib/types";
 type ConnState = "idle" | "checking" | "ok" | "error";
 
 export default function DashboardPage() {
+  const t = useT();
   const { customer } = useAuth();
   const { profiles, loading: profilesLoading } = useProfiles();
   const [licenses, setLicenses] = useState<LicenseRecord[] | null>(null);
@@ -58,40 +60,43 @@ export default function DashboardPage() {
   // więc nie jest linkiem, tylko zwykłym wierszem. hasConfigured ustawiane wspólnie
   // dla wszystkich edytorów w sftpWriteFile (patrz api.ts) - nie trzeba było dotykać
   // każdego edytora osobno.
-  const onboardingSteps: Array<{ done: boolean; label: string; to: string | null }> = [
-    { done: profiles.length > 0, label: "Połącz serwer", to: "/servers" },
-    { done: hasTestedConnection, label: "Przetestuj połączenie", to: null },
-    { done: hasConfigured, label: "Skonfiguruj pierwszy plugin", to: "/tools" },
-    { done: hasDeployed, label: "Wrzuć na serwer", to: "/deploy" },
+  const onboardingSteps: Array<{ done: boolean; labelKey: StringKey; to: string | null }> = [
+    { done: profiles.length > 0, labelKey: "dashboard.step.connectServer", to: "/servers" },
+    { done: hasTestedConnection, labelKey: "dashboard.step.testConnection", to: null },
+    { done: hasConfigured, labelKey: "dashboard.step.configureFirstPlugin", to: "/tools" },
+    { done: hasDeployed, labelKey: "dashboard.step.deploy", to: "/deploy" },
   ];
   const showOnboarding = !!customer && !profilesLoading && onboardingSteps.some((s) => !s.done);
 
   return (
     <div className="page">
       <div className="hero-banner">
-        <h1>Witaj{customer ? `, ${customer.email}` : ""}</h1>
+        <h1>
+          {t("dashboard.welcome")}
+          {customer ? `, ${customer.email}` : ""}
+        </h1>
         <p className="muted" style={{ margin: 0 }}>
-          Skrót do tego, co najważniejsze - status serwerów i licencje.
+          {t("dashboard.subtitle")}
         </p>
       </div>
 
       {showOnboarding && (
         <div className="card onboarding-checklist">
           <div className="card-title" style={{ marginBottom: "0.5rem" }}>
-            Pierwsze kroki
+            {t("dashboard.firstSteps")}
           </div>
           {onboardingSteps.map((step, i) => {
             const next = onboardingSteps[i + 1];
             const lineDone = step.done && next?.done;
             const rowContent = step.to ? (
               <Link to={step.to} className={step.done ? "onboarding-row-content done" : "onboarding-row-content"}>
-                {step.label}
+                {t(step.labelKey)}
               </Link>
             ) : (
-              <div className={step.done ? "onboarding-row-content done" : "onboarding-row-content"}>{step.label}</div>
+              <div className={step.done ? "onboarding-row-content done" : "onboarding-row-content"}>{t(step.labelKey)}</div>
             );
             return (
-              <div className="onboarding-row" key={step.label}>
+              <div className="onboarding-row" key={step.labelKey}>
                 <div className="onboarding-rail">
                   <span className={step.done ? "onboarding-dot done" : "onboarding-dot"} />
                   {next && <span className={lineDone ? "onboarding-line done" : "onboarding-line"} />}
@@ -110,7 +115,7 @@ export default function DashboardPage() {
           tylko dopóki znika po ukończeniu - zakup nie jest "obowiązkowym pierwszym krokiem"). */}
       {!!customer && licenses !== null && activeLicenses.length === 0 && (
         <p className="muted small">
-          Korzystasz na razie tylko z darmowych pluginów. <Link to="/shop">Zajrzyj do Sklepu</Link>, żeby zobaczyć, co jeszcze możesz odblokować.
+          {t("dashboard.freePluginsOnly")} <Link to="/shop">{t("dashboard.checkShop")}</Link>
         </p>
       )}
 
@@ -121,7 +126,7 @@ export default function DashboardPage() {
           </span>
           <div>
             <div className="stat-tile-value">{profilesLoading ? "…" : profiles.length}</div>
-            <div className="muted small">skonfigurowanych serwerów</div>
+            <div className="muted small">{t("dashboard.configuredServers")}</div>
           </div>
         </Link>
         <Link to="/account" className="stat-tile">
@@ -131,7 +136,8 @@ export default function DashboardPage() {
           <div>
             <div className="stat-tile-value">{licenses === null ? "…" : activeLicenses.length}</div>
             <div className="muted small">
-              aktywnych licencji {activeLicenses.length === 0 && `(+${FREE_PLUGIN_IDS.size} darmowych zawsze dostępnych)`}
+              {t("dashboard.activeLicenses")}{" "}
+              {activeLicenses.length === 0 && `(+${FREE_PLUGIN_IDS.size} ${t("dashboard.freeAlwaysAvailable")})`}
             </div>
           </div>
         </Link>
@@ -141,21 +147,21 @@ export default function DashboardPage() {
           </span>
           <div>
             <div className="stat-tile-value">{editorCount ?? "…"}</div>
-            <div className="muted small">dostępnych edytorów</div>
+            <div className="muted small">{t("dashboard.availableEditors")}</div>
           </div>
         </Link>
       </div>
 
-      <h2>Serwery</h2>
+      <h2>{t("dashboard.servers")}</h2>
       <div className="card">
-        {profilesLoading && <p className="muted">Ładowanie...</p>}
+        {profilesLoading && <p className="muted">{t("dashboard.loading")}</p>}
         {!profilesLoading && profiles.length === 0 && (
           <div className="row" style={{ justifyContent: "space-between" }}>
             <p className="muted" style={{ margin: 0 }}>
-              Nie masz jeszcze skonfigurowanego serwera.
+              {t("dashboard.noServerYet")}
             </p>
             <Link to="/servers">
-              <button type="button">Dodaj serwer</button>
+              <button type="button">{t("dashboard.addServer")}</button>
             </Link>
           </div>
         )}
@@ -176,17 +182,16 @@ export default function DashboardPage() {
                 {state === "error" && <div className="error small">{conn[p.id]?.message}</div>}
               </div>
               <button type="button" onClick={() => testConnection(p.id, p.remote_plugins_path)} disabled={state === "checking"}>
-                {state === "checking" ? "Sprawdzam..." : "Testuj połączenie"}
+                {state === "checking" ? t("dashboard.testing") : t("dashboard.testConnection")}
               </button>
             </div>
           );
         })}
       </div>
 
-      <h2 style={{ marginTop: "1.5rem" }}>Ekosystem pluginów</h2>
+      <h2 style={{ marginTop: "1.5rem" }}>{t("dashboard.ecosystem")}</h2>
       <p className="muted small" style={{ marginTop: "-0.3rem" }}>
-        Co masz, co jest zablokowane, i które pluginy realnie się ze sobą łączą (nie samo "wymaga Core" - to dotyczy
-        prawie wszystkich).
+        {t("dashboard.ecosystemSubtitle")}
       </p>
       <div className="card">
         <PluginEcosystem licenses={licenses ?? []} />
