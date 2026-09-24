@@ -45,6 +45,8 @@ export interface SlotContent {
   onPickUp?: () => void;
   /** Small always-visible edit handle (pencil icon), top-right corner - a discoverable click alternative to onContextMenu. */
   onEdit?: () => void;
+  /** Przedmiot z rotacji (sklep): przerywana fioletowa ramka - stoi w grze, ale zmienia się sam co jakiś czas. */
+  rotating?: boolean;
 }
 
 interface Props {
@@ -135,7 +137,7 @@ export default function SlotGrid({
         return (
           <div
             key={i}
-            className={`slot-cell slot-${c?.kind ?? "filler"}${c?.blank ? " slot-blank" : ""}${c?.onClick && !editable ? " slot-clickable" : ""}${
+            className={`slot-cell slot-${c?.kind ?? "filler"}${c?.blank ? " slot-blank" : ""}${c?.rotating ? " slot-rotating" : ""}${c?.onClick && !editable ? " slot-clickable" : ""}${
               editable ? " slot-editable" : ""
             }${editable && !occupied ? " slot-drop-target" : ""}${isPickedUp ? " slot-picked-up" : ""}${
               isDragTarget ? " slot-drag-over" : ""

@@ -3,7 +3,7 @@ import { ask, open as openDialog } from "@tauri-apps/plugin-dialog";
 import { ArrowDown, ArrowUp, Download, Eye, EyeOff, Redo2, Save, Shuffle, Store, Terminal, Trash2, TriangleAlert, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { ConfirmButton, CopyRow, Fold, HelpButton, ListToggle, LoreEditor, StatusBar } from "../components/EditorBits";
+import { CommandTip, ConfirmButton, CopyRow, Fold, HelpButton, ListToggle, LoreEditor, StatusBar } from "../components/EditorBits";
 import ItemRefPicker, { ItemDatalists, MATERIALS_LIST_ID } from "../components/ItemRefPicker";
 import MaterialIcon from "../components/MaterialIcon";
 import MinecraftTextInput, { type MinecraftTextHandle } from "../components/MinecraftTextInput";
@@ -12,7 +12,7 @@ import { showPrompt } from "../components/PromptModal";
 import SamplePreview from "../components/SamplePreview";
 import SlotGrid, { type SlotContent } from "../components/SlotGrid";
 import { rconSendCommand, sftpDeleteFile, sftpDownloadFile, sftpListDir, sftpReadFile, sftpWriteFile } from "../lib/api";
-import { readSetting } from "../lib/coreSettings";
+import { readCurrency, readSetting } from "../lib/coreSettings";
 import { idFromName } from "../lib/cratesYaml";
 import { loadItemCatalog } from "../lib/itemCatalogRemote";
 import type { ItemRef } from "../lib/itemRef";
@@ -34,7 +34,9 @@ import {
   placeCategoryAt,
   removeMenuSlot,
   swapItems,
+  activeRotation,
   displayOrder,
+  parseRotationState,
   pageSlots,
   placeItemAt,
   switchLot,
@@ -213,10 +215,13 @@ function refLabel(r: ItemRef, customNames: Record<string, string> = {}): string 
   return (r.item ?? "STONE").toLowerCase().replace(/_/g, " ");
 }
 
+/** Znaczek waluty serwera (config.yml core, "currency"); ustawiany przy wczytaniu sklepu. */
+let currencySign = "$";
+
 /** Kwota ze znaczkiem, zeby bylo widac, ze to pieniadze, a nie ilosc sztuk. */
 function money(n: number | null): string {
   if (n == null) return "-";
-  return (Number.isInteger(n) ? String(n) : n.toFixed(2)) + " $";
+  return (Number.isInteger(n) ? String(n) : n.toFixed(2)) + currencySign;
 }
 
 function ShopCommandsModal({ file, onClose }: { file: ShopFile; onClose: () => void }) {
@@ -233,6 +238,14 @@ function ShopCommandsModal({ file, onClose }: { file: ShopFile; onClose: () => v
           Gracz: /shop, /sell (przedmiot z ręki), /sellall (wszystkie takie jak w ręce). Admin (uprawnienie mainplugins.shop.admin) - w konsoli bez „/”.
           Przedmiot w komendach to np. DIAMOND albo custom:spawner_zombie (podpowiada się klawiszem Tab).
         </p>
+        <div className="ci-section-title">Dla graczy</div>
+        <div className="ci-protip">
+          <CopyRow cmd="/shop <kategoria>" what="otwiera od razu kategorię (id albo nazwa, np. /shop rudy i minerały)" />
+          <CopyRow cmd="/shop szukaj <nazwa>" what="od razu wyniki wyszukiwania, bez klikania „Szukaj”" />
+        </div>
+        <div className="ci-section-title" style={{ marginTop: "1rem" }}>
+          Zarządzanie
+        </div>
         <div className="ci-protip">
           <CopyRow cmd="/@shop reload" what="wczytuje sklep od nowa (aplikacja robi to sama po „Wyślij na serwer”)" />
           <CopyRow cmd="/@shop info <przedmiot>" what="ceny i stan rynku przedmiotu" />
@@ -260,6 +273,30 @@ function ShopCommandsModal({ file, onClose }: { file: ShopFile; onClose: () => v
               <CopyRow key={c.id} cmd={`/@shop rotation force ${c.id}`} what={<MinecraftTextPreview text={c.name} emptyLabel={c.id} />} />
             ))}
         </div>
+        <div className="ci-section-title" style={{ marginTop: "1rem" }}>
+          NPC i tabliczki w świecie
+        </div>
+        <p className="muted small">
+          Zamiast kategorii można wpisać main - wtedy otwiera się menu główne sklepu. Komendy „patrząc na...” działają z odległości do 5 kratek.
+        </p>
+        <div className="ci-protip">
+          <CopyRow cmd="/@shop npc create <kategoria> <nazwa>" what="stawia w Twoim miejscu NPC (wieśniaka), który po kliknięciu otwiera sklep" />
+          <CopyRow cmd="/@shop npc name <nazwa>" what="patrząc na NPC: nowa nazwa nad głową (kolory przez &, np. &a&lSprzedawca)" />
+          <CopyRow cmd="/@shop npc type <mob>" what="patrząc na NPC: inny wygląd, np. iron_golem, zombie, fox (wieśniakowi można dodać zawód: villager librarian)" />
+          <CopyRow cmd="/@shop npc category <kategoria>" what="patrząc na NPC: zmienia, co otwiera" />
+          <CopyRow cmd="/@shop npc remove" what="patrząc na NPC: usuwa go" />
+          <CopyRow cmd="/@shop sign <kategoria>" what="patrząc na tabliczkę: sama wpisuje napisy i otwiera sklep po kliknięciu; zniszczy ją tylko admin ze Shiftem" />
+          <CopyRow cmd="/@shop sign remove" what="patrząc na tabliczkę: znowu zwykła tabliczka" />
+          <CopyRow cmd="/@shop open <gracz> <kategoria>" what="otwiera sklep graczowi - do NPC z innych pluginów (np. Citizens) i menu serwera; zamiast nicku wpisz tam znacznik gracza z tamtego pluginu (np. %player%)" />
+        </div>
+        <div className="ci-section-title" style={{ marginTop: "1rem" }}>
+          Gotowe NPC dla Twoich kategorii
+        </div>
+        <div className="ci-protip">
+          {file.cats.map((c) => (
+            <CopyRow key={c.id} cmd={`/@shop npc create ${c.id} ${c.name}`} what={<MinecraftTextPreview text={c.name} emptyLabel={c.id} />} />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -286,6 +323,9 @@ export default function ShopEditorPage() {
   const [catId, setCatId] = useState<string | null>(null);
   const [sel, setSel] = useState<Sel>({ kind: "cat" });
   const [language, setLanguage] = useState("en");
+  const [currency, setCurrency] = useState("$");
+  // Co z puli rotacji plugin ma teraz wylosowane (rotation.yml na serwerze) - do podglądu strony kategorii.
+  const [rotationState, setRotationState] = useState<Record<string, number[]>>({});
   const [customIds, setCustomIds] = useState<string[]>([]);
   // Custom item -> zwykły materiał do ikonki: z katalogu itemów, a spawnery ze Spawnerów po prostu jako spawner.
   const [customIcons, setCustomIcons] = useState<Record<string, string>>({});
@@ -470,12 +510,17 @@ export default function ShopEditorPage() {
     const base = path.replace(/\/+$/, "");
     const dir = shopDir(path);
     let lang = "en";
+    let cur = "$";
     try {
-      lang = readSetting(await sftpReadFile(pid, `${base}/MainpluginsCore/config.yml`), "language") ?? "en";
+      const coreConfig = await sftpReadFile(pid, `${base}/MainpluginsCore/config.yml`);
+      lang = readSetting(coreConfig, "language") ?? "en";
+      cur = readCurrency(coreConfig);
     } catch {
-      // brak configu core - zostaje angielski
+      // brak configu core - zostaje angielski i "$"
     }
     setLanguage(lang);
+    currencySign = cur;
+    setCurrency(cur);
     let langText: string | null = null;
     try {
       langText = await sftpReadFile(pid, `${dir}/lang/${lang}.yml`);
@@ -483,6 +528,11 @@ export default function ShopEditorPage() {
       // pliku jeszcze nie ma - plugin bierze teksty z jara, czyli domyślne
     }
     const texts = parseAnnounceTexts(langText, lang);
+    try {
+      setRotationState(parseRotationState(await sftpReadFile(pid, `${dir}/rotation.yml`)));
+    } catch {
+      setRotationState({}); // losowania jeszcze nie było
+    }
     try {
       const settings = parseShopSettings(await sftpReadFile(pid, `${dir}/shop.yml`));
       let ids: string[] = [];
@@ -1096,7 +1146,14 @@ export default function ShopEditorPage() {
             <ArrowDown size={14} />
           </button>
         </h2>
-        <p className="muted small">Klucz w komendach: {itemKey(it.ref)}</p>
+        <CommandTip
+          commands={[
+            { cmd: `/@shop info ${itemKey(it.ref)}`, what: "ceny i stan rynku tego przedmiotu" },
+            { cmd: `/@shop event ${itemKey(it.ref)} +50 2h`, what: "event: skup +50% przez 2 godziny" },
+            { cmd: `/@shop event ${itemKey(it.ref)} off`, what: "kończy event na tym przedmiocie" },
+            { cmd: `/@shop reset ${itemKey(it.ref)}`, what: "skup wraca do normy" },
+          ]}
+        />
         {customProblem(it.ref) && (
           <div className="ci-error ci-error-big">
             <TriangleAlert size={22} strokeWidth={2} />
@@ -1155,13 +1212,13 @@ export default function ShopEditorPage() {
               <>
                 <label>
                   <span className="ci-field-title">Cena kupna za sztukę</span>
-                  {numberInput(perPiece(it.buy, it.amount), (n) => set({ buy: fromPerPiece(n, it.amount) }), "0.01", 0, "$")}
+                  {numberInput(perPiece(it.buy, it.amount), (n) => set({ buy: fromPerPiece(n, it.amount) }), "0.01", 0, currency.trim())}
                 </label>
               </>
             ) : (
               <label>
                 <span className="ci-field-title">Cena kupna za sztukę</span>
-                {numberInput(it.buy, (n) => set({ buy: n }), "0.01", 0, "$")}
+                {numberInput(it.buy, (n) => set({ buy: n }), "0.01", 0, currency.trim())}
               </label>
             ))}
           <label className="checkbox">
@@ -1205,14 +1262,14 @@ export default function ShopEditorPage() {
                 </label>
                 <label>
                   <span className="ci-field-title">Cena skupu za {it.sellAmount} szt.</span>
-                  {numberInput(it.sell, (n) => set({ sell: n }), "0.01", 0, "$")}
+                  {numberInput(it.sell, (n) => set({ sell: n }), "0.01", 0, currency.trim())}
                   <span className="muted small">Czyli {money(perPiece(it.sell, it.sellAmount))} za sztukę</span>
                 </label>
               </>
             ) : (
               <label>
                 <span className="ci-field-title">Cena skupu za sztukę</span>
-                {numberInput(it.sell, (n) => set({ sell: n }), "0.01", 0, "$")}
+                {numberInput(it.sell, (n) => set({ sell: n }), "0.01", 0, currency.trim())}
               </label>
             ))}
           <label className="checkbox">
@@ -1254,6 +1311,15 @@ export default function ShopEditorPage() {
             </>
           )}
         </h2>
+        <CommandTip
+          commands={[
+            { cmd: `/shop ${c.id}`, what: "gracz od razu otwiera tę kategorię" },
+            { cmd: `/@shop npc create ${c.id} ${c.name}`, what: "stawia w Twoim miejscu NPC, który otwiera tę kategorię" },
+            { cmd: `/@shop sign ${c.id}`, what: "patrzysz na tabliczkę - po kliknięciu otwiera tę kategorię" },
+            { cmd: `/@shop open <gracz> ${c.id}`, what: "otwiera graczowi tę kategorię (do NPC z innych pluginów i menu serwera)" },
+            ...(c.rotation?.enabled ? [{ cmd: `/@shop rotation force ${c.id}`, what: "losuje od razu nową ofertę rotacji" }] : []),
+          ]}
+        />
         <Fold title="Nazwa i ikonka" open>
           <label>
             Nazwa
@@ -1721,8 +1787,9 @@ export default function ShopEditorPage() {
           item: it.name.trim() ? it.name : refLabel(it.ref, customNames),
           price: num(it.buy ?? it.sell),
           amount: String(it.buy != null ? it.amount : it.sellAmount),
+          currency,
         }))
-      : [{ item: SAMPLE_VALUES.item, price: SAMPLE_VALUES.price, amount: SAMPLE_VALUES.amount }];
+      : [{ item: SAMPLE_VALUES.item, price: SAMPLE_VALUES.price, amount: SAMPLE_VALUES.amount, currency }];
     return (
       <div className="ci-announce-preview">
         <div className="row" style={{ alignItems: "center", margin: 0 }}>
@@ -2045,6 +2112,19 @@ export default function ShopEditorPage() {
         const idx = slotItem.get(e.slot);
         const it = pc && idx != null ? pc.items[idx] : undefined;
         const open = picked ? () => placePicked(sc, e.slot) : () => setSlotPick({ sc, slot: e.slot });
+        const rotIt = pc && idx != null && idx >= pc.items.length ? activeRotation(pc, rotationState[pc.id])[idx - pc.items.length] : undefined;
+        if (pc && idx != null && idx >= pc.items.length) {
+          content[e.slot] = rotIt
+            ? {
+                label: `${rotIt.name.trim() ? plain(rotIt.name) : refLabel(rotIt.ref, customNames)} (rotacja - teraz w sklepie)`,
+                kind: "item",
+                material: rotIt.ref.item ?? (rotIt.ref.custom != null ? customIcon(rotIt.ref.custom) : undefined),
+                sublabel: money(perPiece(rotIt.buy, rotIt.amount)),
+                rotating: true,
+              }
+            : { label: "Losowy przedmiot z puli rotacji", sublabel: "?", kind: "item", rotating: true };
+          continue;
+        }
         content[e.slot] = it
           ? {
               label: it.name.trim() ? plain(it.name) : refLabel(it.ref, customNames),
@@ -2124,6 +2204,7 @@ export default function ShopEditorPage() {
             const pc = file.cats.find((c) => c.id === previewCat);
             const a = slotItem.get(from);
             const b = slotItem.get(to);
+            if (pc && ((a ?? -1) >= pc.items.length || (b ?? -1) >= pc.items.length)) return; // rotacja stoi zawsze za stałymi
             if (pc && a != null && b != null && file.settings.categorySort === "order") {
               updateCategory(pc.id, { items: swapItems(pc.items, a, b) });
               return;
@@ -2136,6 +2217,7 @@ export default function ShopEditorPage() {
             const pc = file.cats.find((c) => c.id === previewCat);
             const itemIndex = slotItem.get(slot);
             if (pc && itemIndex != null) {
+              if (itemIndex >= pc.items.length) return; // przedmiot z rotacji - usuwa się go z puli, nie z podglądu
               removeItem(pc, false, itemIndex);
               return;
             }
@@ -2244,7 +2326,7 @@ export default function ShopEditorPage() {
                     numberInput(pct(d.minMultiplier), (n) => setDyn({ minMultiplier: fromPct(-Math.abs(n)) }), "5", 0, "%"),
                     pct(d.minMultiplier) >= 100
                       ? "Skup może spaść do zera!"
-                      : `Przedmiot skupowany za 100 $ nie spadnie poniżej ${100 - pct(d.minMultiplier)} $`
+                      : `Przedmiot skupowany za ${money(100)} nie spadnie poniżej ${money(100 - pct(d.minMultiplier))}`
                   )}
                   <label className="checkbox ci-toggle-row">
                     <input
@@ -2259,7 +2341,7 @@ export default function ShopEditorPage() {
                     ? fieldRow(
                         "Skup może wzrosnąć najwyżej o",
                         numberInput(pct(d.maxMultiplier), (n) => setDyn({ maxMultiplier: fromPct(Math.max(1, Math.abs(n))) }), "5", 1, "%"),
-                        `Przedmiot skupowany za 100 $ nie urośnie powyżej ${100 + pct(d.maxMultiplier)} $`
+                        `Przedmiot skupowany za ${money(100)} nie urośnie powyżej ${money(100 + pct(d.maxMultiplier))}`
                       )
                     : <p className="muted small ci-toggle-off">Skup tylko spada - nigdy nie da więcej niż zwykła cena z cennika.</p>}
                   <label className="checkbox ci-toggle-row">
@@ -2286,7 +2368,7 @@ export default function ShopEditorPage() {
                   {fieldRow(
                     "Skup najwyżej taka część ceny kupna",
                     numberInput(Math.round(d.maxSellShare * 100), (n) => setDyn({ maxSellShare: Math.min(1, n / 100) }), "5", 0, "% ceny kupna"),
-                    `Przedmiot kupowany za 100 $ sklep odkupi najwyżej za ${Math.round(d.maxSellShare * 100)} $`
+                    `Przedmiot kupowany za ${money(100)} sklep odkupi najwyżej za ${money(Math.round(d.maxSellShare * 100))}`
                   )}
                   <div className="ci-field-title" style={{ marginTop: "0.6rem" }}>
                     Ogłoszenia na czacie
@@ -2368,7 +2450,7 @@ export default function ShopEditorPage() {
                             title={`${f.label} - kliknij, żeby zmienić`}
                             onClick={() => setEditingText(editingText === f.key ? null : f.key)}
                           >
-                            <SamplePreview text={file.texts[f.key] ?? ""} values={SAMPLE_VALUES} labels={PLACEHOLDER_LABELS} emptyLabel="(pusta linijka - nic się nie wyświetli)" />
+                            <SamplePreview text={file.texts[f.key] ?? ""} values={{ ...SAMPLE_VALUES, currency }} labels={PLACEHOLDER_LABELS} emptyLabel="(pusta linijka - nic się nie wyświetli)" />
                           </button>
                         ))}
                       </div>
@@ -2689,7 +2771,13 @@ export default function ShopEditorPage() {
     const itemSlots = file.settings.menus[sc].layout.filter((e) => e.role === "ITEM_SLOT").map((e) => e.slot);
     const per = itemSlots.length;
     if (per === 0) return out;
-    const order = sc === "category-page" ? displayOrder(pc.items, file.settings.categorySort) : pc.items.map((_, i) => i);
+    // Jak w grze: stałe przedmioty, a za nimi to, co akurat wylosowała rotacja (numery od pc.items.length).
+    const rot = activeRotation(pc, rotationState[pc.id]);
+    const known = rot.every((x) => x != null) ? (rot as ShopItemDraft[]) : [];
+    const order = [
+      ...displayOrder([...pc.items, ...known], file.settings.categorySort),
+      ...(known.length ? [] : rot.map((_, k) => pc.items.length + k)),
+    ];
     const pages = Math.max(1, Math.ceil(order.length / per));
     const page = Math.min(previewPage, pages - 1);
     const slots = sc === "category-page" ? pageSlots(itemSlots, order.length, pages === 1 && file.settings.centerSmall) : itemSlots;
@@ -2723,13 +2811,15 @@ export default function ShopEditorPage() {
     const pc = file.cats.find((c) => c.id === previewCat);
     if (!pc || sc !== "category-page") return null;
     const perPage = file.settings.menus[sc].layout.filter((e) => e.role === "ITEM_SLOT").length;
-    const pages = perPage > 0 ? Math.max(1, Math.ceil(pc.items.length / perPage)) : 0;
+    const rotCount = activeRotation(pc, rotationState[pc.id]).length;
+    const total = pc.items.length + rotCount;
+    const pages = perPage > 0 ? Math.max(1, Math.ceil(total / perPage)) : 0;
     const page = Math.min(previewPage, Math.max(0, pages - 1));
     return (
       <div className="row" style={{ alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}>
         <MinecraftTextPreview text={pc.name} emptyLabel={pc.id} />
         <span className="muted small">
-          {pc.items.length} przedmiotów{perPage > 0 ? `, po ${perPage} na stronie` : " - brak pól na przedmioty"}
+          {total} przedmiotów{rotCount > 0 ? ` (w tym ${rotCount} z rotacji - przerywana ramka)` : ""}{perPage > 0 ? `, po ${perPage} na stronie` : " - brak pól na przedmioty"}
         </span>
         {pages > 1 && (
           <>

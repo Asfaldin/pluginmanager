@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import * as yaml from "js-yaml";
 import {
+  activeRotation,
   defaultMenus,
+  parseRotationState,
   defaultSettings,
   defaultTuning,
   fromPerPiece,
@@ -429,5 +431,28 @@ describe("strona kategorii jak w grze", () => {
     const b = placeItemAt(layout, items, 1, 11, 0);
     expect(b.layout.filter((e) => e.role === "ITEM_SLOT").map((e) => e.slot)).toEqual([10, 11, 12, 14]);
     expect(b.items.map((i) => (i.ref as any).item)).toEqual(["A", "B", "C"]);
+  });
+});
+
+describe("rotacja w podglądzie strony kategorii", () => {
+  const ROT = `kolekcja:\n  picked:\n  - 2\n  - 0\n  next-at: 1790801726330\n  cooldown:\n    '2': 4\n`;
+  const cat = (poolSize: number, show = 2, enabled = true) => {
+    const pool = parseCategory("x", yaml.dump({ items: Array.from({ length: poolSize }, (_, i) => ({ item: `ITEM_${i}`, buy: 1 })) })).items;
+    return { ...parseCategory("kolekcja", "name: K"), rotation: { enabled, show, everyDays: 14, announce: true, pool, raw: {} } };
+  };
+
+  it("czyta wylosowane numery z rotation.yml", () => {
+    expect(parseRotationState(ROT)).toEqual({ kolekcja: [2, 0] });
+    expect(parseRotationState(null)).toEqual({});
+    expect(parseRotationState("::nie yaml")).toEqual({});
+  });
+
+  it("pokazuje wylosowane przedmioty z puli, a bez losowania - miejsca na losowe", () => {
+    const c = cat(3);
+    expect(activeRotation(c, [2, 0]).map((it) => it?.ref.item)).toEqual(["ITEM_2", "ITEM_0"]);
+    expect(activeRotation(c, undefined)).toEqual([null, null]);
+    expect(activeRotation(c, [5])).toEqual([null, null]);
+    expect(activeRotation(cat(1, 5), undefined)).toEqual([null]);
+    expect(activeRotation(cat(3, 2, false), [0])).toEqual([]);
   });
 });

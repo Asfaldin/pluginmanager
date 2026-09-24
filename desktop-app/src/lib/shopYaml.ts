@@ -796,3 +796,33 @@ export function shopProblems(settings: ShopSettingsDraft, cats: CategoryDraft[])
   if (settings.categoryOrder.length > slots) out.push(`Menu główne ma ${slots} miejsc na kategorie, a kategorii jest ${settings.categoryOrder.length}.`);
   return out;
 }
+
+/** rotation.yml pluginu: które pozycje puli są teraz wylosowane (id kategorii -> numery w puli). */
+export function parseRotationState(text: string | null): Record<string, number[]> {
+  if (!text) return {};
+  let root: unknown;
+  try {
+    root = yaml.load(text);
+  } catch {
+    return {};
+  }
+  if (!root || typeof root !== "object") return {};
+  const out: Record<string, number[]> = {};
+  for (const [id, v] of Object.entries(root as Obj)) {
+    const picked = v && typeof v === "object" ? (v as Obj).picked : undefined;
+    if (Array.isArray(picked)) out[id] = picked.filter((n): n is number => Number.isInteger(n) && n >= 0);
+  }
+  return out;
+}
+
+/**
+ * Co z puli rotacji stoi teraz w sklepie (w grze za stałymi przedmiotami). Znane z rotation.yml -
+ * te przedmioty; gdy losowania jeszcze nie było albo pula się zmieniła (plugin wtedy losuje od nowa) -
+ * null w każdym miejscu, czyli "losowy z puli".
+ */
+export function activeRotation(c: CategoryDraft, picked: number[] | undefined): (ShopItemDraft | null)[] {
+  const r = c.rotation;
+  if (!r?.enabled || r.pool.length === 0) return [];
+  if (picked && picked.length > 0 && picked.every((i) => i < r.pool.length)) return picked.map((i) => r.pool[i]);
+  return Array.from({ length: Math.min(r.show, r.pool.length) }, () => null);
+}
