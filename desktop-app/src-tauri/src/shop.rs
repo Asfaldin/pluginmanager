@@ -106,6 +106,11 @@ pub struct CatalogPackage {
     pub variant_id: Option<String>,
     #[serde(rename = "subscriptionVariantId")]
     pub subscription_variant_id: Option<String>,
+    /// Pakiet dobrany pod konkretny tryb serwera (Skyblock/Prison/RPG) zamiast cenowej
+    /// drabinki Starter/Pro/Ultimate - patrz komentarz w catalog.js. Brak pola w JSON-ie
+    /// (stare pakiety) = false.
+    #[serde(default)]
+    pub mode: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

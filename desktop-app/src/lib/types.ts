@@ -76,6 +76,9 @@ export interface CatalogPackage {
   subscriptionPrice: number | null;
   variantId: string | null;
   subscriptionVariantId: string | null;
+  /** Pakiet dobrany pod konkretny tryb serwera (Skyblock/Prison/RPG), nie cenowa
+      drabinka Starter/Pro/Ultimate - patrz sekcja "Pakiety pod tryb gry" w ShopPage.tsx. */
+  mode?: boolean;
 }
 
 export interface Catalog {
