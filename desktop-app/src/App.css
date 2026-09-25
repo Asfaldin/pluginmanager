@@ -839,20 +839,251 @@ body {
   box-shadow: none;
 }
 
-/* Pakiety - wyśrodkowany rząd (nie siatka auto-fill jak reszta) na samej górze Sklepu,
-   bo to trzy pozycje, które mają przyciągać uwagę jako pierwsze, nie zlewać się z
-   dziesiątkami pojedynczych pluginów niżej. Zawija się na wąskim oknie zamiast ściskać. */
+/* Pakiety - świadomie WYŚRODKOWANE i inne niż reszta Sklepu (ta trzyma się lewej
+   krawędzi) - to "witryna sklepowa", trzy karty mają czytać się jak jeden spójny obiekt
+   (talia kart), nie jak kolejny rząd w siatce. Nakładają się na siebie (ujemny margines +
+   lekki obrót skrajnych kart, patrz nth-child niżej) - środkowa (Polecana) wysunięta do
+   przodu i lekko powiększona, jak rozłożona w wachlarz talia. Padding z boku/góry-dołu,
+   żeby obrócone/uniesione karty miały gdzie "oddychać", nie obcinały się na krawędzi. */
 .shop-packages-row {
   display: flex;
   justify-content: center;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 1.25rem;
   margin-top: 1rem;
+  padding: 1.5rem 1rem 2.5rem;
+}
+
+/* backface-visibility/translateZ(0) (to drugie dopisane do KAŻDEGO transform niżej, nie
+   jako osobna reguła - inaczej bardziej specyficzne selektory (nth-child) po prostu
+   nadpisywałyby całą wartość transform i tracily ten hint) wymusza własną warstwę
+   kompozycji (GPU) dla tych kart - bez tego rotate()/scale() na elementach z
+   border-radius+overflow:hidden (.plugin-card.has-art) w Chromium/WebView2 potrafi
+   rysować się z widocznym, "poszarpanym" przecięciem na krawędzi (subpixelowe
+   niedopasowanie przy każdym przerysowaniu), zwłaszcza na obróconych bocznych kartach. */
+.shop-packages-row .plugin-card-large {
+  position: relative;
+  transition: transform 0.2s ease, width 0.2s ease, box-shadow 0.2s ease, z-index 0s;
+  backface-visibility: hidden;
+}
+
+/* Zachodzenie ograniczone do -10px (nie -36px) - na tyle, żeby karty wyglądały jak
+   nałożona na siebie talia, ale za mało, żeby przykryć plakietkę ceny w rogu zdjęcia
+   sąsiedniej karty (patrz .plugin-card-price, ok. 0.6rem od krawędzi).
+   Boczne karty mają NAPRAWDĘ mniejszą szerokość (nie tylko transform: scale, który tylko
+   pomniejsza obraz wizualnie i łatwo umyka) - 230px vs 280px środkowej, więc różnica jest
+   jednoznaczna. */
+.shop-packages-row .plugin-card-large:nth-child(1) {
+  width: 230px;
+  transform: rotate(-4deg) translateY(18px) translateZ(0);
+  margin-right: -10px;
+  z-index: 1;
+}
+
+/* Bez scale() tutaj - środkowa karta ma zostać dokładnie na bazowych 280px, żeby to był
+   wspólny, dokładny rozmiar z bocznymi po najechaniu (patrz :hover niżej, też 280px), a
+   nie ruchomy cel (280 * 1.06 ≈ 297px). "Większa" wynika już z realnej różnicy szerokości
+   spoczynkowej (280 vs 230px bocznych) i uniesienia, nie z dodatkowego skalowania. */
+.shop-packages-row .plugin-card-large:nth-child(2) {
+  transform: translateY(-16px) translateZ(0);
+  z-index: 3;
+}
+
+.shop-packages-row .plugin-card-large:nth-child(3) {
+  width: 230px;
+  transform: rotate(4deg) translateY(18px) translateZ(0);
+  margin-left: -10px;
+  z-index: 1;
+}
+
+/* width:280px na sztywno (nie relatywny scale) - żeby boczna karta (na co dzień 230px)
+   po najechaniu zrównała się DOKŁADNIE z szerokością środkowej, nie tylko urosła o swój
+   własny procent i dalej była mniejsza. */
+.shop-packages-row .plugin-card-large:hover {
+  width: 280px;
+  transform: translateY(-22px) rotate(0deg) translateZ(0) !important;
+  z-index: 10 !important;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+}
+
+/* Bez tego hover wyżej (czarny cień) nadpisywał fioletową poświatę środkowej karty -
+   znikała, gdy tylko najechałeś myszką gdziekolwiek blisko niej. Wyższa specyficzność
+   (dwie klasy) - żeby to ONA wygrywała, nie generalna reguła hover. */
+.shop-packages-row .plugin-card-large.plugin-card-featured:hover {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent),
+    0 0 42px 5px color-mix(in srgb, var(--accent) 26%, transparent),
+    0 18px 40px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* Efekt talii kart tylko przy wystarczającej szerokości - na wąskim oknie karty i tak się
+   zawijają (flex-wrap), a obrót/ujemne marginesy przy zawijaniu wyglądałyby połamanie. */
+@media (max-width: 760px) {
+  .shop-packages-row .plugin-card-large:nth-child(1),
+  .shop-packages-row .plugin-card-large:nth-child(2),
+  .shop-packages-row .plugin-card-large:nth-child(3) {
+    width: 280px;
+    transform: none;
+    margin: 0;
+    box-shadow: none;
+    z-index: auto;
+  }
+  .shop-packages-row {
+    gap: 1.25rem;
+    padding: 1rem 0;
+  }
+}
+
+/* Tabela porównawcza pakietów (Starter/Pro/Ultimate) pod talią kart - wiersz per plugin,
+   kolumna per pakiet, ✓/- zamiast jednej linijki tekstu "Zawiera: a, b, c". Wyśrodkowana
+   i ograniczona szerokością, tak jak reszta sekcji "Pakiety". */
+.shop-compare-wrap {
+  max-width: 640px;
+  margin: 2rem auto 0;
+  overflow-x: auto;
+}
+
+.shop-compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.shop-compare-table th,
+.shop-compare-table td {
+  padding: 0.55rem 0.75rem;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+
+.shop-compare-table th {
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.shop-compare-row-label {
+  text-align: left !important;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Kolumna wyliczonego "Najczęściej wybierany" pakietu (patrz featuredPackageId w
+   ShopPage.tsx) delikatnie podświetlona fioletowym tłem na całej wysokości tabeli - ta
+   sama logika wyróżnienia co talia kart wyżej, konsekwentnie. */
+.shop-compare-table th.featured,
+.shop-compare-table td.featured {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.shop-compare-table th.featured {
+  color: var(--accent);
+}
+
+.shop-compare-yes {
+  color: var(--success);
+}
+
+.shop-compare-no {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+/* Filtr kategorii "Pojedynczych pluginów" - pigułki z liczbą pozycji w środku, styl
+   "Browse by" ze stron typu server-list (Planet Minecraft itp.), zamiast zwykłych
+   przycisków. */
+.shop-browse-by {
+  font-weight: 700;
+  color: var(--accent);
+  margin-top: 1.5rem;
+}
+
+/* Pływający przycisk "Pluginy" widoczny tylko na samej górze Sklepu (patrz atTop w
+   ShopPage.tsx) - position:fixed względem CAŁEGO okna, więc "left" jest ręcznie
+   przesunięty o połowę szerokości paska bocznego (inline style w ShopPage.tsx), żeby
+   wyśrodkować się względem widocznej treści, nie całego okna razem z sidebarem. */
+.shop-scroll-cta {
+  position: fixed;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.1rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  z-index: 20;
+  animation: shop-scroll-cta-bounce 1.8s ease-in-out infinite;
+}
+
+.shop-scroll-cta:hover {
+  background: var(--accent-strong);
+}
+
+@keyframes shop-scroll-cta-bounce {
+  0%, 100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(4px);
+  }
+}
+
+.shop-category-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.shop-category-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.shop-category-pill:hover {
+  border-color: var(--accent);
+}
+
+.shop-category-pill.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.shop-category-pill-count {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--bg);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.shop-category-pill.active .shop-category-pill-count {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--accent);
 }
 
 .plugin-card-large {
   width: 280px;
-  padding: 1.5rem;
+}
+
+.plugin-card-large .plugin-card-body {
+  padding: 1.1rem 1.25rem 1.25rem;
 }
 
 .plugin-card-large .card-title {
@@ -1273,6 +1504,14 @@ div.onboarding-row-content:hover {
   overflow: hidden;
 }
 
+/* Kontener obrazka karty - position:relative, żeby plakietka ceny mogła się do niego
+   przykleić w prawym dolnym rogu (patrz .plugin-card-price), niezależnie od długości
+   tytułu pod spodem - inaczej cena w rzędzie obok tytułu "pływała" między kartami. */
+.plugin-card-media {
+  position: relative;
+  display: block;
+}
+
 .plugin-card-art {
   display: block;
   width: 100%;
@@ -1281,8 +1520,30 @@ div.onboarding-row-content:hover {
   background: var(--bg);
 }
 
+.plugin-card-price {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.plugin-card-price.free {
+  color: var(--success);
+}
+
+/* min-height - karty pakietów pod tryb gry (ModePackageTile) nie mają opisu ani
+   przycisku "Kup" pod tytułem, więc bez tego wychodziły wyraźnie niższe niż karty
+   pojedynczych pluginów obok (tytuł + 2 linie opisu + rząd przycisku), mimo tej samej
+   szerokości siatki (.card-grid). Wartość dobrana pod typową zawartość karty pluginu. */
 .plugin-card-body {
   padding: 0.9rem 1.1rem 1.1rem;
+  min-height: 152px;
 }
 
 /* Tytuł karty jako link do dedykowanej strony pluginu/pakietu (patrz PluginDetailPage.tsx) -
@@ -1297,20 +1558,6 @@ div.onboarding-row-content:hover {
   color: var(--accent);
 }
 
-/* Mała ikona pluginu obok tytułu - fallback na kartach bez wpisu w PLUGIN_ART (dziś
-   pustym), żeby karta nie była gołym tekstem. Mniejsza wersja .plugin-detail-icon. */
-.plugin-card-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-  border-radius: var(--radius);
-  background: var(--surface-hover);
-  color: var(--accent);
-}
-
 /* Karta pluginu/pakietu, który klient już posiada - subtelna fioletowa ramka zamiast
    zwykłej szarej, żeby dało się to wyłapać wzrokiem przy przewijaniu siatki. */
 .plugin-card-owned {
@@ -1322,6 +1569,14 @@ div.onboarding-row-content:hover {
 .plugin-card-featured {
   position: relative;
   border: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  /* Środkowa warstwa (0 0, bez przesunięcia, duży blur+spread) promieniuje RÓWNOMIERNIE
+     we wszystkie strony, więc realnie "świeci" też po bokach na sąsiednie karty, nie
+     tylko od dołu jak zwykły cień. */
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent),
+    0 0 36px 4px color-mix(in srgb, var(--accent) 22%, transparent),
+    0 16px 36px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .plugin-card-featured-ribbon {
@@ -1336,6 +1591,7 @@ div.onboarding-row-content:hover {
   letter-spacing: 0.04em;
   padding: 0.15rem 0.55rem;
   border-radius: 999px;
+  white-space: nowrap;
 }
 
 /* Nagłówek strony pluginu w stylu strony projektu na Modrinth - kwadratowa ikona po
@@ -1421,32 +1677,92 @@ div.onboarding-row-content:hover {
   object-fit: contain;
 }
 
-/* "Co robi" - rozbicie opisu na kilka cech (patrz PLUGIN_FEATURES w pluginFeatures.ts).
-   Pasek fioletowego akcentu u góry każdej ramki niezależnie od tego, czy zdjęcie już
-   istnieje - bez niego karta po prostu pokazuje sam tytuł/opis, żadnego złamanego <img>. */
-.plugin-feature-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
-  margin-top: 0.75rem;
+/* Puste pole na zdjęcie (patrz ImagePlaceholder.tsx) - dashowana ramka zamiast pełnej,
+   żeby na pierwszy rzut oka było widać "tu ma być grafika", nie "błąd ładowania". */
+.image-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-align: center;
+  flex-shrink: 0;
 }
 
-.plugin-feature-card {
-  padding: 1.1rem 1.25rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-top: 3px solid var(--accent);
+/* Karta produktu ma teraz ZAWSZE obszar obrazka na górze (prawdziwy albo placeholder) -
+   bez zaokrągleń na styku ze .plugin-card-body pod spodem (ten dostaje własne, patrz
+   .plugin-card.has-art). */
+.plugin-card-art.image-placeholder {
+  border-radius: 0;
+  border-width: 0 0 1px;
+  aspect-ratio: 16 / 9;
+}
+
+.plugin-detail-art.image-placeholder {
   border-radius: var(--radius-lg);
 }
 
-.plugin-feature-image {
+/* Kroki "Co robi" na stronie produktu (PluginDetailPage.tsx) - opis rozbity na konkretne
+   kroki, na przemian: zdjęcie/placeholder raz z lewej raz z prawej (zigzag), tak jak na
+   stronach produktowych profesjonalnych aplikacji, zamiast jednego bloku tekstu. */
+.plugin-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  margin-top: 1rem;
+}
+
+.plugin-step {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.plugin-step:nth-child(even) {
+  flex-direction: row-reverse;
+}
+
+.plugin-step-media {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.plugin-step-media img {
   display: block;
   width: 100%;
   aspect-ratio: 16 / 9;
   object-fit: cover;
-  border-radius: var(--radius);
-  margin-bottom: 0.75rem;
+  border-radius: var(--radius-lg);
   background: var(--bg);
+}
+
+.plugin-step-text {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.plugin-step-number {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 0.35rem;
+}
+
+@media (max-width: 640px) {
+  .plugin-step,
+  .plugin-step:nth-child(even) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 .card-title {

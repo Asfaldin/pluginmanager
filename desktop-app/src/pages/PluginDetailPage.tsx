@@ -1,6 +1,7 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
+import ImagePlaceholder from "../components/ImagePlaceholder";
 import { StatusBar } from "../components/EditorBits";
 import { shopCatalog, shopCheckoutUrl, shopMyLicenses } from "../lib/api";
 import { FREE_PLUGINS } from "../lib/freePlugins";
@@ -37,21 +38,39 @@ function PluginBanner({ id }: { id: string }) {
   );
 }
 
-/** Rozbicie opisu na kilka konkretnych cech (patrz PLUGIN_FEATURES) - jedna ramka na
-    cechę, fioletowy akcent u góry niezależnie od tego, czy zdjęcie już istnieje. Bez
-    zdjęcia ramka po prostu pokazuje tekst - nie ma tu żadnego złamanego/pustego <img>. */
-function PluginFeatures({ id }: { id: string }) {
+/** Duże zdjęcie produktu pod nagłówkiem - prawdziwe (PLUGIN_ART), a dopóki go nie ma,
+    placeholder z ikoną pluginu - strona produktu ma zawsze miejsce na główną grafikę,
+    nie tylko wtedy, gdy akurat istnieje. */
+function HeroArt({ id, isPackage }: { id: string; isPackage?: boolean }) {
+  const art = PLUGIN_ART[id];
+  const Icon = isPackage ? PACKAGE_ICON : PLUGIN_ICONS[id];
+  return art ? (
+    <img src={art} alt="" className="plugin-detail-art" />
+  ) : (
+    <ImagePlaceholder className="plugin-detail-art" icon={Icon} label="Zdjęcie produktu" />
+  );
+}
+
+/** Rozbicie opisu na kilka konkretnych kroków (patrz PLUGIN_FEATURES) - każdy krok ma
+    zdjęcie (prawdziwe albo placeholder) na przemian z lewej/prawej strony (zigzag), tak
+    jak na stronach produktowych profesjonalnych aplikacji, zamiast jednego bloku tekstu
+    albo gęstej siatki kart. Bez wpisu w PLUGIN_FEATURES sekcja się nie pokazuje - nie
+    zmyślamy kroków, których treść jeszcze nie powstała. */
+function PluginSteps({ id }: { id: string }) {
   const features = PLUGIN_FEATURES[id];
   if (!features || features.length === 0) return null;
   return (
     <>
       <h2 style={{ marginTop: "1.5rem" }}>Co robi</h2>
-      <div className="plugin-feature-grid">
-        {features.map((f) => (
-          <div key={f.title} className="plugin-feature-card">
-            {f.image && <img src={f.image} alt="" className="plugin-feature-image" />}
-            <div className="card-title">{f.title}</div>
-            <p className="muted small">{f.description}</p>
+      <div className="plugin-steps">
+        {features.map((f, i) => (
+          <div key={f.title} className="plugin-step">
+            <div className="plugin-step-media">{f.image ? <img src={f.image} alt="" /> : <ImagePlaceholder />}</div>
+            <div className="plugin-step-text">
+              <div className="plugin-step-number">Krok {i + 1}</div>
+              <div className="card-title">{f.title}</div>
+              <p className="muted small">{f.description}</p>
+            </div>
           </div>
         ))}
       </div>
@@ -175,7 +194,6 @@ export default function PluginDetailPage() {
   if (kind === "free") {
     const item = FREE_PLUGINS.find((p) => p.id === id);
     if (!item) return <NotFound backLink={backLink} />;
-    const art = PLUGIN_ART[item.id];
     return (
       <div className="page">
         {backLink}
@@ -189,11 +207,11 @@ export default function PluginDetailPage() {
           </div>
         </div>
         <PluginBanner id={item.id} />
-        {art && <img src={art} alt="" className="plugin-detail-art" />}
+        <HeroArt id={item.id} />
         <div className="plugin-detail-layout">
           <div className="plugin-detail-main">
             <p>{item.description}</p>
-            <PluginFeatures id={item.id} />
+            <PluginSteps id={item.id} />
           </div>
           <div className="plugin-detail-sidebar">
             <div className="plugin-detail-sidebar-card">
@@ -212,7 +230,6 @@ export default function PluginDetailPage() {
   if (kind === "plugin") {
     const item = catalog?.individualPlugins.find((p) => p.id === id);
     if (!item) return <NotFound backLink={backLink} />;
-    const art = PLUGIN_ART[item.id];
     const category = catalog?.categories.find((c) => c.id === item.category);
     const owned = ownsPluginId(licenses, item.id);
     return (
@@ -230,11 +247,11 @@ export default function PluginDetailPage() {
           </div>
         </div>
         <PluginBanner id={item.id} />
-        {art && <img src={art} alt="" className="plugin-detail-art" />}
+        <HeroArt id={item.id} />
         <div className="plugin-detail-layout">
           <div className="plugin-detail-main">
             <p>{item.description}</p>
-            <PluginFeatures id={item.id} />
+            <PluginSteps id={item.id} />
           </div>
           <div className="plugin-detail-sidebar">
             <div className="plugin-detail-sidebar-card">
@@ -265,7 +282,6 @@ export default function PluginDetailPage() {
   // kind === "package"
   const pkg = catalog?.packages.find((p) => p.id === id);
   if (!pkg) return <NotFound backLink={backLink} />;
-  const art = PLUGIN_ART[pkg.id];
   const pluginsField = packagePluginsField(pkg.plugins);
   const owned = ownsPackage(licenses, pluginsField);
   const containedPlugins = pkg.plugins === "*" ? null : catalog?.individualPlugins.filter((p) => (pkg.plugins as string[]).includes(p.id)) ?? [];
@@ -286,7 +302,7 @@ export default function PluginDetailPage() {
         </div>
       </div>
       <PluginBanner id={pkg.id} />
-      {art && <img src={art} alt="" className="plugin-detail-art" />}
+      <HeroArt id={pkg.id} isPackage />
       <div className="plugin-detail-layout">
         <div className="plugin-detail-main">
           <p>{pkg.description}</p>
@@ -304,7 +320,7 @@ export default function PluginDetailPage() {
             </ul>
           )}
 
-          <PluginFeatures id={pkg.id} />
+          <PluginSteps id={pkg.id} />
         </div>
         <div className="plugin-detail-sidebar">
           <div className="plugin-detail-sidebar-card">

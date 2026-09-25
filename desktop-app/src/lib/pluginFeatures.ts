@@ -1,7 +1,8 @@
-// Rozbicie opisu pluginu na kilka konkretnych cech (patrz PluginDetailPage.tsx) zamiast
-// jednego bloku tekstu - każda cecha dostaje własną ramkę i (docelowo) własny obrazek.
-// image jest opcjonalny - bez niego ramka po prostu pokazuje sam tekst, więc można to
-// wypełniać stopniowo w miarę powstawania grafik zamiast robić wszystko na raz.
+// Rozbicie opisu pluginu na kilka konkretnych kroków (patrz PluginSteps w
+// PluginDetailPage.tsx) zamiast jednego bloku tekstu - każdy krok dostaje własny obrazek,
+// na przemian z lewej/prawej strony (zigzag). image jest opcjonalny - bez niego krok
+// dostaje placeholder (patrz ImagePlaceholder.tsx), więc można to wypełniać stopniowo w
+// miarę powstawania grafik zamiast robić wszystko na raz.
 export interface PluginFeature {
   title: string;
   description: string;
