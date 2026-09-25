@@ -2679,8 +2679,6 @@ export default function ShopEditorPage() {
         </button>
         <HelpButton id="shop-how-it-works" title="Przewodnik: jak działa sklep, krok po kroku" label="Jak działa sklep" onClick={() => setShopHelp(true)} />
         <span style={{ flex: 1 }} />
-        {unsaved && <span className="muted small">masz niezapisane zmiany</span>}
-        {notSent && !unsaved && <span className="muted small">zapisane, jeszcze niewysłane</span>}
         <button type="button" title="Cofnij ostatnią zmianę (Ctrl+Z)" onClick={undoFile} disabled={historyRef.current.past.length === 0}>
           <Undo2 size={14} strokeWidth={1.75} /> Cofnij
         </button>
@@ -2695,10 +2693,23 @@ export default function ShopEditorPage() {
         >
           ↶ Wczytaj z serwera
         </button>
-        <button type="button" title="Zapisuje wszystkie zmiany w aplikacji - na serwer trafią po „Wyślij na serwer” (Ctrl+S)" onClick={save} disabled={!unsaved}>
+        {/* Stan zapisu jako kropka na przycisku, nie napis obok - napis poszerzał pasek i spychał „Wyślij” poza ekran. */}
+        <button
+          type="button"
+          className="ci-save-btn"
+          title={unsaved ? "Masz niezapisane zmiany - kliknij, żeby zapisać (Ctrl+S). Na serwer trafią po „Wyślij na serwer”." : "Wszystko zapisane"}
+          onClick={save}
+          disabled={!unsaved}
+        >
           <Save size={14} strokeWidth={1.75} /> Zapisz
+          {unsaved && <span className="ci-dirty-dot" />}
         </button>
-        <button className="ci-publish" onClick={publish} disabled={!profileId || (!unsaved && !notSent) || busy}>
+        <button
+          className="ci-publish"
+          onClick={publish}
+          disabled={!profileId || (!unsaved && !notSent) || busy}
+          title={notSent && !unsaved ? "Zapisane, jeszcze niewysłane - kliknij, żeby wysłać na serwer" : undefined}
+        >
           <Upload size={14} strokeWidth={1.75} /> Wyślij na serwer
         </button>
       </div>

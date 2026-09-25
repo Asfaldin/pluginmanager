@@ -154,6 +154,9 @@ Cofnij/Ponów dla całej strony (`historyRef` w `ShopEditorPage`).
 ## 9. Teksty i język
 
 - **Po polsku, prosto.** „Przedmiot”, nie „pozycja”. Liczby z jednostką i odmianą (`plural`).
+- **Nazwy przedmiotów po polsku** („Ziemia”, nie „DIRT” ani „dirt”) - `itemDisplayName` z `lib/itemNames.ts`
+  (kopia słownika z Core, `names/pl.yml` - podmieniać razem z jarem Core). Podpowiedzi przy wpisywaniu
+  przedmiotu (`ItemDatalists`) już pokazują polską nazwę obok technicznej.
 - **Nigdy nazw plików** (`shop.yml`, `stats.csv`) - jeśli plik jest przydatny, daj przycisk
   („Pobierz raport do Excela”, „Zapisz obecny sklep jako szablon”).
 - **Nigdy cudzych pluginów** (LuckPerms, Citizens, EssentialsX, PlaceholderAPI, TAB...) - tylko nasze

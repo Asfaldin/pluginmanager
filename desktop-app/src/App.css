@@ -4308,6 +4308,21 @@ button.ci-text-preview.active {
   color: #fff;
   pointer-events: none;
 }
+/* Przycisk "Zapisz" z żółtą kropką, gdy są niezapisane zmiany (zamiast napisu, który poszerzał pasek). */
+.ci-save-btn {
+  position: relative;
+}
+.ci-dirty-dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #facc15;
+  box-shadow: 0 0 0 2px var(--bg), 0 0 6px rgba(250, 204, 21, 0.6);
+}
+
 /* Sklep: wybór szablonu (przycisk + rozwijane menu z opisami). */
 .tpl-menu {
   position: relative;

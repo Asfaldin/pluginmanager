@@ -1,3 +1,4 @@
+import { itemDisplayName } from "../../lib/itemNames";
 import type { ItemRef } from "../../lib/itemRef";
 import { conventionalRoleIcon } from "../../lib/materialIcons";
 import { num, plural } from "../../lib/plText";
@@ -108,10 +109,10 @@ export function plain(text: string): string {
   return text.replace(/&[0-9a-fk-or]/gi, "");
 }
 
-/** Nazwa przedmiotu bez własnej nazwy w sklepie. `customNames` = ludzkie nazwy custom itemów (np. "Spawner: Krowa"). */
+/** Nazwa przedmiotu bez własnej nazwy w sklepie: polska nazwa z Minecrafta ("Ziemia"). `customNames` = ludzkie nazwy custom itemów (np. "Spawner: Krowa"). */
 export function refLabel(r: ItemRef, customNames: Record<string, string> = {}): string {
   if (r.custom != null) return customNames[r.custom] ?? `custom: ${r.custom}`;
-  return (r.item ?? "STONE").toLowerCase().replace(/_/g, " ");
+  return itemDisplayName(r.item ?? "STONE");
 }
 
 /** Znaczek waluty serwera (config.yml core, "currency"); ustawiany przy wczytaniu sklepu. */

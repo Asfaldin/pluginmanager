@@ -1,5 +1,6 @@
 
 import type { ItemRef } from "../lib/cratesYaml";
+import { knownItemName } from "../lib/itemNames";
 import { getIconPackDir } from "../lib/materialIcons";
 import MaterialIcon from "./MaterialIcon";
 
@@ -28,8 +29,9 @@ export function ItemDatalists({ materials, customIds }: { materials: string[]; c
   return (
     <>
       <datalist id={MATERIALS_LIST_ID}>
+        {/* Polska nazwa obok technicznej - wpisanie „diament” znajduje DIAMOND. */}
         {materials.map((m) => (
-          <option key={m} value={m} />
+          <option key={m} value={m} label={knownItemName(m)} />
         ))}
       </datalist>
       <datalist id={CUSTOM_LIST_ID}>
