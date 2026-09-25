@@ -1,5 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { ask } from "@tauri-apps/plugin-dialog";
+import { ask } from "../components/AskModal";
 import { Monitor, Moon, Power, Sun, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getDefaultLandingPage, getConfirmUnsavedOnClose, setDefaultLandingPage, setConfirmUnsavedOnClose, type LandingPage } from "../lib/appSettings";

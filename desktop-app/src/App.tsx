@@ -1,6 +1,7 @@
 import { HashRouter, Route, Routes } from "react-router-dom";
 import CloseGuard from "./components/CloseGuard";
 import PromptHost from "./components/PromptModal";
+import AskHost from "./components/AskModal";
 import HomeRedirect from "./components/HomeRedirect";
 import Layout from "./components/Layout";
 import AccountPage from "./pages/AccountPage";
@@ -63,6 +64,7 @@ function Gate() {
     <DirtyProvider>
       <CloseGuard />
       <PromptHost />
+      <AskHost />
       <ProfilesProvider>
         <HashRouter>
           <Routes>

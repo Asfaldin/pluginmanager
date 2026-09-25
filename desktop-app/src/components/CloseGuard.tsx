@@ -1,5 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { ask } from "@tauri-apps/plugin-dialog";
+import { ask } from "./AskModal";
 import { useEffect, useRef } from "react";
 import { getConfirmUnsavedOnClose } from "../lib/appSettings";
 import { useAnyDirty } from "../state/DirtyContext";

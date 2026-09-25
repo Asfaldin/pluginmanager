@@ -1,4 +1,4 @@
-import { ask } from "@tauri-apps/plugin-dialog";
+import { ask } from "./AskModal";
 import { useState } from "react";
 import AnnouncerMessageEditor from "./AnnouncerMessageEditor";
 import ChannelPicker from "./ChannelPicker";

@@ -1,4 +1,4 @@
-import { ask } from "@tauri-apps/plugin-dialog";
+import { ask } from "../components/AskModal";
 import { Save, Terminal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";

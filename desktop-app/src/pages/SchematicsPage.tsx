@@ -1,4 +1,5 @@
-import { ask, open, save } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
+import { ask } from "../components/AskModal";
 import { Blocks, Download, File, Folder, Trash2, Upload } from "lucide-react";
 import { StatusBar } from "../components/EditorBits";
 import { useEffect, useRef, useState } from "react";
