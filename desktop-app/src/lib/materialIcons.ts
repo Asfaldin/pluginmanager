@@ -1,4 +1,5 @@
 import { appDataDir, join } from "@tauri-apps/api/path";
+import { rpTextureStatus } from "./api";
 
 // Shared "which texture pack to pull item/block icons from" preference, so
 // picking it once in one editor makes every material picker across the app
@@ -200,4 +201,27 @@ const ROLE_ICONS: Record<string, string> = {
 
 export function conventionalRoleIcon(role: string): string | undefined {
   return ROLE_ICONS[role];
+}
+
+/** Pierwsza kandydatura ścieżki (patrz textureRelPathsForMaterial) - gdzie
+ * tworzymy nową, pustą teksturę, jeśli materiał nie ma jeszcze żadnej w paczce. */
+export function primaryTextureRelPath(material: string): string {
+  return textureRelPathsForMaterial(material)[0];
+}
+
+/** Pierwsza kandydatura ścieżki, która faktycznie istnieje w tej paczce (plik na dysku,
+ * czy to wgrany wprost przez usera, czy wyciągnięty z bazy Vanilla) - do otwarcia w
+ * edytorze piksele-po-pikselu. Ignoruje złożone ikonki (skrzynie, głowy - patrz
+ * iconCropForMaterial): to podgląd składany z kilku fragmentów, nie jeden plik do edycji. */
+export async function resolveMaterialTexture(
+  packDir: string,
+  material: string
+): Promise<{ relPath: string; width: number; height: number } | null> {
+  for (const rel of textureRelPathsForMaterial(material)) {
+    const st = await rpTextureStatus(packDir, rel);
+    if (st.overridden && st.width && st.height) {
+      return { relPath: rel, width: st.width, height: st.height };
+    }
+  }
+  return null;
 }

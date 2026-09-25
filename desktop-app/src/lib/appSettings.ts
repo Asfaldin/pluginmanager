@@ -4,6 +4,10 @@
 
 export type LandingPage = "dashboard" | "tools" | "last";
 
+// Język appki (patrz LanguageContext.tsx) NIE jest tu, mimo że wzorcem pasowałby do
+// reszty tego pliku - musi być reaktywny (pasek boczny i strony mają przerysować się
+// natychmiast po zmianie w Ustawieniach), a zwykłe get/set jak niżej tego nie dają.
+
 const LANDING_PAGE_KEY = "pluginmanager.defaultLandingPage";
 const CONFIRM_UNSAVED_KEY = "pluginmanager.confirmUnsavedOnClose";
 const LAST_PATH_KEY = "pluginmanager.lastPath";

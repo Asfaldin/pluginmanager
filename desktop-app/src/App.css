@@ -63,13 +63,115 @@ body {
   color: var(--text);
 }
 
+/* Domyślny suwak WebView2 (Chromium) jest szeroki i jasnoszary - rzuca się w oczy na
+   ciemnym tle wszędzie tam, gdzie coś przewija się pionowo (.content, listy, itd.).
+   Cienki, przezroczysty do momentu najechania, w kolorach appki zamiast systemowych. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* Ramka całego okna: własny pasek tytułu (patrz TitleBar.tsx, okno ma "decorations": false
+   w tauri.conf.json) na górze, reszta appki pod nim na całą pozostałą wysokość. */
+.window-frame {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.window-body {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Prawy segment (nad .content) ma --bg jak treść, lewy segment (nad sidebarem, patrz
+   .titlebar-drag-sidebar niżej) ma --surface jak sidebar i dokładnie jego szerokość - dzięki
+   temu obie kolumny appki "sięgają" od samej góry okna, bez szwu ani przerwy nad żadną z nich. */
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 30px;
+  flex-shrink: 0;
+  background: var(--bg);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Samo tło do przeciągania okna (patrz data-tauri-drag-region w TitleBar.tsx) - marka
+   appki mieszka w .sidebar-header (Layout.tsx), nie tutaj. */
+.titlebar-drag {
+  height: 100%;
+  flex: 1;
+}
+
+.titlebar-drag-sidebar {
+  flex: 0 0 auto;
+  background: var(--surface);
+  transition: width 0.15s ease;
+}
+
+.titlebar-controls {
+  display: flex;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+/* Specyficzność musi pokonać ogólne button/button:hover niżej w pliku (ta sama
+   specyficzność co button:hover, więc kolejność w źródle by o tym zdecydowała) -
+   stąd .titlebar podwójnie w selektorze zamiast pojedynczej klasy. */
+.titlebar .titlebar-controls button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.titlebar .titlebar-controls button:hover {
+  background: var(--surface-hover);
+  border-color: transparent;
+  color: var(--text);
+}
+
+.titlebar .titlebar-controls button.titlebar-close:hover {
+  background: #e81123;
+  color: #fff;
+}
+
 /* Wysokość na sztywno (nie min-height) + overflow:hidden - dzięki temu strona sama w
    sobie nigdy nie rośnie ponad wysokość okna. Przewija się WYŁĄCZNIE .content, panel
    boczny zostaje na miejscu niezależnie od tego, jak długa jest aktualna podstrona
    (np. Sklep z wieloma siatkami kart) - to naprawia "rozjeżdżanie się" panelu. */
 .app-shell {
   display: flex;
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -78,10 +180,7 @@ body {
   width: 220px;
   flex-shrink: 0;
   background: var(--surface);
-  border-right: 1px solid var(--border);
-  /* Bez paddingu na dole - .sidebar-account ma już własny (0.75rem), inaczej te dwa się
-     sumowały i dół paska miał wyraźnie więcej luzu niż góra (patrz rozmowa). */
-  padding: 1rem 0 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
   overflow-y: visible;
@@ -92,7 +191,6 @@ body {
   width: 56px;
 }
 
-.sidebar.collapsed .sidebar-title-text,
 .sidebar.collapsed .nav-link span:not(.nav-icon) {
   display: none;
 }
@@ -106,8 +204,8 @@ body {
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  padding: 0 1.25rem 1rem;
-  border-bottom: 1px solid var(--border);
+  padding: 0.6rem 1.25rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
   margin-bottom: 0.5rem;
 }
 
@@ -119,8 +217,15 @@ body {
 }
 
 .sidebar.collapsed .sidebar-header {
-  padding: 0 0 1rem;
+  padding: 0.6rem 0 1rem;
   justify-content: center;
+}
+
+.sidebar-title-block {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
 }
 
 .sidebar-title-text {
@@ -130,6 +235,18 @@ body {
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
+}
+
+.sidebar-title-beta {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.sidebar.collapsed .sidebar-title-block {
+  display: none;
 }
 
 /* Status konta - na dole obok "Ustawienia" (patrz Layout.tsx), żeby logowanie (teraz
@@ -162,6 +279,15 @@ body {
   color: var(--text);
 }
 
+/* Sam link konta nie dostaje className z navLinkClass (jak reszta pozycji menu) - ma
+   własny wygląd (.sidebar-account-status), więc pasek aktywności trzeba mu dorysować
+   osobno, tak samo jak .nav-link.active. */
+.sidebar-account-status.active {
+  background: var(--surface-hover);
+  color: var(--accent);
+  border-left: 3px solid var(--accent);
+}
+
 .sidebar-account-status-text {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -192,6 +318,16 @@ body {
 
 .sidebar.collapsed .sidebar-server-picker {
   display: none;
+}
+
+/* Odseparowane od Dashboard/Sklep/Twoje pluginy nad nim (patrz Layout.tsx - to osobne
+   <ul>, bez tego wyglądałoby jak jedna zlana lista). */
+.sidebar-server-nav {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
 }
 
 /* "Uchwyt" osadzony na krawędzi panelu, na środku wysokości, lekko wystający na
@@ -278,6 +414,32 @@ body {
   background: var(--surface-hover);
   color: var(--accent);
   border-left: 3px solid var(--accent);
+}
+
+/* Nagłówek sekcji "Wkrótce" (patrz SOON_ITEMS w Layout.tsx) - te same wymiary/kolor co
+   etykieta "Aktywny serwer" wyżej w pasku, żeby wyglądało jak spójny system, nie improwizacja. */
+.sidebar-section-label {
+  padding: 0.75rem 1.25rem 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: 0.65;
+}
+
+/* Zakładki-zapowiedzi - przygaszone (niższa krycie) względem działających, żeby od razu
+   było widać, że to nie to samo co reszta menu, bez osobnej plakietki/ikonki kłódki. */
+.nav-link.soon {
+  opacity: 0.55;
+}
+
+.nav-link.soon:hover {
+  opacity: 0.85;
+}
+
+.nav-link.soon.active {
+  opacity: 1;
 }
 
 .content {
@@ -1653,6 +1815,164 @@ button:disabled:hover {
   color: var(--success);
 }
 
+/* Formularz zostaje zawsze widoczny po wysłaniu (żeby dało się od razu wysłać kolejne
+   zgłoszenie bez dodatkowego kliknięcia) - potwierdzeniem jest nowy wiersz, który pojawia
+   się niżej, w .ticket-list, więc osobny komunikat "wysłano" jest zbędny. */
+
+/* Lista zgłoszeń w Wsparciu (SupportPage.tsx) - każdy wiersz to kilka kolumn
+   etykieta+plakietka, jak w typowych panelach ticketowych (kategoria/priorytet/status
+   jako kolorowe plakietki zamiast zwykłego tekstu). Kolumny rozciągnięte równo (flex:1 na
+   .ticket-row-col) na całą szerokość wiersza, żeby nie zostawały skupione po lewej z pustą
+   przestrzenią po prawej. */
+.ticket-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.ticket-row {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+  padding: 0.9rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  flex-wrap: wrap;
+  cursor: pointer;
+}
+
+.ticket-row:hover {
+  border-color: var(--border-strong);
+}
+
+/* Wiersz + rozwinięty wątek (patrz .ticket-thread) mają wyglądać jak jedna spójna bryła -
+   zaokrąglenia i obramowanie łączą się w miejscu styku. */
+.ticket-group.expanded .ticket-row {
+  border-radius: 10px 10px 0 0;
+  border-bottom-color: transparent;
+}
+
+.ticket-row-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* flex:1 na każdej kolumnie - rozciąga je równo na całą szerokość wiersza zamiast
+   zostawiać je skupione po lewej z pustym pasem po prawej. */
+.ticket-row-col {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.ticket-row-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.ticket-badge {
+  display: inline-block;
+  width: fit-content;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 6px;
+  background: var(--border);
+  color: var(--text);
+}
+
+.ticket-badge-open {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--accent-strong);
+}
+
+.ticket-badge-answered {
+  background: #4a3300;
+  color: #ffb020;
+}
+
+.ticket-badge-closed {
+  background: var(--border);
+  color: var(--text-muted);
+}
+
+.ticket-badge-priority-low {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  color: var(--accent-strong);
+}
+
+.ticket-badge-priority-medium {
+  background: #4a3300;
+  color: #ffb020;
+}
+
+.ticket-badge-priority-high {
+  background: #5c1f1f;
+  color: #ff6b6b;
+}
+
+/* Wątek zgłoszenia (SupportPage.tsx) - rozwija się pod klikniętym wierszem, pokazuje
+   całą rozmowę od początku: wszystkie dymki od lewej, chronologicznie od góry, Twoje
+   (customer) na fioletowym tle, Wsparcia (admin) bez wyróżnienia tła. */
+.ticket-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+}
+
+.ticket-message {
+  align-self: flex-start;
+  max-width: 80%;
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.ticket-message-customer {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+
+.ticket-message-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.ticket-message-from {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ticket-message-admin .ticket-message-from {
+  color: var(--accent-strong);
+}
+
+.ticket-message-at {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.ticket-message-body {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
 .pixel-editor-fullpage {
   display: flex;
   flex-direction: column;
@@ -1770,6 +2090,15 @@ button:disabled:hover {
   height: 92%;
   object-fit: contain;
   image-rendering: pixelated;
+}
+
+/* MaterialIcon domyślnie jest 28px (rozmiar pola formularza) - w dużym kafelku siatki
+   przedmiotów ma wypełnić .texture-tile-preview tak samo jak zwykły <img> obok (patrz
+   TextureBrowser.tsx). */
+.texture-tile-preview .material-field-icon.item-grid-icon {
+  width: 92%;
+  height: 92%;
+  min-width: 0;
 }
 
 .texture-tile-name {

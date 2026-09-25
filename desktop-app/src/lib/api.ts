@@ -13,6 +13,8 @@ import type {
   ServerProfile,
   TexturePackProject,
   TextureStatus,
+  TicketMeta,
+  TicketRecord,
 } from "./types";
 
 export function listProfiles(): Promise<ServerProfile[]> {
@@ -260,6 +262,26 @@ export function shopChangePassword(currentPassword: string, newPassword: string)
   return invokeAuthed("shop_change_password", { currentPassword, newPassword });
 }
 
+/** Kategorie/priorytety do formularza "Nowe zgłoszenie" (patrz SupportPage.tsx) - publiczny,
+    nie wymaga logowania. */
+export function shopTicketMeta(): Promise<TicketMeta> {
+  return invoke("shop_ticket_meta");
+}
+
+export function shopMyTickets(): Promise<TicketRecord[]> {
+  return invokeAuthed("shop_my_tickets");
+}
+
+export function shopCreateTicket(input: {
+  subject: string;
+  category: string;
+  priority: string;
+  serverProfile: string | null;
+  message: string;
+}): Promise<TicketRecord> {
+  return invokeAuthed("shop_create_ticket", input);
+}
+
 // --- Ustawienia appki ---
 
 export function openAppDataDir(): Promise<void> {
@@ -268,4 +290,11 @@ export function openAppDataDir(): Promise<void> {
 
 export function appVersion(): Promise<string> {
   return invoke("app_version");
+}
+
+/** Prawdziwy deinstalator Windows (patrz uninstall.rs) - działa tylko w zbudowanej,
+    zainstalowanej appce (installer rejestruje wpis w rejestrze). W trybie deweloperskim
+    zwraca czytelny błąd zamiast czegokolwiek robić. */
+export function uninstallApp(): Promise<void> {
+  return invoke("uninstall_app");
 }

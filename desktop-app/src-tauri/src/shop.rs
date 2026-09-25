@@ -109,6 +109,35 @@ pub struct CatalogPackage {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TicketMessage {
+    pub from: String,
+    pub body: String,
+    pub at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TicketRecord {
+    pub id: String,
+    pub subject: String,
+    pub category: String,
+    pub priority: String,
+    #[serde(rename = "serverProfile")]
+    pub server_profile: Option<String>,
+    pub status: String,
+    pub messages: Vec<TicketMessage>,
+    #[serde(rename = "createdAt")]
+    pub created_at: String,
+    #[serde(rename = "updatedAt")]
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TicketMeta {
+    pub categories: Vec<String>,
+    pub priorities: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Catalog {
     #[serde(rename = "storeUrl")]
     pub store_url: Option<String>,
@@ -281,6 +310,64 @@ pub async fn shop_dev_grant(app: AppHandle, plugin: String) -> Result<LicenseRec
         .post(url)
         .bearer_auth(&token)
         .json(&serde_json::json!({ "plugin": plugin }))
+        .send()
+        .await
+        .map_err(|e| friendly_request_error(&e))?;
+    if !resp.status().is_success() {
+        return Err(extract_error(resp).await);
+    }
+    resp.json().await.map_err(|e| e.to_string())
+}
+
+/** Kategorie/priorytety do wypełnienia formularza "Nowe zgłoszenie" - publiczny endpoint,
+    nie wymaga logowania (patrz /api/tickets/meta w server.js). */
+#[tauri::command]
+pub async fn shop_ticket_meta(app: AppHandle) -> Result<TicketMeta, String> {
+    let url = format!("{}/api/tickets/meta", base_url(&app)?);
+    let resp = reqwest::Client::new().get(url).send().await.map_err(|e| friendly_request_error(&e))?;
+    if !resp.status().is_success() {
+        return Err(extract_error(resp).await);
+    }
+    resp.json().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn shop_my_tickets(app: AppHandle) -> Result<Vec<TicketRecord>, String> {
+    let token = get_token().ok_or("Nie jesteś zalogowany.")?;
+    let url = format!("{}/api/tickets", base_url(&app)?);
+    let resp = reqwest::Client::new()
+        .get(url)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .map_err(|e| friendly_request_error(&e))?;
+    if !resp.status().is_success() {
+        return Err(extract_error(resp).await);
+    }
+    resp.json().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn shop_create_ticket(
+    app: AppHandle,
+    subject: String,
+    category: String,
+    priority: String,
+    server_profile: Option<String>,
+    message: String,
+) -> Result<TicketRecord, String> {
+    let token = get_token().ok_or("Nie jesteś zalogowany.")?;
+    let url = format!("{}/api/tickets", base_url(&app)?);
+    let resp = reqwest::Client::new()
+        .post(url)
+        .bearer_auth(&token)
+        .json(&serde_json::json!({
+            "subject": subject,
+            "category": category,
+            "priority": priority,
+            "serverProfile": server_profile,
+            "message": message,
+        }))
         .send()
         .await
         .map_err(|e| friendly_request_error(&e))?;

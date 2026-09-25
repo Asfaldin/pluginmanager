@@ -26,6 +26,32 @@ export interface CustomerInfo {
   createdAt: string;
 }
 
+// Mirrors license-server's tickets.json record shape (patrz src/tickets.js) - zwracane
+// przez /api/tickets klientowi. Odpowiadanie na razie tylko przez curl (x-admin-key),
+// tak samo jak wystawianie licencji - patrz license-server/README.md.
+export interface TicketMessage {
+  from: "customer" | "admin";
+  body: string;
+  at: string;
+}
+
+export interface TicketRecord {
+  id: string;
+  subject: string;
+  category: string;
+  priority: string;
+  serverProfile: string | null;
+  status: "open" | "answered" | "closed";
+  messages: TicketMessage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TicketMeta {
+  categories: string[];
+  priorities: string[];
+}
+
 export interface CatalogCategory {
   id: string;
   label: string;

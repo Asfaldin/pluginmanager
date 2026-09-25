@@ -1,11 +1,14 @@
+import { Blocks, Palette } from "lucide-react";
 import { HashRouter, Route, Routes } from "react-router-dom";
 import CloseGuard from "./components/CloseGuard";
 import PromptHost from "./components/PromptModal";
 import AskHost from "./components/AskModal";
 import HomeRedirect from "./components/HomeRedirect";
 import Layout from "./components/Layout";
+import TitleBar from "./components/TitleBar";
 import AccountPage from "./pages/AccountPage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
+import ComingSoonPage from "./pages/ComingSoonPage";
 import ConfigEditorPage from "./pages/ConfigEditorPage";
 import ChatFilterPage from "./pages/ChatFilterPage";
 import CoreSettingsPage from "./pages/CoreSettingsPage";
@@ -25,8 +28,6 @@ import MenuGuiPage from "./pages/MenuGuiPage";
 import QuestsPage from "./pages/QuestsPage";
 import RanksPage from "./pages/RanksPage";
 import RedstoneItemsPage from "./pages/RedstoneItemsPage";
-import ResourcePackPage from "./pages/ResourcePackPage";
-import SchematicsPage from "./pages/SchematicsPage";
 import ServersPage from "./pages/ServersPage";
 import SettingsPage from "./pages/SettingsPage";
 import PluginDetailPage from "./pages/PluginDetailPage";
@@ -34,10 +35,13 @@ import ShopEditorPage from "./pages/ShopEditorPage";
 import ShopPage from "./pages/ShopPage";
 import SpawnersPage from "./pages/SpawnersPage";
 import SpawnWarpsPage from "./pages/SpawnWarpsPage";
+import SupportPage from "./pages/SupportPage";
 import ToolsHubPage from "./pages/ToolsHubPage";
 import { AuthProvider, useAuth } from "./state/AuthContext";
 import { DirtyProvider } from "./state/DirtyContext";
+import { LanguageProvider } from "./state/LanguageContext";
 import { ProfilesProvider } from "./state/ProfilesContext";
+import { SidebarProvider } from "./state/SidebarContext";
 import { ThemeProvider } from "./state/ThemeContext";
 import "./App.css";
 
@@ -61,16 +65,15 @@ function Gate() {
   }
 
   return (
-    <DirtyProvider>
+    <>
       <CloseGuard />
-      <PromptHost />
-      <AskHost />
       <ProfilesProvider>
         <HashRouter>
           <Routes>
             <Route path="/" element={<Layout />}>
               <Route index element={<HomeRedirect />} />
               <Route path="account" element={<AccountPage />} />
+              <Route path="support" element={<SupportPage />} />
               <Route path="legal/:kind" element={<LegalPage />} />
               <Route path="servers" element={<ServersPage />} />
               <Route path="shop" element={<ShopPage />} />
@@ -79,8 +82,14 @@ function Gate() {
               <Route path="config" element={<ConfigEditorPage />} />
               <Route path="items" element={<ShopEditorPage />} />
               <Route path="announcements" element={<AnnouncementsPage />} />
-              <Route path="resourcepack" element={<ResourcePackPage />} />
-              <Route path="schematics" element={<SchematicsPage />} />
+              <Route
+                path="resourcepack"
+                element={<ComingSoonPage title="Texturepack Creator" icon={Palette} />}
+              />
+              <Route
+                path="schematics"
+                element={<ComingSoonPage title="Budowle i schematy" icon={Blocks} />}
+              />
               <Route path="tools" element={<ToolsHubPage />} />
               <Route path="crates" element={<CrateEditorPage />} />
               <Route path="market" element={<MarketPage />} />
@@ -105,17 +114,31 @@ function Gate() {
           </Routes>
         </HashRouter>
       </ProfilesProvider>
-    </DirtyProvider>
+    </>
   );
 }
 
 function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <Gate />
-      </AuthProvider>
-    </ThemeProvider>
+    <LanguageProvider>
+      <SidebarProvider>
+        <DirtyProvider>
+          {/* Okienka pytań i wpisywania - ponad resztą, żeby działały też z paska tytułu (zamykanie) i podczas wczytywania. */}
+          <PromptHost />
+          <AskHost />
+          <div className="window-frame">
+            <TitleBar />
+            <div className="window-body">
+              <ThemeProvider>
+                <AuthProvider>
+                  <Gate />
+                </AuthProvider>
+              </ThemeProvider>
+            </div>
+          </div>
+        </DirtyProvider>
+      </SidebarProvider>
+    </LanguageProvider>
   );
 }
 
