@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import * as yaml from "js-yaml";
 import {
   activeRotation,
+  rotationSlotsOf,
   defaultMenus,
   parseRotationState,
   defaultSettings,
@@ -80,6 +81,29 @@ describe("shopYaml categories", () => {
     expect(serializeCategory(parseCategory("ores", text))).toBe(text);
   });
 
+  it("keeps the rotation announce switch and the category's own layout", () => {
+    const text = [
+      "name: K",
+      "icon: CHEST",
+      "rotation:",
+      "  announce: false",
+      "  pool: []",
+      "layout:",
+      "  size: 27",
+      "  layout:",
+      "    - {slot: 10, role: ITEM_SLOT}",
+      "    - {slot: 13, role: ROTATION_SLOT}",
+    ].join("\n");
+    const c = parseCategory("k", text);
+    expect(c.rotation?.announce).toBe(false);
+    expect(c.layout).toEqual({ size: 27, layout: [{ slot: 10, role: "ITEM_SLOT" }, { slot: 13, role: "ROTATION_SLOT" }] });
+    const out = serializeCategory(c);
+    expect(out).toContain("  announce: false\n");
+    expect(out).toContain("    - {slot: 13, role: ROTATION_SLOT}\n");
+    expect(parseCategory("k", out).layout).toEqual(c.layout);
+    expect(serializeCategory(parseCategory("x", "name: X"))).not.toContain("layout:");
+  });
+
   it("writes no rotation when there is none and omits amount 1", () => {
     const text = serializeCategory(parseCategory("x", "name: X\nicon: STONE\nitems:\n  - {item: DIRT, buy: 3, amount: 1}"));
     expect(text).not.toContain("rotation:");
@@ -136,6 +160,7 @@ describe("shopYaml rotation pool", () => {
     icon: { item: "STONE" },
     items: ids.map((id) => newItem({ item: id })),
     rotation: { enabled: true, show: 5, everyDays: 14, announce: true, pool: [], raw: {} },
+    layout: null,
     raw: {},
   });
 
@@ -440,6 +465,17 @@ describe("rotacja w podglądzie strony kategorii", () => {
     const pool = parseCategory("x", yaml.dump({ items: Array.from({ length: poolSize }, (_, i) => ({ item: `ITEM_${i}`, buy: 1 })) })).items;
     return { ...parseCategory("kolekcja", "name: K"), rotation: { enabled, show, everyDays: 14, announce: true, pool, raw: {} } };
   };
+
+  it("pola rotacji wypełniają się od lewej i od góry, niezależnie od kolejności w pliku", () => {
+    const layout = [
+      { slot: 22, role: "ROTATION_SLOT" },
+      { slot: 10, role: "ITEM_SLOT" },
+      { slot: 13, role: "ROTATION_SLOT" },
+      { slot: 14, role: "ROTATION_SLOT" },
+    ];
+    expect(rotationSlotsOf(layout)).toEqual([13, 14, 22]);
+    expect(rotationSlotsOf([{ slot: 10, role: "ITEM_SLOT" }])).toEqual([]);
+  });
 
   it("czyta wylosowane numery z rotation.yml", () => {
     expect(parseRotationState(ROT)).toEqual({ kolekcja: [2, 0] });

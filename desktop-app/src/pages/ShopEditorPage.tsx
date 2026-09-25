@@ -1,6 +1,7 @@
 import { desktopDir, join } from "@tauri-apps/api/path";
-import { ask, open as openDialog } from "@tauri-apps/plugin-dialog";
-import { ArrowDown, ArrowUp, Download, Eye, EyeOff, Redo2, Save, Shuffle, Store, Terminal, Trash2, TriangleAlert, Undo2 } from "lucide-react";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { ask } from "../components/AskModal";
+import { ArrowDown, ArrowUp, CircleAlert, Download, Eye, EyeOff, Redo2, Save, Shuffle, Store, Terminal, Trash2, TriangleAlert, Undo2, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { CommandTip, ConfirmButton, CopyRow, Fold, HelpButton, ListToggle, LoreEditor, StatusBar } from "../components/EditorBits";
@@ -49,6 +50,7 @@ import {
   parseShopSettings,
   perPiece,
   randomPick,
+  rotationSlotsOf,
   type PriceFilter,
   ROLE_LABELS,
   sortItems,
@@ -140,6 +142,15 @@ const SCREEN_HELP: Record<string, ReactNode> = {
       Okno po kliknięciu kategorii - lista jej <b>przedmiotów</b> do kupienia i sprzedania. Ustawiasz, w których polach stoją przedmioty,
       w jakiej kolejności, oraz przyciski: strony (gdy przedmiotów jest dużo), sortowanie (lejek), powrót do menu i zamknięcie. Z lewej
       wybierz kategorię, żeby zobaczyć jej prawdziwe przedmioty.
+      <br />
+      <br />
+      <b>Każda kategoria ma swój układ.</b> Wybierz kategorię po lewej - zmiany w siatce dotyczą tylko jej. Nowa kategoria zaczyna od
+      zwykłego układu. Chcesz jeden układ dla wszystkich? Włącz suwak „Wspólny układ dla wszystkich kategorii” nad siatką - wtedy zmiana
+      zmienia wszystkie kategorie naraz.
+      <br />
+      <br />
+      <b>Przedmioty z rotacji</b> (np. w Kolekcji) mogą mieć swoje miejsca: kliknij pole i wybierz „Przedmiot z rotacji”. Wylosowane
+      przedmioty stają w tych polach po kolei (od lewej, od góry), na każdej stronie. Gdy wylosuje się mniej, reszta pól zostaje pusta.
     </p>
   ),
   "buy-picker": (
@@ -159,7 +170,7 @@ const SCREEN_HELP: Record<string, ReactNode> = {
 
 const ROLES_BY_SCREEN: Record<string, string[]> = {
   "main-menu": ["CATEGORY_SLOT", "SEARCH", "EXIT", "FILLER"],
-  "category-page": ["ITEM_SLOT", "SORT", "NAV_PREV", "NAV_NEXT", "NAV_BACK", "EXIT", "FILLER"],
+  "category-page": ["ITEM_SLOT", "ROTATION_SLOT", "SORT", "NAV_PREV", "NAV_NEXT", "NAV_BACK", "EXIT", "FILLER"],
   "buy-picker": ["AMOUNT_SLOT", "NAV_BACK", "FILLER"],
   "search-results": ["ITEM_SLOT", "NAV_BACK", "FILLER"],
 };
@@ -428,6 +439,19 @@ export default function ShopEditorPage() {
   const [priceFilter, setPriceFilter] = useState<Record<string, PriceFilter>>({});
   const [trashConfirm, setTrashConfirm] = useState<string | null>(null);
   const [screen, setScreen] = useState("main-menu");
+  // Podniesiona kategoria/przycisk dotyczy tylko okna, w którym ją wybrano - zmiana karty kończy wybór.
+  useEffect(() => {
+    setPicked(null);
+    setSlotPick(null);
+  }, [screen, tab]);
+  // Strona kategorii zawsze pokazuje jakąś kategorię - na start pierwszą z listy (także po jej usunięciu).
+  useEffect(() => {
+    if (screen !== "category-page" || !file.cats.length) return;
+    if (!previewCat || !file.cats.some((c) => c.id === previewCat)) {
+      setPreviewCat(file.cats[0].id);
+      setPreviewPage(0);
+    }
+  }, [screen, previewCat, file.cats]);
   const autoLoadedRef = useRef(false);
   const { iconPackDir, allMaterials } = useIconPack(setStatus);
 
@@ -485,9 +509,15 @@ export default function ShopEditorPage() {
   }
 
   // Ctrl+Z / Ctrl+Y dla całej strony - ale nie w polach tekstowych, one mają własne cofanie.
+  // Ctrl+S zapisuje wszędzie, także w trakcie pisania w polu.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        if (unsaved) save();
+        return;
+      }
       const t = e.target as HTMLElement | null;
       if (t?.closest("input, textarea, select, .mc-rich")) return;
       const k = e.key.toLowerCase();
@@ -638,18 +668,20 @@ export default function ShopEditorPage() {
 
   async function publish() {
     if (!profileId || !pluginsPath) return;
-    let toSend = saved;
-    if (unsaved) {
-      if (!(await ask("Masz niezapisane zmiany. Zapisać je i wysłać razem?", { title: "Niezapisane zmiany", kind: "warning" }))) return;
-      toSend = file;
-      setSaved(file);
-    }
+    // "Wyślij na serwer" = wyślij to, co widać - niezapisane zmiany zapisują się przy okazji, bez pytania.
+    const toSend = file;
+    if (unsaved) setSaved(file);
     const warnings = shopProblems(toSend.settings, toSend.cats);
     if (warnings.length && !(await ask(`Uwaga:\n- ${warnings.join("\n- ")}\n\nWysłać mimo to?`, { title: "Uwaga", kind: "warning" }))) return;
     const removed = serverCatIds.filter((id) => !toSend.cats.some((c) => c.id === id));
     if (
       removed.length &&
-      !(await ask(`Z serwera zostaną usunięte kategorie: ${removed.join(", ")}. Kontynuować?`, { title: "Usunięcie kategorii", kind: "warning" }))
+      !(await ask("Na pewno chcesz wysłać wszystkie zmiany? Zmiany będą od razu widoczne na serwerze.", {
+        title: "Wysłać zmiany na serwer?",
+        kind: "warning",
+        okLabel: "Wyślij",
+        danger: true,
+      }))
     )
       return;
     setBusy(true);
@@ -780,9 +812,36 @@ export default function ShopEditorPage() {
 
   /** Usuwa pole z układu ekranu; kategoria z tego pola wypada z menu, a inne zostają na swoich polach. */
   function clearSlot(sc: string, slot: number) {
-    const m = file.settings.menus[sc];
-    const next = removeMenuSlot(m.layout, file.settings.categoryOrder, slot);
-    setSettings({ categoryOrder: next.order, menus: { ...file.settings.menus, [sc]: { ...m, layout: next.layout } } });
+    const next = removeMenuSlot(menuOf(sc).layout, file.settings.categoryOrder, slot);
+    setScreenLayout(sc, { layout: next.layout }, next.order);
+  }
+
+  /** Strona kategorii: kategoria, której układ teraz edytujemy (brak = wspólny układ). */
+  function layoutCat(sc: string): CategoryDraft | undefined {
+    return sc === "category-page" ? file.cats.find((c) => c.id === previewCat) : undefined;
+  }
+
+  /** Kategoria, do której trafiają zmiany układu - brak, gdy jest wspólny układ albo nic nie wybrano. */
+  function ownLayoutCat(sc: string): CategoryDraft | undefined {
+    return file.settings.sharedCategoryLayout ? undefined : layoutCat(sc);
+  }
+
+  /** Okno, które widać w edytorze: układ podglądanej kategorii (własny albo startowy) albo wspólny. */
+  function menuOf(sc: string): MenuScreenDraft {
+    return ownLayoutCat(sc)?.layout ?? file.settings.menus[sc];
+  }
+
+  /**
+   * Zmiana okna. Strona kategorii bez wspólnego układu: zmiana trafia TYLKO do wybranej kategorii,
+   * inne zostają jak były. Wspólny układ albo brak wybranej kategorii - menus.category-page.
+   */
+  function setScreenLayout(sc: string, patch: Partial<MenuScreenDraft>, order?: string[]) {
+    const pc = ownLayoutCat(sc);
+    if (pc) {
+      updateCategory(pc.id, { layout: { ...menuOf(sc), ...patch } });
+      return;
+    }
+    setSettings({ ...(order ? { categoryOrder: order } : {}), menus: { ...file.settings.menus, [sc]: { ...file.settings.menus[sc], ...patch } } });
   }
 
   function updateCategory(id: string, patch: Partial<CategoryDraft>) {
@@ -2012,6 +2071,11 @@ export default function ShopEditorPage() {
             <b>Przykład:</b> pula 30 rzeczy, 5 przedmiotów naraz, nowa oferta co 14 dni. Gracz wchodzi i widzi 5 przedmiotów, za dwa tygodnie 5
             innych. To samo wraca najwcześniej po 5 losowaniach, żeby nie kręciło się w kółko.
           </p>
+          <p>
+            <b>Gdzie stoją w oknie:</b> w „Wygląd menu” → „Strona kategorii” przeciągasz przedmioty z rotacji tak jak inne. Ustawiasz w ten
+            sposób tylko <b>miejsca</b> - jakie przedmioty w nich staną, zdecyduje losowanie. Dlatego po przesunięciu przedmioty i tak układają
+            się po kolei (od lewej, od góry). Co może się wylosować i jak często, ustawiasz w zakładce Kategorie → „Pula rotacji”.
+          </p>
         </div>
       </div>
     );
@@ -2085,12 +2149,27 @@ export default function ShopEditorPage() {
   // ---- ustawienia ----
 
   function layoutEditor(sc: string) {
-    const m: MenuScreenDraft = file.settings.menus[sc];
-    const setMenu = (patch: Partial<MenuScreenDraft>) => setSettings({ menus: { ...file.settings.menus, [sc]: { ...m, ...patch } } });
+    const m: MenuScreenDraft = menuOf(sc);
+    const setMenu = (patch: Partial<MenuScreenDraft>) => setScreenLayout(sc, patch);
     const content: Record<number, SlotContent> = {};
     const catBySlot = categoryBySlot(m.layout, file.settings.categoryOrder);
     // Który przedmiot stoi w którym polu - liczone tak samo jak w pluginie (patrz previewSlotItems).
     const slotItem = previewSlotItems(sc);
+    const roleAt = (slot: number) => m.layout.find((e) => e.slot === slot)?.role;
+    /** Pole z przedmiotem z rotacji (k = który z wylosowanych). */
+    const rotatingContent = (pc: CategoryDraft, k: number, onClick: () => void): SlotContent => {
+      const rotIt = activeRotation(pc, rotationState[pc.id])[k];
+      return rotIt
+        ? {
+            label: `${rotIt.name.trim() ? plain(rotIt.name) : refLabel(rotIt.ref, customNames)} (z rotacji - zniknie przy następnym losowaniu)`,
+            kind: "item",
+            material: rotIt.ref.item ?? (rotIt.ref.custom != null ? customIcon(rotIt.ref.custom) : undefined),
+            sublabel: money(perPiece(rotIt.buy, rotIt.amount)),
+            rotating: true,
+            onClick,
+          }
+        : { label: "Z rotacji - przedmiot wylosuje się sam z puli", sublabel: "?", kind: "item", rotating: true, onClick };
+    };
     for (const e of m.layout) {
       if (e.role === "CATEGORY_SLOT") {
         const catId = catBySlot.get(e.slot);
@@ -2112,17 +2191,8 @@ export default function ShopEditorPage() {
         const idx = slotItem.get(e.slot);
         const it = pc && idx != null ? pc.items[idx] : undefined;
         const open = picked ? () => placePicked(sc, e.slot) : () => setSlotPick({ sc, slot: e.slot });
-        const rotIt = pc && idx != null && idx >= pc.items.length ? activeRotation(pc, rotationState[pc.id])[idx - pc.items.length] : undefined;
         if (pc && idx != null && idx >= pc.items.length) {
-          content[e.slot] = rotIt
-            ? {
-                label: `${rotIt.name.trim() ? plain(rotIt.name) : refLabel(rotIt.ref, customNames)} (rotacja - teraz w sklepie)`,
-                kind: "item",
-                material: rotIt.ref.item ?? (rotIt.ref.custom != null ? customIcon(rotIt.ref.custom) : undefined),
-                sublabel: money(perPiece(rotIt.buy, rotIt.amount)),
-                rotating: true,
-              }
-            : { label: "Losowy przedmiot z puli rotacji", sublabel: "?", kind: "item", rotating: true };
+          content[e.slot] = rotatingContent(pc, idx - pc.items.length, open);
           continue;
         }
         content[e.slot] = it
@@ -2134,6 +2204,15 @@ export default function ShopEditorPage() {
               onClick: open,
             }
           : { label: pc ? "" : "Przedmiot", kind: "item", dim: true, blank: Boolean(pc), onClick: open };
+      } else if (e.role === "ROTATION_SLOT") {
+        // Własne miejsce na rotację: wylosowane przedmioty stoją tu po kolei, reszta pól zostaje pusta.
+        const pc = layoutCat(sc);
+        const idx = slotItem.get(e.slot);
+        const open = picked ? () => placePicked(sc, e.slot) : () => setSlotPick({ sc, slot: e.slot });
+        content[e.slot] =
+          pc && idx != null
+            ? rotatingContent(pc, idx - pc.items.length, open)
+            : { label: "Miejsce na przedmiot z rotacji (teraz puste)", kind: "item", rotating: true, dim: true, onClick: open };
       } else if (e.role === "AMOUNT_SLOT") {
         // Pole "ile sztuk kupic" - liczy sie sama liczba, a kamien i tak byl obrazkiem na niby.
         content[e.slot] = {
@@ -2202,9 +2281,21 @@ export default function ShopEditorPage() {
             // Podglad kategorii: przeciagniecie przedmiotu zmienia jego miejsce w kategorii
             // (czyli w oknie gry), a nie uklad samych pol.
             const pc = file.cats.find((c) => c.id === previewCat);
+            // Pola rotacji przesuwa się jak przyciski - przedmioty z rotacji wypełniają je same po kolei.
+            if (roleAt(from) === "ROTATION_SLOT" || roleAt(to) === "ROTATION_SLOT") {
+              setMenu({ layout: m.layout.map((e) => (e.slot === from ? { ...e, slot: to } : e.slot === to ? { ...e, slot: from } : e)) });
+              return;
+            }
             const a = slotItem.get(from);
             const b = slotItem.get(to);
-            if (pc && ((a ?? -1) >= pc.items.length || (b ?? -1) >= pc.items.length)) return; // rotacja stoi zawsze za stałymi
+            const swap = (l: typeof m.layout) => l.map((e) => (e.slot === from ? { ...e, slot: to } : e.slot === to ? { ...e, slot: from } : e));
+            if (pc && ((a ?? -1) >= pc.items.length || (b ?? -1) >= pc.items.length)) {
+              // Bez pól rotacji stoi ona za stałymi. Pierwsze przeciągnięcie przedmiotu z rotacji zamienia
+              // jego obecne miejsca w pola rotacji - od teraz da się je stawiać gdziekolwiek.
+              const rotAt = new Set([...slotItem].filter(([, i]) => i >= pc.items.length).map(([s]) => s));
+              setMenu({ layout: swap(m.layout.map((e) => (rotAt.has(e.slot) ? { ...e, role: "ROTATION_SLOT" } : e))) });
+              return;
+            }
             if (pc && a != null && b != null && file.settings.categorySort === "order") {
               updateCategory(pc.id, { items: swapItems(pc.items, a, b) });
               return;
@@ -2215,6 +2306,10 @@ export default function ShopEditorPage() {
             // Na polu z przedmiotem z podglądu × usuwa sam przedmiot ze sklepu (Cofnij/Ctrl+Z go przywraca).
             // Usuwanie pola przesuwało wszystkie przedmioty o jedno miejsce.
             const pc = file.cats.find((c) => c.id === previewCat);
+            if (roleAt(slot) === "ROTATION_SLOT") {
+              clearSlot(sc, slot);
+              return;
+            }
             const itemIndex = slotItem.get(slot);
             if (pc && itemIndex != null) {
               if (itemIndex >= pc.items.length) return; // przedmiot z rotacji - usuwa się go z puli, nie z podglądu
@@ -2385,9 +2480,12 @@ export default function ShopEditorPage() {
                   )}
                   <Fold title="Strojenie (zaawansowane)">
                     <div className="row" style={{ alignItems: "center", gap: "0.6rem" }}>
-                      <p className="ci-warning small" style={{ margin: 0, flex: 1 }}>
-                        <b>Uwaga:</b> domyślne wartości są przemyślane i przetestowane - zmieniaj tylko, gdy wiesz, co robisz. Jak coś
-                        pójdzie nie tak, wpisz wartości domyślne podane pod każdym polem albo kliknij „Przywróć domyślne”.
+                      <p className="ci-error small" style={{ margin: 0, flex: 1, display: "flex", gap: "0.5rem", alignItems: "flex-start" }}>
+                        <CircleAlert size={18} strokeWidth={2.25} style={{ color: "var(--danger)", flexShrink: 0 }} />
+                        <span>
+                          <b>Uwaga:</b> domyślne wartości są przemyślane i przetestowane - zmieniaj tylko, gdy wiesz, co robisz. Jak coś
+                          pójdzie nie tak, wpisz wartości domyślne podane pod każdym polem albo kliknij „Przywróć domyślne”.
+                        </span>
                       </p>
                       <ConfirmButton
                         title="Tylko te 8 liczb strojenia wraca do wartości domyślnych"
@@ -2581,7 +2679,7 @@ export default function ShopEditorPage() {
   function placePicked(sc: string, slot: number, what: { cat?: string; role?: string } | null = picked) {
     if (!what) return;
     const picked = what;
-    const m = file.settings.menus[sc];
+    const m = menuOf(sc);
     if (picked.role) {
       const role = picked.role;
       const entry =
@@ -2592,10 +2690,7 @@ export default function ShopEditorPage() {
             : { slot, role };
       // Stara zawartość pola znika (kategoria z niego wypada z menu, inne zostają na swoich polach).
       const cleared = removeMenuSlot(m.layout, file.settings.categoryOrder, slot);
-      setSettings({
-        categoryOrder: cleared.order,
-        menus: { ...file.settings.menus, [sc]: { ...m, layout: [...cleared.layout, entry] } },
-      });
+      setScreenLayout(sc, { layout: [...cleared.layout, entry] }, cleared.order);
       setPicked(null);
       return;
     }
@@ -2610,7 +2705,7 @@ export default function ShopEditorPage() {
   function slotPickModal() {
     if (!slotPick) return null;
     const { sc, slot } = slotPick;
-    const m: MenuScreenDraft = file.settings.menus[sc];
+    const m: MenuScreenDraft = menuOf(sc);
     const close = () => setSlotPick(null);
     const entry = m.layout.find((e) => e.slot === slot);
     const catHere = entry?.role === "CATEGORY_SLOT" ? categoryBySlot(m.layout, file.settings.categoryOrder).get(slot) : undefined;
@@ -2656,11 +2751,15 @@ export default function ShopEditorPage() {
                           className={`ci-slot-pick${here === i ? " active" : ""}`}
                           onClick={() => {
                             const next = placeItemAt(m.layout, pc.items, i, slot, previewPage);
-                            setFile({
-                              ...file,
-                              cats: file.cats.map((c) => (c.id === pc.id ? { ...c, items: next.items } : c)),
-                              settings: { ...file.settings, menus: { ...file.settings.menus, [sc]: { ...m, layout: next.layout } } },
-                            });
+                            // Nowe pole na przedmiot zmienia układ - tylko tej kategorii albo wspólny (suwak).
+                            const layoutChanged = JSON.stringify(next.layout) !== JSON.stringify(m.layout);
+                            if (layoutChanged && file.settings.sharedCategoryLayout)
+                              setFile({
+                                ...file,
+                                cats: file.cats.map((c) => (c.id === pc.id ? { ...c, items: next.items } : c)),
+                                settings: { ...file.settings, menus: { ...file.settings.menus, [sc]: { ...m, layout: next.layout } } },
+                              });
+                            else updateCategory(pc.id, { items: next.items, ...(layoutChanged ? { layout: { ...m, layout: next.layout } } : {}) });
                             close();
                           }}
                         >
@@ -2700,10 +2799,16 @@ export default function ShopEditorPage() {
               <div className="ci-slot-pick-grid">
                 {roles.map((role) => (
                   <button key={role} type="button" className={`ci-slot-pick${entry?.role === role ? " active" : ""}`} onClick={() => place({ role })}>
-                    <MaterialIcon
-                      material={role === "FILLER" ? fillerMaterial || "BLACK_STAINED_GLASS_PANE" : (roleMaterial(role, sc, file.settings.buttons) ?? "STONE")}
-                      iconPackDir={iconPackDir}
-                    />
+                    {role === "ROTATION_SLOT" ? (
+                      <span className="slot-rotating-badge slot-rotating-badge-inline">
+                        <Shuffle size={10} strokeWidth={2.5} />
+                      </span>
+                    ) : (
+                      <MaterialIcon
+                        material={role === "FILLER" ? fillerMaterial || "BLACK_STAINED_GLASS_PANE" : (roleMaterial(role, sc, file.settings.buttons) ?? "STONE")}
+                        iconPackDir={iconPackDir}
+                      />
+                    )}
                     <span>
                       {ROLE_LABELS[role] ?? role}
                       {role === "AMOUNT_SLOT" && <span className="muted small"> ({Math.max(1, Math.floor(amountValue))} szt.)</span>}
@@ -2737,8 +2842,8 @@ export default function ShopEditorPage() {
 
   /** Ustawienia pól wybranego ekranu (ile sztuk, własne tło) - siedzą pod listą po lewej. */
   function layoutExtras(sc: string) {
-    const m: MenuScreenDraft = file.settings.menus[sc];
-    const setMenu = (patch: Partial<MenuScreenDraft>) => setSettings({ menus: { ...file.settings.menus, [sc]: { ...m, ...patch } } });
+    const m: MenuScreenDraft = menuOf(sc);
+    const setMenu = (patch: Partial<MenuScreenDraft>) => setScreenLayout(sc, patch);
     const fillers = m.layout.filter((e) => e.role === "FILLER");
     if (fillers.length === 0) return null;
     return (
@@ -2768,11 +2873,23 @@ export default function ShopEditorPage() {
     const out = new Map<number, number>();
     const pc = file.cats.find((c) => c.id === previewCat);
     if (!pc || sc !== "category-page") return out;
-    const itemSlots = file.settings.menus[sc].layout.filter((e) => e.role === "ITEM_SLOT").map((e) => e.slot);
+    const layout = menuOf(sc).layout;
+    const itemSlots = layout.filter((e) => e.role === "ITEM_SLOT").map((e) => e.slot);
+    const rot = activeRotation(pc, rotationState[pc.id]);
+    // Są pola rotacji: wylosowane stoją w nich po kolei (od lewej, od góry) na każdej stronie, stałe osobno.
+    const rotSlots = rotationSlotsOf(layout);
+    if (rotSlots.length) {
+      rot.forEach((_, k) => k < rotSlots.length && out.set(rotSlots[k], pc.items.length + k));
+      if (itemSlots.length === 0) return out;
+      const fixed = displayOrder(pc.items, file.settings.categorySort);
+      const pages = Math.max(1, Math.ceil(fixed.length / itemSlots.length));
+      const start = Math.min(previewPage, pages - 1) * itemSlots.length;
+      for (let i = start; i < Math.min(start + itemSlots.length, fixed.length); i++) out.set(itemSlots[i - start], fixed[i]);
+      return out;
+    }
     const per = itemSlots.length;
     if (per === 0) return out;
     // Jak w grze: stałe przedmioty, a za nimi to, co akurat wylosowała rotacja (numery od pc.items.length).
-    const rot = activeRotation(pc, rotationState[pc.id]);
     const known = rot.every((x) => x != null) ? (rot as ShopItemDraft[]) : [];
     const order = [
       ...displayOrder([...pc.items, ...known], file.settings.categorySort),
@@ -2806,20 +2923,79 @@ export default function ShopEditorPage() {
     );
   }
 
+  /**
+   * Suwak "Wspólny układ". Włączenie: wszystkie kategorie dostają jeden układ - ten z wybranej kategorii
+   * (jeśli ma własny), inaczej dotychczasowy startowy; własne układy znikają (Cofnij/Ctrl+Z je przywraca).
+   * Wyłączenie: każda kategoria zaczyna od tego wspólnego i dalej zmienia się osobno.
+   */
+  function setSharedLayout(on: boolean) {
+    if (!on) {
+      setSettings({ sharedCategoryLayout: false });
+      return;
+    }
+    const src = layoutCat("category-page")?.layout ?? null;
+    setFile({
+      ...file,
+      cats: file.cats.map((c) => ({ ...c, layout: null })),
+      settings: {
+        ...file.settings,
+        sharedCategoryLayout: true,
+        menus: src ? { ...file.settings.menus, "category-page": src } : file.settings.menus,
+      },
+    });
+  }
+
   /** Pasek nad siatką: co podglądamy, ile tego jest i przełączanie stron. */
   function previewBar(sc: string) {
-    const pc = file.cats.find((c) => c.id === previewCat);
-    if (!pc || sc !== "category-page") return null;
-    const perPage = file.settings.menus[sc].layout.filter((e) => e.role === "ITEM_SLOT").length;
+    if (sc !== "category-page") return null;
+    const pc = layoutCat(sc);
+    const shared = file.settings.sharedCategoryLayout;
+    const switchRow = (
+      <div className="row" style={{ alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem", flexWrap: "wrap" }}>
+        <label className="pm-switch" title="Włączone: jeden układ dla wszystkich kategorii. Wyłączone: każda kategoria ma swój.">
+          <input type="checkbox" checked={shared} onChange={(e) => setSharedLayout(e.target.checked)} />
+          <span className="pm-switch-track" />
+          <span className="small">Wspólny układ dla wszystkich kategorii</span>
+        </label>
+        <span className="muted small">
+          {shared
+            ? "(włączony - zmiana w siatce zmienia wszystkie kategorie)"
+            : pc
+              ? "(wyłączony - zmieniasz tylko tę kategorię)"
+              : "(wyłączony - kliknij kategorię po lewej, żeby ustawić jej układ)"}
+        </span>
+      </div>
+    );
+    if (!pc) return switchRow;
+    const m = menuOf(sc);
+    const perPage = m.layout.filter((e) => e.role === "ITEM_SLOT").length;
     const rotCount = activeRotation(pc, rotationState[pc.id]).length;
+    const rotSlots = rotationSlotsOf(m.layout);
     const total = pc.items.length + rotCount;
-    const pages = perPage > 0 ? Math.max(1, Math.ceil(total / perPage)) : 0;
+    // Z polami rotacji strony liczy się tylko ze stałych - rotacja stoi na swoich polach na każdej stronie.
+    const paged = rotSlots.length ? pc.items.length : total;
+    const pages = perPage > 0 ? Math.max(1, Math.ceil(paged / perPage)) : 0;
     const page = Math.min(previewPage, Math.max(0, pages - 1));
+    const r = pc.rotation;
     return (
+      <>
+      {switchRow}
+      {r?.enabled && rotSlots.length > 0 && rotSlots.length < r.show && (
+        <p className="ci-warning small" style={{ marginTop: 0 }}>
+          Rotacja pokazuje {r.show} {plural(r.show, "przedmiot", "przedmioty", "przedmiotów")}, a pól rotacji jest {rotSlots.length}. Dodaj jeszcze{" "}
+          {r.show - rotSlots.length} {plural(r.show - rotSlots.length, "pole", "pola", "pól")} (klik w pole → „Przedmiot z rotacji”) albo zmniejsz liczbę w
+          zakładce Kategorie - inaczej część wylosowanych przedmiotów się nie pokaże.
+        </p>
+      )}
+      {!r?.enabled && rotSlots.length > 0 && (
+        <p className="ci-note small" style={{ marginTop: 0 }}>
+          Ta kategoria nie ma włączonej rotacji - pola rotacji zostaną w grze puste (tło).
+        </p>
+      )}
       <div className="row" style={{ alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}>
         <MinecraftTextPreview text={pc.name} emptyLabel={pc.id} />
         <span className="muted small">
-          {total} przedmiotów{rotCount > 0 ? ` (w tym ${rotCount} z rotacji - przerywana ramka)` : ""}{perPage > 0 ? `, po ${perPage} na stronie` : " - brak pól na przedmioty"}
+          {total} przedmiotów{perPage > 0 ? `, po ${perPage} na stronie` : " - brak pól na przedmioty"}
         </span>
         {pages > 1 && (
           <>
@@ -2836,13 +3012,31 @@ export default function ShopEditorPage() {
           </>
         )}
       </div>
+      {rotCount > 0 && (
+        <div className="row" style={{ alignItems: "center", gap: "0.4rem", marginBottom: "0.5rem" }}>
+          <span className="shop-rotation-legend">
+            <span className="slot-rotating-badge">
+              <Shuffle size={10} strokeWidth={2.5} />
+            </span>
+            <span>
+              <b>
+                {rotCount} {plural(rotCount, "przykładowy przedmiot", "przykładowe przedmioty", "przykładowych przedmiotów")} z puli rotacji.
+              </b>{" "}
+              W grze co jakiś czas losują się tu nowe.{" "}
+              {!rotSlots.length && "Teraz stoją za stałymi przedmiotami - przeciągnij któryś, żeby postawić je, gdzie chcesz."}
+            </span>
+          </span>
+          <HelpButton id="shop-rotation-preview" title="Po co jest rotacja" onClick={() => setRotationHelp(true)} />
+        </div>
+      )}
+      </>
     );
   }
 
   /** Rozmiar okna i tryb przesuwania pól - pod listą, żeby nie rozpychać góry siatki. */
   function screenToolbar(sc: string) {
-    const m: MenuScreenDraft = file.settings.menus[sc];
-    const setMenu = (patch: Partial<MenuScreenDraft>) => setSettings({ menus: { ...file.settings.menus, [sc]: { ...m, ...patch } } });
+    const m: MenuScreenDraft = menuOf(sc);
+    const setMenu = (patch: Partial<MenuScreenDraft>) => setScreenLayout(sc, patch);
     return (
       <div className="card" style={{ padding: "0.6rem", marginTop: "0.6rem" }}>
         <label style={{ margin: 0 }}>
@@ -2864,8 +3058,8 @@ export default function ShopEditorPage() {
 
   /** Wybór ilości: lista przycisków "ile sztuk" z liczbą do zmiany - po lewej od siatki. */
   function amountPanel(sc: string) {
-    const m: MenuScreenDraft = file.settings.menus[sc];
-    const setMenu = (patch: Partial<MenuScreenDraft>) => setSettings({ menus: { ...file.settings.menus, [sc]: { ...m, ...patch } } });
+    const m: MenuScreenDraft = menuOf(sc);
+    const setMenu = (patch: Partial<MenuScreenDraft>) => setScreenLayout(sc, patch);
     const amounts = m.layout.filter((e) => e.role === "AMOUNT_SLOT").sort((a, b) => a.slot - b.slot);
     const setAmount = (slot: number, n: number) => {
       // Więcej niż 64 się nie da (pełny stack) - ustawiamy 64 i mówimy o tym przy polu.
@@ -2936,7 +3130,7 @@ export default function ShopEditorPage() {
                 className={`ci-cat ci-cat-pick${(preview ? previewCat === c.id : picked?.cat === c.id) ? " active" : ""}`}
                 onClick={() =>
                   preview
-                    ? (setPreviewCat(previewCat === c.id ? null : c.id), setPreviewPage(0))
+                    ? previewCat !== c.id && (setPreviewCat(c.id), setPreviewPage(0))
                     : setPicked(picked?.cat === c.id ? null : { cat: c.id })
                 }
               >
@@ -3181,6 +3375,7 @@ export default function ShopEditorPage() {
         </button>
         <HelpButton id="shop-how-it-works" title="Przewodnik: jak działa sklep, krok po kroku" label="Jak działa sklep" onClick={() => setShopHelp(true)} />
         <span style={{ flex: 1 }} />
+        {unsaved && <span className="muted small">masz niezapisane zmiany</span>}
         {notSent && !unsaved && <span className="muted small">zapisane, jeszcze niewysłane</span>}
         <button type="button" title="Cofnij ostatnią zmianę (Ctrl+Z)" onClick={undoFile} disabled={historyRef.current.past.length === 0}>
           <Undo2 size={14} strokeWidth={1.75} /> Cofnij
@@ -3191,16 +3386,16 @@ export default function ShopEditorPage() {
         <button
           type="button"
           title="Wczytuje sklep od nowa prosto z serwera - np. gdy ktoś zmienił coś w grze komendą"
-          onClick={() => {
-            if (unsaved || notSent) setReloadConfirm(true);
-            else load(profileId, pluginsPath);
-          }}
+          onClick={() => setReloadConfirm(true)}
           disabled={!profileId || busy}
         >
           ↶ Wczytaj z serwera
         </button>
+        <button type="button" title="Zapisuje wszystkie zmiany w aplikacji - na serwer trafią po „Wyślij na serwer” (Ctrl+S)" onClick={save} disabled={!unsaved}>
+          <Save size={14} strokeWidth={1.75} /> Zapisz
+        </button>
         <button className="ci-publish" onClick={publish} disabled={!profileId || (!unsaved && !notSent) || busy}>
-          <Save size={14} strokeWidth={1.75} /> Wyślij na serwer
+          <Upload size={14} strokeWidth={1.75} /> Wyślij na serwer
         </button>
       </div>
       {status && <StatusBar text={status} onClose={() => setStatus(null)} />}
@@ -3227,24 +3422,31 @@ export default function ShopEditorPage() {
         <div className="modal-overlay" onClick={() => setReloadConfirm(false)}>
           <div className="modal card" onClick={(e) => e.stopPropagation()}>
             <h2 style={{ marginTop: 0 }}>Wczytać sklep z serwera?</h2>
-            <p>
-              Masz zmiany, których <b>nie ma na serwerze</b>. Po wczytaniu aplikacja pokaże to, co jest teraz na serwerze - a Twoje zmiany
-              odłoży na bok. Do czasu następnego wczytania możesz je przywrócić jednym kliknięciem.
-            </p>
+            {unsaved || notSent ? (
+              <p>
+                Masz zmiany, których <b>nie ma na serwerze</b>. Po wczytaniu aplikacja pokaże to, co jest teraz na serwerze - a Twoje zmiany
+                odłoży na bok. Do czasu następnego wczytania możesz je przywrócić jednym kliknięciem.
+              </p>
+            ) : (
+              <p>
+                Aplikacja wczyta sklep od nowa prosto z serwera - np. gdy ktoś zmienił coś w grze komendą. Nic nie stracisz: wszystkie Twoje
+                zmiany są już na serwerze.
+              </p>
+            )}
             <div className="row">
               <button
                 type="button"
-                className="ci-danger"
+                className={unsaved || notSent ? "ci-danger" : "ci-publish"}
                 onClick={() => {
                   setReloadConfirm(false);
-                  setDiscarded({ file, saved });
+                  if (unsaved || notSent) setDiscarded({ file, saved });
                   load(profileId, pluginsPath);
                 }}
               >
                 Tak, wczytaj z serwera
               </button>
               <button type="button" onClick={() => setReloadConfirm(false)}>
-                Anuluj - zostaw moje zmiany
+                {unsaved || notSent ? "Anuluj - zostaw moje zmiany" : "Anuluj"}
               </button>
             </div>
           </div>
@@ -3473,22 +3675,15 @@ export default function ShopEditorPage() {
               </div>
             )}
             <div className="ci-actions">
-              <button className="ci-publish" type="button" onClick={save} disabled={!unsaved}>
-                <Save size={16} strokeWidth={1.75} /> Zapisz
-              </button>
               <button type="button" onClick={() => setFile(saved)} disabled={!unsaved}>
                 Cofnij niezapisane
               </button>
             </div>
-            {unsaved && <p className="muted small">masz niezapisane zmiany</p>}
           </section>
         </div>
       )}
       {tab !== "cats" && (
         <div className="ci-actions">
-          <button className="ci-publish" type="button" onClick={save} disabled={!unsaved}>
-            <Save size={16} strokeWidth={1.75} /> Zapisz
-          </button>
           <button type="button" onClick={() => setFile(saved)} disabled={!unsaved}>
             Cofnij niezapisane
           </button>
