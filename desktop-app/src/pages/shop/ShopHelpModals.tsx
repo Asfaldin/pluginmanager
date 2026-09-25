@@ -423,28 +423,30 @@ export function TextsHelpModal({ onClose, onMore }: { onClose: () => void; onMor
     <div className="modal-overlay" onClick={close}>
       <div className="modal card" onClick={(e) => e.stopPropagation()}>
         <div className="row">
-          <h2 style={{ margin: 0, flex: 1 }}>Teksty ogłoszeń na czacie</h2>
+          <h2 style={{ margin: 0, flex: 1 }}>Teksty w grze</h2>
           <button type="button" onClick={close}>
             Zamknij
           </button>
         </div>
-        <p>Wiadomości, które sklep sam wysyła na czat: nowa oferta w rotacji, reset cen i eventy.</p>
+        <p>
+          Wszystko, co sklep pisze graczom: tytuły okien i napisy na przyciskach, opis pod przedmiotem, wiadomości po kupnie i sprzedaży,
+          ogłoszenia na czacie, napisy na tabliczkach i nazwy NPC. Na samym dole, zwinięte - odpowiedzi na komendy admina.
+        </p>
 
         <h3>Jak zmienić tekst</h3>
         <p>
-          Kliknij linijkę w czarnym okienku i pisz w polu pod spodem. Kolor: zaznacz tekst myszką i kliknij kolorowy kwadracik przed
-          polem.
+          Otwórz grupę, kliknij tekst w czarnym okienku i pisz w polu pod spodem. Kolor: zaznacz tekst myszką i kliknij kolorowy kwadracik
+          przed polem. Nie wiesz, gdzie jest tekst? Wpisz kawałek w wyszukiwarkę, np. „nie stać”.
         </p>
 
-        <h3>Przyciski „+ nazwa kategorii”, „+ cena” itd.</h3>
+        <h3>Przyciski „+ nazwa przedmiotu”, „+ cena” itd.</h3>
         <p>
-          Wstawiają ramkę <span className="mc-chip">nazwa kategorii</span>. W jej miejsce sklep sam wpisze to, czego dotyczy ogłoszenie:
+          Wstawiają ramkę <span className="mc-chip">nazwa przedmiotu</span>. W jej miejsce sklep sam wpisze właściwą rzecz - np. w
+          „Kupiono” nazwę tego, co gracz właśnie kupił. Każdy tekst ma tylko te ramki, które pasują do niego.
         </p>
-        <ul>
-          <li>w Blokach: „NOWA OFERTA: Bloki”</li>
-          <li>w Spawnerach: „NOWA OFERTA: Spawnery”</li>
-        </ul>
-        <p>Nazwa wchodzi w swoim kolorze - tym, który ma w kategorii.</p>
+
+        <h3>Plakietka „zmieniony”</h3>
+        <p>Pokazuje teksty inne niż w pluginie. „Przywróć domyślny” przy tekście wraca do oryginału.</p>
 
         <p className="muted small">
           <span className="ci-sample">Podkreślone kropkami</span> w okienku to tylko przykład. Zmiany działają w grze po „Wyślij na

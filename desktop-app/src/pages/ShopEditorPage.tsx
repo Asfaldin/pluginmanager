@@ -13,8 +13,8 @@ import {
   SCREEN_HELP,
 } from "./shop/ShopHelpModals";
 import ShopCommandsModal from "./shop/ShopCommandsModal";
+import ShopTextsSection from "./shop/ShopTextsSection";
 import {
-  ANNOUNCE_GROUPS,
   BUTTON_ROLES,
   EMPTY,
   GOAT_HORNS,
@@ -41,10 +41,9 @@ import { Link } from "react-router-dom";
 import { CommandTip, ConfirmButton, Fold, HelpButton, ListToggle, LoreEditor, StatusBar } from "../components/EditorBits";
 import ItemRefPicker, { ItemDatalists, MATERIALS_LIST_ID } from "../components/ItemRefPicker";
 import MaterialIcon from "../components/MaterialIcon";
-import MinecraftTextInput, { type MinecraftTextHandle } from "../components/MinecraftTextInput";
+import MinecraftTextInput from "../components/MinecraftTextInput";
 import MinecraftTextPreview from "../components/MinecraftTextPreview";
 import { showPrompt } from "../components/PromptModal";
-import SamplePreview from "../components/SamplePreview";
 import SlotGrid, { type SlotContent } from "../components/SlotGrid";
 import { rconSendCommand, sftpDeleteFile, sftpDownloadFile, sftpListDir, sftpReadFile, sftpWriteFile } from "../lib/api";
 import { readCurrency, readSetting } from "../lib/coreSettings";
@@ -97,14 +96,13 @@ import {
   type ShopSettingsDraft,
 } from "../lib/shopYaml";
 import {
-  ANNOUNCE_FIELDS,
-  defaultAnnounceTexts,
+  changedTexts,
   fillPlaceholders,
   parseAnnounceTexts,
   patchLangFile,
-  PLACEHOLDER_LABELS,
   SAMPLE_VALUES,
   sameTexts,
+  TEXT_FIELDS,
   type AnnounceTexts,
 } from "../lib/shopAnnounce";
 import { everyDays, everyMinutes, plural } from "../lib/plText";
@@ -180,8 +178,6 @@ export default function ShopEditorPage() {
       }
     >()
   );
-  const textInputRef = useRef<MinecraftTextHandle>(null);
-  const [textHistory, setTextHistory] = useState({ canUndo: false, canRedo: false });
   // Duze okienko "Jak dziala sklep" otwarte od razu na rozwinietych cenach dynamicznych.
   const [shopHelpDynamic, setShopHelpDynamic] = useState(false);
   // To samo dla tekstów ogłoszeń ("Dowiedz się więcej" z małego "?").
@@ -493,15 +489,15 @@ export default function ShopEditorPage() {
       for (const id of removed) await sftpDeleteFile(profileId, `${dir}/categories/${id}.yml`);
       const textsChanged = !sameTexts(toSend.texts, serverFile.texts);
       if (textsChanged) {
-        // Czytamy plik świeżo z serwera i zmieniamy w nim tylko linijki ogłoszeń.
+        // Czytamy plik świeżo z serwera i zmieniamy w nim tylko linijki zmienionych tekstów.
         const langPath = `${dir}/lang/${language}.yml`;
         let current = "";
         try {
           current = await sftpReadFile(profileId, langPath);
         } catch {
-          // brak pliku - powstanie z samymi ogłoszeniami, resztę plugin weźmie z jara
+          // brak pliku - powstanie z samymi zmienionymi tekstami, resztę plugin weźmie z jara
         }
-        await sftpWriteFile(profileId, langPath, patchLangFile(current, toSend.texts));
+        await sftpWriteFile(profileId, langPath, patchLangFile(current, changedTexts(toSend.texts, serverFile.texts)));
       }
       setServerFile(toSend);
       setServerCatIds(toSend.cats.map((c) => c.id));
@@ -573,7 +569,8 @@ export default function ShopEditorPage() {
     setFile({ ...file, texts: { ...file.texts, ...patch } });
   }
 
-  function openTexts() {
+  function openTexts(key: string | null = null) {
+    setEditingText(key);
     setTab("settings");
     setSettingsSection("texts");
   }
@@ -1307,7 +1304,7 @@ export default function ShopEditorPage() {
             <span className="ci-field-title">Tak to wygląda na czacie</span>
             {!shown.length && <span className="muted small"> (przykładowy przedmiot - pula rotacyjna jest pusta)</span>}
           </span>
-          <button type="button" onClick={openTexts} title="Tekst jest wspólny dla wszystkich kategorii - zmieniasz go w Ustawieniach">
+          <button type="button" onClick={() => openTexts("rotation.broadcast-header")} title="Tekst jest wspólny dla wszystkich kategorii - zmieniasz go w Ustawieniach">
             Zmień tekst
           </button>
         </div>
@@ -1621,7 +1618,7 @@ export default function ShopEditorPage() {
     const sections: Array<[SettingsSection, string, string]> = [
       ["prices", "Ceny", s.rounding === "whole" ? "pełne złotówki" : "z groszami"],
       ["dynamic", "Ceny dynamiczne", d.enabled ? "włączone" : "wyłączone"],
-      ["texts", "Teksty ogłoszeń", "co sklep pisze na czacie"],
+      ["texts", "Teksty w grze", "wszystko, co sklep pisze graczom"],
     ];
     return (
       <div className="ci-settings-layout">
@@ -1776,77 +1773,14 @@ export default function ShopEditorPage() {
           )}
 
           {settingsSection === "texts" && (
-            <>
-              <h2>Teksty ogłoszeń na czacie</h2>
-              <div className="row" style={{ alignItems: "center", gap: "0.5rem" }}>
-                <span className="muted small">Kliknij linijkę, żeby ją zmienić.</span>
-                <HelpButton id="shop-announce-texts-v4" title="Jak działają teksty ogłoszeń" onClick={() => setTextsHelp(true)} />
-                <ConfirmButton
-                  title="Wszystkie teksty ogłoszeń wracają do tych z pluginu"
-                  disabled={sameTexts(file.texts, defaultAnnounceTexts(language))}
-                  onConfirm={() => {
-                    setEditingText(null);
-                    setTexts(defaultAnnounceTexts(language));
-                  }}
-                >
-                  <Undo2 size={14} strokeWidth={1.75} /> Przywróć domyślne
-                </ConfirmButton>
-              </div>
-                {ANNOUNCE_GROUPS.map(([group, title]) => {
-                  const fields = ANNOUNCE_FIELDS.filter((f) => f.group === group);
-                  const editing = fields.find((f) => f.key === editingText);
-                  return (
-                    <div key={group}>
-                      <div className="ci-section-title">{title}</div>
-                      <div className="mc-preview ci-chat-lines">
-                        {fields.map((f) => (
-                          <button
-                            key={f.key}
-                            type="button"
-                            className={`ci-chat-line${editingText === f.key ? " active" : ""}`}
-                            title={`${f.label} - kliknij, żeby zmienić`}
-                            onClick={() => setEditingText(editingText === f.key ? null : f.key)}
-                          >
-                            <SamplePreview text={file.texts[f.key] ?? ""} values={{ ...SAMPLE_VALUES, currency }} labels={PLACEHOLDER_LABELS} emptyLabel="(pusta linijka - nic się nie wyświetli)" />
-                          </button>
-                        ))}
-                      </div>
-                      {editing && (
-                        <div className="ci-chat-edit">
-                          <div className="row" style={{ alignItems: "center", margin: 0, gap: "0.4rem" }}>
-                            <b style={{ marginRight: "0.4rem" }}>{editing.label}</b>
-                            <button type="button" title="Cofnij (Ctrl+Z)" disabled={!textHistory.canUndo} onClick={() => textInputRef.current?.undo()}>
-                              <Undo2 size={14} strokeWidth={1.75} /> Cofnij
-                            </button>
-                            <button type="button" title="Ponów (Ctrl+Y)" disabled={!textHistory.canRedo} onClick={() => textInputRef.current?.redo()}>
-                              <Redo2 size={14} strokeWidth={1.75} /> Ponów
-                            </button>
-                            <button
-                              type="button"
-                              disabled={file.texts[editing.key] === defaultAnnounceTexts(language)[editing.key]}
-                              onClick={() => textInputRef.current?.replaceAll(defaultAnnounceTexts(language)[editing.key])}
-                            >
-                              Przywróć domyślny
-                            </button>
-                            <button type="button" onClick={() => setEditingText(null)}>
-                              Gotowe
-                            </button>
-                          </div>
-                          <MinecraftTextInput
-                            ref={textInputRef}
-                            onHistoryChange={setTextHistory}
-                            value={file.texts[editing.key] ?? ""}
-                            onChange={(v) => setTexts({ [editing.key]: v })}
-                            onEnter={() => setEditingText(null)}
-                            hidePreview
-                            inserts={editing.placeholders.map((ph) => ({ code: `{${ph}}`, label: PLACEHOLDER_LABELS[ph] }))}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-            </>
+            <ShopTextsSection
+              texts={file.texts}
+              setTexts={setTexts}
+              language={language}
+              currency={currency}
+              focusKey={editingText}
+              onHelp={() => setTextsHelp(true)}
+            />
           )}
         </section>
         {settingsChangesPanel()}
@@ -1888,7 +1822,7 @@ export default function ShopEditorPage() {
         setD({ tuning: { ...db.tuning, [field]: da.tuning[field] } })
       );
     }
-    for (const f of ANNOUNCE_FIELDS) {
+    for (const f of TEXT_FIELDS) {
       add(`text-${f.key}`, "texts", `Tekst: ${f.label}`, serverFile.texts[f.key] ?? "", file.texts[f.key] ?? "", () =>
         setTexts({ [f.key]: serverFile.texts[f.key] ?? "" })
       );

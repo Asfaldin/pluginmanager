@@ -1,7 +1,7 @@
 import type { ItemRef } from "../../lib/itemRef";
 import { conventionalRoleIcon } from "../../lib/materialIcons";
 import { num, plural } from "../../lib/plText";
-import { defaultAnnounceTexts, type AnnounceGroup, type AnnounceTexts } from "../../lib/shopAnnounce";
+import { defaultAnnounceTexts, type AnnounceTexts } from "../../lib/shopAnnounce";
 import type { ShopTemplate } from "../../lib/shopTemplates";
 import {
   defaultSettings,
@@ -29,11 +29,6 @@ export type SettingsSection = "prices" | "dynamic" | "texts";
 
 export const EMPTY: ShopFile = { settings: defaultSettings(), cats: [], texts: defaultAnnounceTexts("en") };
 
-export const ANNOUNCE_GROUPS: Array<[AnnounceGroup, string]> = [
-  ["rotation", "Rotacja - nowa oferta w kategorii"],
-  ["reset", "Reset cen"],
-  ["event", "Eventy na skup"],
-];
 export const GOAT_HORNS = ["ponder_goat_horn", "sing_goat_horn", "seek_goat_horn", "feel_goat_horn", "admire_goat_horn", "call_goat_horn", "yearn_goat_horn", "dream_goat_horn"];
 // Ktory przycisk z "Ikonki przyciskow" odpowiada ktorej roli pola w ukladzie. "sort-sell"
 // to tylko druga ikonka tego samego przycisku sortowania, wiec nie ma wlasnej roli.

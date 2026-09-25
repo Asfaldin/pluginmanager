@@ -1,6 +1,6 @@
 import * as yaml from "js-yaml";
 import { describe, expect, it } from "vitest";
-import { defaultAnnounceTexts, fillPlaceholders, parseAnnounceTexts, patchLangFile } from "./shopAnnounce";
+import { changedTexts, defaultAnnounceTexts, fillPlaceholders, parseAnnounceTexts, patchLangFile, TEXT_FIELDS } from "./shopAnnounce";
 
 const LANG = `# teksty sklepu
 gui:
@@ -53,6 +53,35 @@ describe("shopAnnounce", () => {
     const texts = parseAnnounceTexts(LANG, "pl");
     const once = patchLangFile(LANG, texts);
     expect(patchLangFile(once, texts)).toBe(once);
+  });
+
+  it("zna wszystkie teksty pluginu z ludzkimi nazwami i wstawkami", () => {
+    expect(TEXT_FIELDS.length).toBeGreaterThan(150);
+    expect(TEXT_FIELDS.filter((f) => f.label === f.key)).toEqual([]);
+    const bought = TEXT_FIELDS.find((f) => f.key === "buy.bought")!;
+    expect(bought).toMatchObject({ group: "player", list: false });
+    expect(bought.placeholders).toEqual(["amount", "item", "price", "currency"]);
+    expect(TEXT_FIELDS.find((f) => f.key === "admin.usage")).toMatchObject({ group: "admin", list: true });
+    expect(TEXT_FIELDS.find((f) => f.key === "places.sign-line-1")?.group).toBe("places");
+    expect(TEXT_FIELDS.find((f) => f.key === "places.npc-created")?.group).toBe("admin");
+    // angielskie domyślne mają te same klucze
+    expect(Object.keys(defaultAnnounceTexts("en")).sort()).toEqual(Object.keys(defaultAnnounceTexts("pl")).sort());
+  });
+
+  it("listę (kilka linijek) zapisuje w całości, bez ruszania sąsiadów", () => {
+    const texts = { "admin.usage": "&aPierwsza\n&bDruga" };
+    const out = patchLangFile(LANG + "  after: x\n", texts);
+    const parsed = yaml.load(out) as Record<string, Record<string, unknown>>;
+    expect(parsed.admin.usage).toEqual(["&aPierwsza", "&bDruga"]);
+    expect(parsed.admin.after).toBe("x");
+    expect(patchLangFile(out, texts)).toBe(out);
+    expect(parseAnnounceTexts(out, "pl")["admin.usage"]).toBe("&aPierwsza\n&bDruga");
+  });
+
+  it("do pliku idą tylko zmienione teksty", () => {
+    const base = defaultAnnounceTexts("pl");
+    expect(changedTexts({ ...base, "buy.bought": "&aOK" }, base)).toEqual({ "buy.bought": "&aOK" });
+    expect(changedTexts(base, base)).toEqual({});
   });
 
   it("podmienia wstawki w podglądzie, nieznane zostawia", () => {

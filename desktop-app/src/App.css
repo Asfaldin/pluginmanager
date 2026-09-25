@@ -3062,6 +3062,53 @@ button:disabled:hover {
 .ci-chat-line.active {
   border-color: var(--accent);
 }
+/* Teksty w grze (Sklep → Ustawienia): nazwa tekstu, pod nią podgląd do kliknięcia. */
+.ci-text-row {
+  margin: 0 0 0.6rem;
+}
+.ci-text-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.2rem;
+  color: var(--text-muted);
+}
+button.ci-text-preview {
+  display: flex;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-family: "Consolas", monospace;
+  cursor: pointer;
+  color: inherit;
+}
+button.ci-text-preview:hover {
+  border-color: var(--accent);
+}
+button.ci-text-preview.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.ci-text-search {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.6rem 0 0.4rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.form label.ci-text-search {
+  flex-direction: row;
+}
+.ci-text-search input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 0.5rem 0;
+  outline: none;
+}
 .ci-chat-edit {
   display: flex;
   flex-direction: column;
