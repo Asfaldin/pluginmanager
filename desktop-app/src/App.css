@@ -3663,6 +3663,106 @@ button.ci-text-preview.active {
   color: #fff;
   pointer-events: none;
 }
+/* Sklep: wybór szablonu (przycisk + rozwijane menu z opisami). */
+.tpl-menu {
+  position: relative;
+}
+.tpl-menu-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+}
+.tpl-menu-button b {
+  color: var(--accent);
+}
+.tpl-menu-chevron {
+  transition: transform 0.15s;
+  opacity: 0.7;
+}
+.tpl-menu-button.open .tpl-menu-chevron {
+  transform: rotate(180deg);
+}
+.tpl-menu-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  width: min(26rem, 90vw);
+  padding: 0.4rem;
+  background: var(--surface, #1a1622);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+.tpl-menu-title {
+  padding: 0.35rem 0.6rem 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.tpl-menu-sep {
+  height: 1px;
+  margin: 0.35rem 0.3rem;
+  background: var(--border);
+}
+.tpl-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.tpl-menu-item:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.tpl-menu-item.current {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.tpl-menu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+.tpl-menu-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.tpl-menu-label {
+  font-weight: 600;
+  color: var(--text);
+}
+.tpl-menu-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.tpl-menu-check {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+/* Długa lista własnych szablonów przewija się w miejscu, menu nie rośnie w nieskończoność. */
+.tpl-menu-scroll {
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
 /* Sklep → Eventy: zmiana ceny w górę (zielona) / w dół (czerwona). */
 .ci-live-up {
   color: #4ade80;

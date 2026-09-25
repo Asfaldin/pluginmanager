@@ -19,6 +19,8 @@ import ShopCommandsModal from "./shop/ShopCommandsModal";
 import ShopTextsSection from "./shop/ShopTextsSection";
 import ShopRanksSection, { ShopSalesSection } from "./shop/ShopDealsSection";
 import ShopEventsTab from "./shop/ShopEventsTab";
+import ShopTemplateMenu from "./shop/ShopTemplateMenu";
+import { addUserTemplate, loadUserTemplates, removeUserTemplate, type UserShopTemplate } from "../lib/shopUserTemplates";
 import {
   BUTTON_ROLES,
   EMPTY,
@@ -50,13 +52,13 @@ import MinecraftTextInput from "../components/MinecraftTextInput";
 import MinecraftTextPreview from "../components/MinecraftTextPreview";
 import { showPrompt } from "../components/PromptModal";
 import SlotGrid, { type SlotContent } from "../components/SlotGrid";
-import { rconSendCommand, sftpDeleteFile, sftpDownloadFile, sftpListDir, sftpReadFile, sftpWriteFile } from "../lib/api";
+import { rconSendCommand, rpReadTextFile, rpWriteTextFile, sftpDeleteFile, sftpDownloadFile, sftpListDir, sftpReadFile, sftpWriteFile } from "../lib/api";
 import { readCurrency, readSetting } from "../lib/coreSettings";
 import { idFromName } from "../lib/cratesYaml";
 import { loadItemCatalog } from "../lib/itemCatalogRemote";
 import type { ItemRef } from "../lib/itemRef";
 import { itemKey, parseDynamicPrices, parseSalesStats, type SalesStatEntry } from "../lib/shopStats";
-import { shopTemplateChoices, shopTemplateFor } from "../lib/shopTemplates";
+import { parseShopTemplateFile, shopTemplateChoices, shopTemplateFor, type ShopTemplate, type ShopTemplateId } from "../lib/shopTemplates";
 import {
   BUTTON_LABELS,
   categoryBySlot,
@@ -185,6 +187,9 @@ export default function ShopEditorPage() {
   );
   // Która część przewodnika "Jak działa sklep" ma być od razu rozwinięta ("Dowiedz się więcej" z małego "?").
   const [guidePart, setGuidePart] = useState<GuidePart>(null);
+  const [userTemplates, setUserTemplates] = useState<UserShopTemplate[]>(() => loadUserTemplates());
+  // Ostatnio wczytany/zapisany szablon - wygrywa z innymi o tej samej treści (np. Twój zapis Dużego).
+  const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
   const [salesHelp, setSalesHelp] = useState(false);
   const [ranksHelp, setRanksHelp] = useState(false);
   const [poolPickCat, setPoolPickCat] = useState<string | null>(null);
@@ -545,14 +550,78 @@ export default function ShopEditorPage() {
     }
   }
 
+  /**
+   * Zapisuje obecny sklep jako szablon: na listę „Twoje szablony” w menu i jako plik na Pulpicie
+   * (kopia zapasowa, przeniesienie na inny serwer, „Wgraj szablon z pliku”).
+   */
+  async function saveAsTemplate() {
+    const template: ShopTemplate = {
+      "shop.yml": serializeShopSettings(file.settings),
+      categories: Object.fromEntries(file.cats.map((c) => [c.id, serializeCategory(c)])),
+    };
+    const d = new Date();
+    const today = `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const asked = (await showPrompt("Nazwa szablonu (np. „Sklep na event”):", `Mój sklep ${today}`))?.trim();
+    if (!asked) return;
+    const list = addUserTemplate(asked, template);
+    setUserTemplates(list);
+    setActiveTemplate(`user:${list[0].id}`);
+    // Powtórzona nazwa dostała numer, np. „Mój sklep (2)” - plik na Pulpicie też, żeby nie nadpisał starego.
+    const name = list[0].name;
+    const fileName = `${name.replace(/[\\/:*?"<>|]+/g, "-")} - szablon sklepu.txt`;
+    try {
+      await rpWriteTextFile(await desktopDir(), fileName, JSON.stringify(template, null, 2));
+      setStatus(`Zapisano szablon „${name}” - jest w menu „Szablon” (Twoje szablony) i na Pulpicie jako ${fileName}.`);
+    } catch (e) {
+      setStatus(`Szablon „${name}” jest w menu, ale nie udało się zapisać pliku na Pulpicie: ${String(e)}`);
+    }
+  }
+
+  async function removeTemplate(id: string) {
+    const t = userTemplates.find((x) => x.id === id);
+    if (!t) return;
+    if (!(await ask(`Usunąć „${t.name}” z listy? Plik na Pulpicie zostaje - zawsze wgrasz go z powrotem.`, { title: "Usunąć szablon z listy?", okLabel: "Usuń" }))) return;
+    setUserTemplates(removeUserTemplate(id));
+  }
+
   async function loadTemplate(id: string) {
-    const t = shopTemplateChoices(language).find((x) => x.id === id);
+    if (id === "save") {
+      await saveAsTemplate();
+      return;
+    }
+    let t: { label: string; template: ShopTemplate } | undefined = shopTemplateChoices(language).find((x) => x.id === id);
+    let fromFile = false;
+    if (id.startsWith("user:")) {
+      const u = userTemplates.find((x) => `user:${x.id}` === id);
+      if (u) t = { label: u.name, template: u.template };
+    }
+    if (id === "file") {
+      const picked = await openDialog({ multiple: false, filters: [{ name: "Szablon sklepu", extensions: ["txt", "json"] }] });
+      if (typeof picked !== "string") return;
+      const cut = Math.max(picked.lastIndexOf("\\"), picked.lastIndexOf("/"));
+      const text = await rpReadTextFile(picked.slice(0, cut), picked.slice(cut + 1)).catch(() => null);
+      const parsed = text ? parseShopTemplateFile(text) : null;
+      if (!parsed) {
+        setStatus("To nie jest plik szablonu sklepu - wybierz plik zapisany przez „Zapisz obecny sklep jako szablon”.");
+        return;
+      }
+      t = { label: picked.slice(cut + 1).replace(/( - szablon sklepu)?\.(txt|json)$/i, ""), template: parsed };
+      fromFile = true;
+    }
     if (!t) return;
     const confirmed = await ask(
       `Wczytać szablon „${t.label}”? Sklep w edytorze zostanie zastąpiony (na serwerze nic się nie zmieni, dopóki nie wyślesz).`,
       { title: "Wczytać szablon?", kind: "warning" }
     );
     if (!confirmed) return;
+    // Wgrany plik trafia na listę „Twoje szablony”, żeby następnym razem był pod ręką.
+    let active = id;
+    if (fromFile) {
+      const list = addUserTemplate(t.label, t.template);
+      setUserTemplates(list);
+      active = `user:${list[0].id}`;
+    }
+    setActiveTemplate(active);
     const f = fromTemplate(t.template, file.texts);
     setFile(f);
     setCatId(f.cats[0]?.id ?? null);
@@ -2548,6 +2617,19 @@ export default function ShopEditorPage() {
   }
 
   const problems = tab === "cats" && category ? shopProblems(file.settings, [category]) : [];
+  // Który szablon jest teraz w edytorze (sklep 1:1 jak szablon) - po pierwszej zmianie już żaden.
+  const currentTemplate = useMemo((): string | null => {
+    const mine = serializeAll(file);
+    const same = (t: ShopTemplate) => serializeAll(fromTemplate(t, file.texts)) === mine;
+    const choices = [
+      ...shopTemplateChoices(language).map((t) => ({ key: t.id as string, template: t.template })),
+      ...userTemplates.map((t) => ({ key: `user:${t.id}`, template: t.template })),
+    ];
+    // Najpierw ten, który wczytałeś/zapisałeś ostatnio - potem pierwszy pasujący.
+    const active = choices.find((c) => c.key === activeTemplate);
+    if (active && same(active.template)) return active.key;
+    return choices.find((c) => same(c.template))?.key ?? null;
+  }, [file, language, userTemplates, activeTemplate]);
 
   return (
     <div className="page">
@@ -2557,14 +2639,14 @@ export default function ShopEditorPage() {
       <h1>Sklep</h1>
       <div className="ci-page-intro">
         <p className="muted">Kategorie i przedmioty sklepu serwerowego: ceny kupna i skupu, rotacja, ceny dynamiczne i wygląd menu.</p>
-        <select value="" onChange={(e) => loadTemplate(e.target.value)} disabled={!profileId} title="Gotowe sklepy - podmieniają cały sklep w edytorze">
-          <option value="">Wczytaj szablon...</option>
-          {shopTemplateChoices(language).map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.label}
-            </option>
-          ))}
-        </select>
+        <ShopTemplateMenu
+          current={currentTemplate}
+          labels={Object.fromEntries(shopTemplateChoices(language).map((t) => [t.id, t.label])) as Record<ShopTemplateId, string>}
+          userTemplates={userTemplates.map((t) => ({ id: t.id, name: t.name, savedAt: t.savedAt, categories: Object.keys(t.template.categories).length }))}
+          disabled={!profileId}
+          onPick={(id) => void loadTemplate(id)}
+          onRemoveUser={(id) => void removeTemplate(id)}
+        />
       </div>
 
       <div className="row ci-toolbar">
