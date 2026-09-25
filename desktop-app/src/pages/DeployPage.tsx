@@ -1,4 +1,5 @@
-import { ask, open } from "@tauri-apps/plugin-dialog";
+import { open } from "@tauri-apps/plugin-dialog";
+import { ask } from "../components/AskModal";
 import { StatusBar } from "../components/EditorBits";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";

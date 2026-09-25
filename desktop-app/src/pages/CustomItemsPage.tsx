@@ -1,4 +1,4 @@
-import { ask } from "@tauri-apps/plugin-dialog";
+import { ask } from "../components/AskModal";
 import { useDirtyTracking } from "../state/DirtyContext";
 import { Save } from "lucide-react";
 import { StatusBar, ListToggle } from "../components/EditorBits";

@@ -2,6 +2,7 @@ import { Blocks, Palette } from "lucide-react";
 import { HashRouter, Route, Routes } from "react-router-dom";
 import CloseGuard from "./components/CloseGuard";
 import PromptHost from "./components/PromptModal";
+import AskHost from "./components/AskModal";
 import HomeRedirect from "./components/HomeRedirect";
 import Layout from "./components/Layout";
 import TitleBar from "./components/TitleBar";
@@ -66,7 +67,6 @@ function Gate() {
   return (
     <>
       <CloseGuard />
-      <PromptHost />
       <ProfilesProvider>
         <HashRouter>
           <Routes>
@@ -123,6 +123,9 @@ function App() {
     <LanguageProvider>
       <SidebarProvider>
         <DirtyProvider>
+          {/* Okienka pytań i wpisywania - ponad resztą, żeby działały też z paska tytułu (zamykanie) i podczas wczytywania. */}
+          <PromptHost />
+          <AskHost />
           <div className="window-frame">
             <TitleBar />
             <div className="window-body">

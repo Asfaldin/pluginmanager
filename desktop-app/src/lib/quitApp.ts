@@ -1,5 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { ask } from "@tauri-apps/plugin-dialog";
+import { ask } from "../components/AskModal";
 
 /** Bezpośrednie zamknięcie appki (destroy(), nie close()) - pyta samo o niezapisane
     zmiany i pomija zdarzenie onCloseRequested (patrz CloseGuard.tsx), więc działa nawet

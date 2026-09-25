@@ -26,6 +26,19 @@ export function writeSetting(text: string, key: string, value: string): string {
   return `${base}${key}: ${value}\n`;
 }
 
+/** Znaczek waluty z config.yml core ("currency"), domyślnie "$". Może zaczynać się spacją: " zł" -> "100 zł". */
+export function readCurrency(configText: string): string {
+  return readSetting(configText, "currency") ?? "$";
+}
+
+/** Gotowe znaczki do wyboru w Ustawieniach serwera. */
+export const CURRENCY_PRESETS: { value: string; label: string }[] = [
+  { value: "$", label: "$" },
+  { value: " zł", label: "zł" },
+  { value: " €", label: "€" },
+  { value: " monet", label: "monety" },
+];
+
 export interface CommandRow {
   /** Oryginalna nazwa komendy z pluginu, np. "przelej" albo "@reloadsklep". */
   command: string;

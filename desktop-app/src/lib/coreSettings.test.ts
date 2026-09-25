@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCommandsYml, readSetting, serializeCommandsYml, writeSetting } from "./coreSettings";
+import { parseCommandsYml, readCurrency, readSetting, serializeCommandsYml, writeSetting } from "./coreSettings";
 
 const CONFIG = `# Server language
 language: pl
@@ -67,5 +67,15 @@ describe("commands.yml", () => {
   it("handles an empty file", () => {
     expect(parseCommandsYml("")).toEqual([]);
     expect(parseCommandsYml(serializeCommandsYml([]))).toEqual([]);
+  });
+});
+
+describe("znaczek waluty", () => {
+  it("bez ustawienia jest $, spacja w cudzysłowie zostaje", () => {
+    expect(readCurrency("language: pl\n")).toBe("$");
+    const text = writeSetting("language: pl\neconomy: own\n", "currency", JSON.stringify(" zł"));
+    expect(text).toContain('currency: " zł"');
+    expect(readCurrency(text)).toBe(" zł");
+    expect(readCurrency(writeSetting(text, "currency", JSON.stringify("$")))).toBe("$");
   });
 });

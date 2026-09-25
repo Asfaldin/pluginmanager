@@ -1,29 +1,68 @@
 import { desktopDir, join } from "@tauri-apps/api/path";
-import { ask, open as openDialog } from "@tauri-apps/plugin-dialog";
-import { ArrowDown, ArrowUp, Download, Eye, EyeOff, Redo2, Save, Shuffle, Store, Terminal, Trash2, TriangleAlert, Undo2 } from "lucide-react";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { ask } from "../components/AskModal";
+import {
+  CollectionInfoModal,
+  DynamicHelpModal,
+  FixedPriceHelpModal,
+  PriceHelpModal,
+  RanksHelpModal,
+  RotationHelpModal,
+  SalesHelpModal,
+  ShopGuideModal,
+  StatsHelpModal,
+  TextsHelpModal,
+  SCREEN_HELP,
+  type GuidePart,
+} from "./shop/ShopHelpModals";
+import ShopCommandsModal from "./shop/ShopCommandsModal";
+import ShopTextsSection from "./shop/ShopTextsSection";
+import ShopRanksSection, { ShopSalesSection } from "./shop/ShopDealsSection";
+import ShopEventsTab from "./shop/ShopEventsTab";
+import ShopTemplateMenu from "./shop/ShopTemplateMenu";
+import { addUserTemplate, loadUserTemplates, removeUserTemplate, type UserShopTemplate } from "../lib/shopUserTemplates";
+import {
+  BUTTON_ROLES,
+  EMPTY,
+  GOAT_HORNS,
+  ROLES_BY_SCREEN,
+  TUNING_FIELDS,
+  fromTemplate,
+  money,
+  ordered,
+  plain,
+  refLabel,
+  roleMaterial,
+  sameValues,
+  serializeAll,
+  setCurrencySign,
+  shopDir,
+  type Sel,
+  type SettingsSection,
+  type ShopFile,
+  type Tab,
+} from "./shop/shopPageShared";
+import { ArrowDown, ArrowUp, CircleAlert, Download, Eye, EyeOff, Redo2, Save, Shuffle, Store, Terminal, Trash2, TriangleAlert, Undo2, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { ConfirmButton, CopyRow, Fold, HelpButton, ListToggle, LoreEditor, StatusBar } from "../components/EditorBits";
+import { CommandTip, ConfirmButton, Fold, HelpButton, ListToggle, LoreEditor, StatusBar } from "../components/EditorBits";
 import ItemRefPicker, { ItemDatalists, MATERIALS_LIST_ID } from "../components/ItemRefPicker";
 import MaterialIcon from "../components/MaterialIcon";
-import MinecraftTextInput, { type MinecraftTextHandle } from "../components/MinecraftTextInput";
+import MinecraftTextInput from "../components/MinecraftTextInput";
 import MinecraftTextPreview from "../components/MinecraftTextPreview";
 import { showPrompt } from "../components/PromptModal";
-import SamplePreview from "../components/SamplePreview";
 import SlotGrid, { type SlotContent } from "../components/SlotGrid";
-import { rconSendCommand, sftpDeleteFile, sftpDownloadFile, sftpListDir, sftpReadFile, sftpWriteFile } from "../lib/api";
-import { readSetting } from "../lib/coreSettings";
+import { rconSendCommand, rpReadTextFile, rpWriteTextFile, sftpDeleteFile, sftpDownloadFile, sftpListDir, sftpReadFile, sftpWriteFile } from "../lib/api";
+import { readCurrency, readSetting } from "../lib/coreSettings";
 import { idFromName } from "../lib/cratesYaml";
 import { loadItemCatalog } from "../lib/itemCatalogRemote";
 import type { ItemRef } from "../lib/itemRef";
-import { conventionalRoleIcon } from "../lib/materialIcons";
 import { itemKey, parseDynamicPrices, parseSalesStats, type SalesStatEntry } from "../lib/shopStats";
-import { shopTemplateChoices, shopTemplateFor, type ShopTemplate } from "../lib/shopTemplates";
+import { parseShopTemplateFile, shopTemplateChoices, shopTemplateFor, type ShopTemplate, type ShopTemplateId } from "../lib/shopTemplates";
 import {
   BUTTON_LABELS,
   categoryBySlot,
   defaultDynamic,
-  defaultSettings,
   defaultTuning,
   detectSort,
   fromPerPiece,
@@ -34,7 +73,9 @@ import {
   placeCategoryAt,
   removeMenuSlot,
   swapItems,
+  activeRotation,
   displayOrder,
+  parseRotationState,
   pageSlots,
   placeItemAt,
   switchLot,
@@ -47,6 +88,7 @@ import {
   parseShopSettings,
   perPiece,
   randomPick,
+  rotationSlotsOf,
   type PriceFilter,
   ROLE_LABELS,
   sortItems,
@@ -59,211 +101,22 @@ import {
   type MenuScreenDraft,
   type ShopItemDraft,
   type ShopSettingsDraft,
-  type TuningDraft,
 } from "../lib/shopYaml";
 import {
-  ANNOUNCE_FIELDS,
-  defaultAnnounceTexts,
+  changedTexts,
   fillPlaceholders,
   parseAnnounceTexts,
   patchLangFile,
-  PLACEHOLDER_HELP,
-  PLACEHOLDER_LABELS,
   SAMPLE_VALUES,
   sameTexts,
-  type AnnounceGroup,
+  TEXT_FIELDS,
   type AnnounceTexts,
 } from "../lib/shopAnnounce";
-import { everyDays, everyMinutes, num, plural } from "../lib/plText";
+import { everyDays, everyMinutes, plural } from "../lib/plText";
 import { parseSpawnerConfig } from "../lib/spawnersYaml";
 import { useIconPack } from "../lib/useIconPack";
 import { useDirtyTracking } from "../state/DirtyContext";
 import { useProfiles } from "../state/ProfilesContext";
-
-interface ShopFile {
-  settings: ShopSettingsDraft;
-  cats: CategoryDraft[];
-  /** Teksty ogłoszeń na czacie - z lang/<język>.yml pluginu, nie z shop.yml. */
-  texts: AnnounceTexts;
-}
-
-type Sel = { kind: "cat" } | { kind: "item"; pool: boolean; index: number };
-type Tab = "cats" | "settings" | "stats" | "menu";
-type SettingsSection = "prices" | "dynamic" | "texts";
-
-const EMPTY: ShopFile = { settings: defaultSettings(), cats: [], texts: defaultAnnounceTexts("en") };
-
-const ANNOUNCE_GROUPS: Array<[AnnounceGroup, string]> = [
-  ["rotation", "Rotacja - nowa oferta w kategorii"],
-  ["reset", "Reset cen"],
-  ["event", "Eventy na skup"],
-];
-const GOAT_HORNS = ["ponder_goat_horn", "sing_goat_horn", "seek_goat_horn", "feel_goat_horn", "admire_goat_horn", "call_goat_horn", "yearn_goat_horn", "dream_goat_horn"];
-// Ktory przycisk z "Ikonki przyciskow" odpowiada ktorej roli pola w ukladzie. "sort-sell"
-// to tylko druga ikonka tego samego przycisku sortowania, wiec nie ma wlasnej roli.
-const BUTTON_ROLES: Record<string, string> = {
-  search: "SEARCH",
-  exit: "EXIT",
-  back: "NAV_BACK",
-  prev: "NAV_PREV",
-  next: "NAV_NEXT",
-  sort: "SORT",
-  "picker-back": "NAV_BACK",
-};
-
-/**
- * Ikonka przycisku w podglądzie - taka, jaką ma w grze: z "Ikonek przycisków" (menus.buttons).
- * Powrót w wyborze ilości to osobny przycisk ("picker-back"), na innych ekranach - "back" (kompas).
- */
-function roleMaterial(role: string, sc: string, buttons: Record<string, string>): string | undefined {
-  const id =
-    role === "NAV_BACK"
-      ? sc === "buy-picker"
-        ? "picker-back"
-        : "back"
-      : Object.entries(BUTTON_ROLES).find(([k, r]) => r === role && k !== "back" && k !== "picker-back")?.[0];
-  return (id && buttons[id]) || conventionalRoleIcon(role);
-}
-
-/** Co to za okno w grze i po co się je ustawia - okienko "?" przy zakładkach ekranów w "Wygląd menu". */
-const SCREEN_HELP: Record<string, ReactNode> = {
-  "main-menu": (
-    <p>
-      Pierwsze okno po wpisaniu <b>/sklep</b>. Stoją w nim <b>kategorie</b> (klik otwiera kategorię) i przyciski: „Szukaj” (gracz wpisuje
-      nazwę przedmiotu na czacie) oraz „Zamknij”. Tu decydujesz, gdzie która kategoria stoi.
-    </p>
-  ),
-  "category-page": (
-    <p>
-      Okno po kliknięciu kategorii - lista jej <b>przedmiotów</b> do kupienia i sprzedania. Ustawiasz, w których polach stoją przedmioty,
-      w jakiej kolejności, oraz przyciski: strony (gdy przedmiotów jest dużo), sortowanie (lejek), powrót do menu i zamknięcie. Z lewej
-      wybierz kategorię, żeby zobaczyć jej prawdziwe przedmioty.
-    </p>
-  ),
-  "buy-picker": (
-    <p>
-      Małe okno po kliknięciu przedmiotu do kupienia: gracz wybiera, <b>ile sztuk</b> kupuje (np. 1, 8, 16, 32, 64). Liczby na przyciskach
-      zmieniasz z lewej, w „Przyciski ilości”. Jest tu też powrót do kategorii.
-    </p>
-  ),
-  "search-results": (
-    <p>
-      Okno, które widzi gracz po użyciu <b>„Szukaj”</b> w menu głównym: wpisuje nazwę (np. „bruk”) na czacie, a sklep pokazuje wszystkie
-      pasujące przedmioty <b>ze wszystkich kategorii</b>. Tu ustawiasz, w których polach pojawiają się wyniki, i gdzie stoi przycisk powrotu
-      do sklepu (kompas).
-    </p>
-  ),
-};
-
-const ROLES_BY_SCREEN: Record<string, string[]> = {
-  "main-menu": ["CATEGORY_SLOT", "SEARCH", "EXIT", "FILLER"],
-  "category-page": ["ITEM_SLOT", "SORT", "NAV_PREV", "NAV_NEXT", "NAV_BACK", "EXIT", "FILLER"],
-  "buy-picker": ["AMOUNT_SLOT", "NAV_BACK", "FILLER"],
-  "search-results": ["ITEM_SLOT", "NAV_BACK", "FILLER"],
-};
-
-/** Pola strojenia cen dynamicznych: nazwa w kodzie, podpis, krok, podpowiedź, jednostka i mnożnik
-    (100 = w pliku ułamek 0.05, a w aplikacji pokazujemy 5 %). */
-const TUNING_FIELDS: Array<[keyof TuningDraft, string, string, (v: number) => string, string, number]> = [
-  ["maxDropPerCycle", "Największy spadek skupu na cykl", "1", (v) => `W jednym cyklu skup spada najwyżej o ${num(v)}% (domyślnie 5)`, "%", 100],
-  ["dropAtTop", "Ile razy mocniejszy spadek na maksimum", "0.1", (v) => `Na samej górze skup spada ${num(v)} razy szybciej (domyślnie 4,2)`, "razy", 1],
-  ["recoverFromBelow", "Ile drogi wraca w cyklu ciszy", "5", (v) => `Zbita cena odrabia ${num(v)}% straty w każdym cyklu ciszy (domyślnie 80)`, "%", 100],
-  ["risePerCycle", "Wzrost na cykl, gdy nikt nie sprzedaje", "0.5", (v) => `Gdy nikt nie sprzedaje, skup rośnie o ${num(v)}% na cykl (domyślnie 12,5)`, "%", 100],
-  ["quietThreshold", "Poniżej jakiej części normy to cisza", "5", (v) => `Sprzedaż poniżej ${num(v)}% zwykłej liczy się jako „cisza” (domyślnie 10)`, "% normy", 100],
-  ["cyclesToRise", "Ile cykli ciszy przed wzrostem", "1", (v) => `Cena zaczyna rosnąć po ${num(v)} ${v === 1 ? "cyklu" : "cyklach"} ciszy (domyślnie 2)`, "cykle", 1],
-  ["cyclesFrozen", "Ile cykli cena stoi po zejściu z góry", "1", (v) => `Po zejściu z maksimum cena stoi ${num(v)} ${plural(v, "cykl", "cykle", "cykli")} (domyślnie 2)`, "cykle", 1],
-  ["normLearnRate", "Jak szybko sklep zapomina stare cykle", "0.5", () => "Mniej = sklep dłużej pamięta stare cykle, więcej = szybciej zapomina (domyślnie 2)", "%", 100],
-];
-
-function shopDir(pluginsPath: string): string {
-  return `${pluginsPath.replace(/\/+$/, "")}/MainpluginsShop`;
-}
-
-function serializeAll(f: ShopFile): string {
-  return serializeShopSettings(f.settings) + f.cats.map((c) => `\n#### ${c.id}\n${serializeCategory(c)}`).join("") + `\n#### texts\n${JSON.stringify(f.texts)}`;
-}
-
-/** Kategorie w kolejności z shop.yml, reszta na końcu. */
-function ordered(settings: ShopSettingsDraft, cats: CategoryDraft[]): CategoryDraft[] {
-  const inOrder = settings.categoryOrder.map((id) => cats.find((c) => c.id === id)).filter((c): c is CategoryDraft => !!c);
-  return [...inOrder, ...cats.filter((c) => !settings.categoryOrder.includes(c.id))];
-}
-
-function fromTemplate(t: ShopTemplate, texts: AnnounceTexts): ShopFile {
-  const settings = parseShopSettings(t["shop.yml"]);
-  return { settings, cats: ordered(settings, Object.entries(t.categories).map(([id, text]) => parseCategory(id, text))), texts };
-}
-
-/** Czy dwa obiekty mają te same wartości, niezależnie od kolejności pól (do wyszarzania "Przywróć domyślne"). */
-function sameValues(a: unknown, b: unknown): boolean {
-  const sorted = (v: unknown): unknown =>
-    v && typeof v === "object" && !Array.isArray(v)
-      ? Object.fromEntries(Object.keys(v as object).sort().map((k) => [k, sorted((v as Record<string, unknown>)[k])]))
-      : v;
-  return JSON.stringify(sorted(a)) === JSON.stringify(sorted(b));
-}
-
-function plain(text: string): string {
-  return text.replace(/&[0-9a-fk-or]/gi, "");
-}
-
-/** Nazwa przedmiotu bez własnej nazwy w sklepie. `customNames` = ludzkie nazwy custom itemów (np. "Spawner: Krowa"). */
-function refLabel(r: ItemRef, customNames: Record<string, string> = {}): string {
-  if (r.custom != null) return customNames[r.custom] ?? `custom: ${r.custom}`;
-  return (r.item ?? "STONE").toLowerCase().replace(/_/g, " ");
-}
-
-/** Kwota ze znaczkiem, zeby bylo widac, ze to pieniadze, a nie ilosc sztuk. */
-function money(n: number | null): string {
-  if (n == null) return "-";
-  return (Number.isInteger(n) ? String(n) : n.toFixed(2)) + " $";
-}
-
-function ShopCommandsModal({ file, onClose }: { file: ShopFile; onClose: () => void }) {
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal-wide card" onClick={(e) => e.stopPropagation()}>
-        <div className="row">
-          <h2 style={{ margin: 0, flex: 1 }}>Komendy Sklepu</h2>
-          <button type="button" onClick={onClose}>
-            Zamknij
-          </button>
-        </div>
-        <p className="muted small">
-          Gracz: /shop, /sell (przedmiot z ręki), /sellall (wszystkie takie jak w ręce). Admin (uprawnienie mainplugins.shop.admin) - w konsoli bez „/”.
-          Przedmiot w komendach to np. DIAMOND albo custom:spawner_zombie (podpowiada się klawiszem Tab).
-        </p>
-        <div className="ci-protip">
-          <CopyRow cmd="/@shop reload" what="wczytuje sklep od nowa (aplikacja robi to sama po „Wyślij na serwer”)" />
-          <CopyRow cmd="/@shop info <przedmiot>" what="ceny i stan rynku przedmiotu" />
-          <CopyRow cmd="/@shop price <przedmiot> buy <kwota>" what="zmienia cenę kupna za całą paczkę (np. 640 za 64 szt.) - pokaże też cenę za sztukę i zapyta o potwierdzenie" />
-          <CopyRow cmd="/@shop price <przedmiot> sell <kwota>" what="zmienia cenę skupu za całą paczkę" />
-          <CopyRow cmd="/@shop multiplier <przedmiot> +20" what="ręcznie zmienia skup o tyle procent (ceny dynamiczne dalej działają)" />
-          <CopyRow cmd="/@shop event <przedmiot> +50 2h" what="event: skup +50% przez 2 godziny (bez czasu - aż do „off”)" />
-          <CopyRow cmd="/@shop event <przedmiot> off" what="kończy event na przedmiocie" />
-          <CopyRow cmd="/@shop event list" what="lista trwających eventów" />
-          <CopyRow cmd="/@shop event offall" what="kończy wszystkie eventy naraz" />
-          <CopyRow cmd="/@shop reset <przedmiot>" what="skup przedmiotu wraca do normy" />
-          <CopyRow cmd="/@shop resetall" what="wszystkie ceny skupu wracają do normy (potem /@shop confirm)" />
-          <CopyRow cmd="/@shop rotation" what="co jest teraz w rotacji" />
-          <CopyRow cmd="/@shop rotation force" what="losuje nową ofertę rotacji od razu" />
-          <CopyRow cmd="/@shop stats" what="dzisiejsza sprzedaż (gdy statystyki są włączone)" />
-        </div>
-        <div className="ci-section-title" style={{ marginTop: "1rem" }}>
-          Twoje kategorie z rotacją
-        </div>
-        <div className="ci-protip">
-          {file.cats.filter((c) => c.rotation?.enabled).length === 0 && <span className="muted small">Żadna kategoria nie ma rotacji.</span>}
-          {file.cats
-            .filter((c) => c.rotation?.enabled)
-            .map((c) => (
-              <CopyRow key={c.id} cmd={`/@shop rotation force ${c.id}`} what={<MinecraftTextPreview text={c.name} emptyLabel={c.id} />} />
-            ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function ShopEditorPage() {
   const { profiles, loading: profilesLoading, activeProfileId: profileId, setActiveProfileId: setProfileId } = useProfiles();
@@ -286,6 +139,9 @@ export default function ShopEditorPage() {
   const [catId, setCatId] = useState<string | null>(null);
   const [sel, setSel] = useState<Sel>({ kind: "cat" });
   const [language, setLanguage] = useState("en");
+  const [currency, setCurrency] = useState("$");
+  // Co z puli rotacji plugin ma teraz wylosowane (rotation.yml na serwerze) - do podglądu strony kategorii.
+  const [rotationState, setRotationState] = useState<Record<string, number[]>>({});
   const [customIds, setCustomIds] = useState<string[]>([]);
   // Custom item -> zwykły materiał do ikonki: z katalogu itemów, a spawnery ze Spawnerów po prostu jako spawner.
   const [customIcons, setCustomIcons] = useState<Record<string, string>>({});
@@ -329,12 +185,13 @@ export default function ShopEditorPage() {
       }
     >()
   );
-  const textInputRef = useRef<MinecraftTextHandle>(null);
-  const [textHistory, setTextHistory] = useState({ canUndo: false, canRedo: false });
-  // Duze okienko "Jak dziala sklep" otwarte od razu na rozwinietych cenach dynamicznych.
-  const [shopHelpDynamic, setShopHelpDynamic] = useState(false);
-  // To samo dla tekstów ogłoszeń ("Dowiedz się więcej" z małego "?").
-  const [shopHelpTexts, setShopHelpTexts] = useState(false);
+  // Która część przewodnika "Jak działa sklep" ma być od razu rozwinięta ("Dowiedz się więcej" z małego "?").
+  const [guidePart, setGuidePart] = useState<GuidePart>(null);
+  const [userTemplates, setUserTemplates] = useState<UserShopTemplate[]>(() => loadUserTemplates());
+  // Ostatnio wczytany/zapisany szablon - wygrywa z innymi o tej samej treści (np. Twój zapis Dużego).
+  const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
+  const [salesHelp, setSalesHelp] = useState(false);
+  const [ranksHelp, setRanksHelp] = useState(false);
   const [poolPickCat, setPoolPickCat] = useState<string | null>(null);
   const [poolPickBack, setPoolPickBack] = useState(false);
   // Ktora liste widac w srodkowej kolumnie: stale przedmioty czy pula rotacji.
@@ -388,6 +245,19 @@ export default function ShopEditorPage() {
   const [priceFilter, setPriceFilter] = useState<Record<string, PriceFilter>>({});
   const [trashConfirm, setTrashConfirm] = useState<string | null>(null);
   const [screen, setScreen] = useState("main-menu");
+  // Podniesiona kategoria/przycisk dotyczy tylko okna, w którym ją wybrano - zmiana karty kończy wybór.
+  useEffect(() => {
+    setPicked(null);
+    setSlotPick(null);
+  }, [screen, tab]);
+  // Strona kategorii zawsze pokazuje jakąś kategorię - na start pierwszą z listy (także po jej usunięciu).
+  useEffect(() => {
+    if (screen !== "category-page" || !file.cats.length) return;
+    if (!previewCat || !file.cats.some((c) => c.id === previewCat)) {
+      setPreviewCat(file.cats[0].id);
+      setPreviewPage(0);
+    }
+  }, [screen, previewCat, file.cats]);
   const autoLoadedRef = useRef(false);
   const { iconPackDir, allMaterials } = useIconPack(setStatus);
 
@@ -445,9 +315,15 @@ export default function ShopEditorPage() {
   }
 
   // Ctrl+Z / Ctrl+Y dla całej strony - ale nie w polach tekstowych, one mają własne cofanie.
+  // Ctrl+S zapisuje wszędzie, także w trakcie pisania w polu.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        if (unsaved) save();
+        return;
+      }
       const t = e.target as HTMLElement | null;
       if (t?.closest("input, textarea, select, .mc-rich")) return;
       const k = e.key.toLowerCase();
@@ -470,12 +346,17 @@ export default function ShopEditorPage() {
     const base = path.replace(/\/+$/, "");
     const dir = shopDir(path);
     let lang = "en";
+    let cur = "$";
     try {
-      lang = readSetting(await sftpReadFile(pid, `${base}/MainpluginsCore/config.yml`), "language") ?? "en";
+      const coreConfig = await sftpReadFile(pid, `${base}/MainpluginsCore/config.yml`);
+      lang = readSetting(coreConfig, "language") ?? "en";
+      cur = readCurrency(coreConfig);
     } catch {
-      // brak configu core - zostaje angielski
+      // brak configu core - zostaje angielski i "$"
     }
     setLanguage(lang);
+    setCurrencySign(cur);
+    setCurrency(cur);
     let langText: string | null = null;
     try {
       langText = await sftpReadFile(pid, `${dir}/lang/${lang}.yml`);
@@ -483,6 +364,11 @@ export default function ShopEditorPage() {
       // pliku jeszcze nie ma - plugin bierze teksty z jara, czyli domyślne
     }
     const texts = parseAnnounceTexts(langText, lang);
+    try {
+      setRotationState(parseRotationState(await sftpReadFile(pid, `${dir}/rotation.yml`)));
+    } catch {
+      setRotationState({}); // losowania jeszcze nie było
+    }
     try {
       const settings = parseShopSettings(await sftpReadFile(pid, `${dir}/shop.yml`));
       let ids: string[] = [];
@@ -588,18 +474,20 @@ export default function ShopEditorPage() {
 
   async function publish() {
     if (!profileId || !pluginsPath) return;
-    let toSend = saved;
-    if (unsaved) {
-      if (!(await ask("Masz niezapisane zmiany. Zapisać je i wysłać razem?", { title: "Niezapisane zmiany", kind: "warning" }))) return;
-      toSend = file;
-      setSaved(file);
-    }
+    // "Wyślij na serwer" = wyślij to, co widać - niezapisane zmiany zapisują się przy okazji, bez pytania.
+    const toSend = file;
+    if (unsaved) setSaved(file);
     const warnings = shopProblems(toSend.settings, toSend.cats);
     if (warnings.length && !(await ask(`Uwaga:\n- ${warnings.join("\n- ")}\n\nWysłać mimo to?`, { title: "Uwaga", kind: "warning" }))) return;
     const removed = serverCatIds.filter((id) => !toSend.cats.some((c) => c.id === id));
+    // Zawsze pytamy - wysyłka od razu zmienia sklep graczom. Czerwony przycisk, gdy znikają całe kategorie.
     if (
-      removed.length &&
-      !(await ask(`Z serwera zostaną usunięte kategorie: ${removed.join(", ")}. Kontynuować?`, { title: "Usunięcie kategorii", kind: "warning" }))
+      !(await ask("Na pewno chcesz wysłać wszystkie zmiany? Zmiany będą od razu widoczne na serwerze.", {
+        title: "Wysłać zmiany na serwer?",
+        kind: "warning",
+        okLabel: "Wyślij",
+        danger: removed.length > 0,
+      }))
     )
       return;
     setBusy(true);
@@ -611,15 +499,15 @@ export default function ShopEditorPage() {
       for (const id of removed) await sftpDeleteFile(profileId, `${dir}/categories/${id}.yml`);
       const textsChanged = !sameTexts(toSend.texts, serverFile.texts);
       if (textsChanged) {
-        // Czytamy plik świeżo z serwera i zmieniamy w nim tylko linijki ogłoszeń.
+        // Czytamy plik świeżo z serwera i zmieniamy w nim tylko linijki zmienionych tekstów.
         const langPath = `${dir}/lang/${language}.yml`;
         let current = "";
         try {
           current = await sftpReadFile(profileId, langPath);
         } catch {
-          // brak pliku - powstanie z samymi ogłoszeniami, resztę plugin weźmie z jara
+          // brak pliku - powstanie z samymi zmienionymi tekstami, resztę plugin weźmie z jara
         }
-        await sftpWriteFile(profileId, langPath, patchLangFile(current, toSend.texts));
+        await sftpWriteFile(profileId, langPath, patchLangFile(current, changedTexts(toSend.texts, serverFile.texts)));
       }
       setServerFile(toSend);
       setServerCatIds(toSend.cats.map((c) => c.id));
@@ -662,14 +550,78 @@ export default function ShopEditorPage() {
     }
   }
 
+  /**
+   * Zapisuje obecny sklep jako szablon: na listę „Twoje szablony” w menu i jako plik na Pulpicie
+   * (kopia zapasowa, przeniesienie na inny serwer, „Wgraj szablon z pliku”).
+   */
+  async function saveAsTemplate() {
+    const template: ShopTemplate = {
+      "shop.yml": serializeShopSettings(file.settings),
+      categories: Object.fromEntries(file.cats.map((c) => [c.id, serializeCategory(c)])),
+    };
+    const d = new Date();
+    const today = `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const asked = (await showPrompt("Nazwa szablonu (np. „Sklep na event”):", `Mój sklep ${today}`))?.trim();
+    if (!asked) return;
+    const list = addUserTemplate(asked, template);
+    setUserTemplates(list);
+    setActiveTemplate(`user:${list[0].id}`);
+    // Powtórzona nazwa dostała numer, np. „Mój sklep (2)” - plik na Pulpicie też, żeby nie nadpisał starego.
+    const name = list[0].name;
+    const fileName = `${name.replace(/[\\/:*?"<>|]+/g, "-")} - szablon sklepu.txt`;
+    try {
+      await rpWriteTextFile(await desktopDir(), fileName, JSON.stringify(template, null, 2));
+      setStatus(`Zapisano szablon „${name}” - jest w menu „Szablon” (Twoje szablony) i na Pulpicie jako ${fileName}.`);
+    } catch (e) {
+      setStatus(`Szablon „${name}” jest w menu, ale nie udało się zapisać pliku na Pulpicie: ${String(e)}`);
+    }
+  }
+
+  async function removeTemplate(id: string) {
+    const t = userTemplates.find((x) => x.id === id);
+    if (!t) return;
+    if (!(await ask(`Usunąć „${t.name}” z listy? Plik na Pulpicie zostaje - zawsze wgrasz go z powrotem.`, { title: "Usunąć szablon z listy?", okLabel: "Usuń" }))) return;
+    setUserTemplates(removeUserTemplate(id));
+  }
+
   async function loadTemplate(id: string) {
-    const t = shopTemplateChoices(language).find((x) => x.id === id);
+    if (id === "save") {
+      await saveAsTemplate();
+      return;
+    }
+    let t: { label: string; template: ShopTemplate } | undefined = shopTemplateChoices(language).find((x) => x.id === id);
+    let fromFile = false;
+    if (id.startsWith("user:")) {
+      const u = userTemplates.find((x) => `user:${x.id}` === id);
+      if (u) t = { label: u.name, template: u.template };
+    }
+    if (id === "file") {
+      const picked = await openDialog({ multiple: false, filters: [{ name: "Szablon sklepu", extensions: ["txt", "json"] }] });
+      if (typeof picked !== "string") return;
+      const cut = Math.max(picked.lastIndexOf("\\"), picked.lastIndexOf("/"));
+      const text = await rpReadTextFile(picked.slice(0, cut), picked.slice(cut + 1)).catch(() => null);
+      const parsed = text ? parseShopTemplateFile(text) : null;
+      if (!parsed) {
+        setStatus("To nie jest plik szablonu sklepu - wybierz plik zapisany przez „Zapisz obecny sklep jako szablon”.");
+        return;
+      }
+      t = { label: picked.slice(cut + 1).replace(/( - szablon sklepu)?\.(txt|json)$/i, ""), template: parsed };
+      fromFile = true;
+    }
     if (!t) return;
     const confirmed = await ask(
       `Wczytać szablon „${t.label}”? Sklep w edytorze zostanie zastąpiony (na serwerze nic się nie zmieni, dopóki nie wyślesz).`,
       { title: "Wczytać szablon?", kind: "warning" }
     );
     if (!confirmed) return;
+    // Wgrany plik trafia na listę „Twoje szablony”, żeby następnym razem był pod ręką.
+    let active = id;
+    if (fromFile) {
+      const list = addUserTemplate(t.label, t.template);
+      setUserTemplates(list);
+      active = `user:${list[0].id}`;
+    }
+    setActiveTemplate(active);
     const f = fromTemplate(t.template, file.texts);
     setFile(f);
     setCatId(f.cats[0]?.id ?? null);
@@ -680,11 +632,18 @@ export default function ShopEditorPage() {
 
   // ---- zmiany ----
 
+  /** Otwiera przewodnik "Jak działa sklep", od razu z rozwiniętą wybraną częścią. */
+  function openGuide(part: GuidePart) {
+    setGuidePart(part);
+    setShopHelp(true);
+  }
+
   function setTexts(patch: AnnounceTexts) {
     setFile({ ...file, texts: { ...file.texts, ...patch } });
   }
 
-  function openTexts() {
+  function openTexts(key: string | null = null) {
+    setEditingText(key);
     setTab("settings");
     setSettingsSection("texts");
   }
@@ -730,9 +689,36 @@ export default function ShopEditorPage() {
 
   /** Usuwa pole z układu ekranu; kategoria z tego pola wypada z menu, a inne zostają na swoich polach. */
   function clearSlot(sc: string, slot: number) {
-    const m = file.settings.menus[sc];
-    const next = removeMenuSlot(m.layout, file.settings.categoryOrder, slot);
-    setSettings({ categoryOrder: next.order, menus: { ...file.settings.menus, [sc]: { ...m, layout: next.layout } } });
+    const next = removeMenuSlot(menuOf(sc).layout, file.settings.categoryOrder, slot);
+    setScreenLayout(sc, { layout: next.layout }, next.order);
+  }
+
+  /** Strona kategorii: kategoria, której układ teraz edytujemy (brak = wspólny układ). */
+  function layoutCat(sc: string): CategoryDraft | undefined {
+    return sc === "category-page" ? file.cats.find((c) => c.id === previewCat) : undefined;
+  }
+
+  /** Kategoria, do której trafiają zmiany układu - brak, gdy jest wspólny układ albo nic nie wybrano. */
+  function ownLayoutCat(sc: string): CategoryDraft | undefined {
+    return file.settings.sharedCategoryLayout ? undefined : layoutCat(sc);
+  }
+
+  /** Okno, które widać w edytorze: układ podglądanej kategorii (własny albo startowy) albo wspólny. */
+  function menuOf(sc: string): MenuScreenDraft {
+    return ownLayoutCat(sc)?.layout ?? file.settings.menus[sc];
+  }
+
+  /**
+   * Zmiana okna. Strona kategorii bez wspólnego układu: zmiana trafia TYLKO do wybranej kategorii,
+   * inne zostają jak były. Wspólny układ albo brak wybranej kategorii - menus.category-page.
+   */
+  function setScreenLayout(sc: string, patch: Partial<MenuScreenDraft>, order?: string[]) {
+    const pc = ownLayoutCat(sc);
+    if (pc) {
+      updateCategory(pc.id, { layout: { ...menuOf(sc), ...patch } });
+      return;
+    }
+    setSettings({ ...(order ? { categoryOrder: order } : {}), menus: { ...file.settings.menus, [sc]: { ...file.settings.menus[sc], ...patch } } });
   }
 
   function updateCategory(id: string, patch: Partial<CategoryDraft>) {
@@ -1096,7 +1082,14 @@ export default function ShopEditorPage() {
             <ArrowDown size={14} />
           </button>
         </h2>
-        <p className="muted small">Klucz w komendach: {itemKey(it.ref)}</p>
+        <CommandTip
+          commands={[
+            { cmd: `/@shop info ${itemKey(it.ref)}`, what: "ceny i stan rynku tego przedmiotu" },
+            { cmd: `/@shop event ${itemKey(it.ref)} +50 2h`, what: "event: skup +50% przez 2 godziny" },
+            { cmd: `/@shop event ${itemKey(it.ref)} off`, what: "kończy event na tym przedmiocie" },
+            { cmd: `/@shop reset ${itemKey(it.ref)}`, what: "skup wraca do normy" },
+          ]}
+        />
         {customProblem(it.ref) && (
           <div className="ci-error ci-error-big">
             <TriangleAlert size={22} strokeWidth={2} />
@@ -1155,13 +1148,13 @@ export default function ShopEditorPage() {
               <>
                 <label>
                   <span className="ci-field-title">Cena kupna za sztukę</span>
-                  {numberInput(perPiece(it.buy, it.amount), (n) => set({ buy: fromPerPiece(n, it.amount) }), "0.01", 0, "$")}
+                  {numberInput(perPiece(it.buy, it.amount), (n) => set({ buy: fromPerPiece(n, it.amount) }), "0.01", 0, currency.trim())}
                 </label>
               </>
             ) : (
               <label>
                 <span className="ci-field-title">Cena kupna za sztukę</span>
-                {numberInput(it.buy, (n) => set({ buy: n }), "0.01", 0, "$")}
+                {numberInput(it.buy, (n) => set({ buy: n }), "0.01", 0, currency.trim())}
               </label>
             ))}
           <label className="checkbox">
@@ -1205,14 +1198,14 @@ export default function ShopEditorPage() {
                 </label>
                 <label>
                   <span className="ci-field-title">Cena skupu za {it.sellAmount} szt.</span>
-                  {numberInput(it.sell, (n) => set({ sell: n }), "0.01", 0, "$")}
+                  {numberInput(it.sell, (n) => set({ sell: n }), "0.01", 0, currency.trim())}
                   <span className="muted small">Czyli {money(perPiece(it.sell, it.sellAmount))} za sztukę</span>
                 </label>
               </>
             ) : (
               <label>
                 <span className="ci-field-title">Cena skupu za sztukę</span>
-                {numberInput(it.sell, (n) => set({ sell: n }), "0.01", 0, "$")}
+                {numberInput(it.sell, (n) => set({ sell: n }), "0.01", 0, currency.trim())}
               </label>
             ))}
           <label className="checkbox">
@@ -1254,6 +1247,15 @@ export default function ShopEditorPage() {
             </>
           )}
         </h2>
+        <CommandTip
+          commands={[
+            { cmd: `/shop ${c.id}`, what: "gracz od razu otwiera tę kategorię" },
+            { cmd: `/@shop npc create ${c.id} ${c.name}`, what: "stawia w Twoim miejscu NPC, który otwiera tę kategorię" },
+            { cmd: `/@shop sign ${c.id}`, what: "patrzysz na tabliczkę - po kliknięciu otwiera tę kategorię" },
+            { cmd: `/@shop open <gracz> ${c.id}`, what: "otwiera graczowi tę kategorię (do NPC z innych pluginów i menu serwera)" },
+            ...(c.rotation?.enabled ? [{ cmd: `/@shop rotation force ${c.id}`, what: "losuje od razu nową ofertę rotacji" }] : []),
+          ]}
+        />
         <Fold title="Nazwa i ikonka" open>
           <label>
             Nazwa
@@ -1356,362 +1358,6 @@ export default function ShopEditorPage() {
   // ---- okienka rotacji ----
 
   /** Ogolne wytlumaczenie: z czego sklep sie sklada i jakie ma systemy. */
-  function shopHelpModal() {
-    const close = () => {
-      setShopHelp(false);
-      setShopHelpDynamic(false);
-      setShopHelpTexts(false);
-    };
-    return (
-      <div className="modal-overlay" onClick={close}>
-        <div className="modal modal-wide card" onClick={(e) => e.stopPropagation()}>
-          <div className="row">
-            <h2 style={{ margin: 0, flex: 1 }}>Jak działa sklep</h2>
-            <button type="button" onClick={close}>
-              Zamknij
-            </button>
-          </div>
-          <p className="muted small">
-            Gracz wpisuje /shop i dostaje menu z kategoriami. Wchodzi w kategorię, klika przedmiot, wybiera ilość i kupuje. Sprzedaje
-            przedmiotem trzymanym w ręce.
-          </p>
-          <p>
-            <b>Kategorie i przedmioty.</b> Każda kategoria ma własną listę przedmiotów. Gdzie stoi która kategoria i który przedmiot, ustawiasz w
-            zakładce <b>Wygląd menu</b> - klikasz pole i wybierasz, co ma w nim być.
-          </p>
-          <p>
-            <b>Ceny.</b> Kupno zawsze idzie po sztuce, skup możesz ustawić hurtem (całymi porcjami). W Ustawieniach wybierasz, czy sklep
-            liczy w pełnych złotówkach, czy z groszami.
-          </p>
-          <Fold title="Ceny - szczegóły">
-            <p className="small">
-              Cenę kupna wpisujesz za jedną sztukę, a sklep przelicza ją na tyle sztuk, ile gracz wybierze. Gdy wychodzi niepełna kwota,
-              zaokrągla w górę - nigdy na swoją niekorzyść.
-            </p>
-            <p className="small">
-              „Pełne złotówki” znaczy, że najniższa możliwa cena to 1 zł, więc tanie rzeczy lepiej sprzedawać większymi porcjami. Przy
-              „groszach” minimum to 0,01.
-            </p>
-            <p className="small">
-              Skup ma jeszcze jeden bezpiecznik: w <b>Ustawieniach</b> jest sufit „skup najwyżej taka część ceny kupna” (domyślnie 90%). Nawet
-              gdy ceny dynamiczne podbiją skup, nigdy nie przebije 90% ceny kupna - inaczej gracze zarabialiby, kupując i od razu
-              sprzedając.
-            </p>
-          </Fold>
-          <p>
-            <b>Ceny dynamiczne.</b> Sklep sam obniża skup tego, co gracze masowo sprzedają, i podnosi go z powrotem, gdy przestaną.
-            Granice (o ile może spaść i urosnąć) ustawiasz w <b>Ustawieniach</b>, tam też włączasz ogłoszenia na czacie.
-          </p>
-          <Fold title="Ceny dynamiczne - szczegóły" open={shopHelpDynamic}>
-            <p className="small">
-              Każdy przedmiot ma własną cenę skupu i własną historię - to, co dzieje się z diamentem, nie rusza ceny bruku, nawet jeśli
-              leżą w tej samej kategorii. Cena chodzi w widełkach z Ustawień, domyślnie od połowy do półtora raza zwykłej ceny.
-              Uwaga: rusza się wyłącznie <b>skup</b>, czyli ile sklep płaci graczowi. To, ile gracz płaci przy kupowaniu, nie zmienia się
-              samo nigdy - stoi tak, jak wpisałeś w cenniku.
-            </p>
-            <p className="small">
-              Sklep sam liczy, ile danej rzeczy schodzi <b>normalnie w ciągu godziny</b> - to jest „norma”. Co godzinę porównuje z nią
-              to, co gracze naprawdę sprzedali, i na tej podstawie rusza ceną. Poniżej wszystko na przykładzie diamentu, którego zwykła
-              cena skupu to 100 $, przy domyślnych ustawieniach.
-            </p>
-
-            <div className="ci-section-title">Gracze sprzedają dużo</div>
-            <p className="small">
-              Cena spada najwyżej o 5% na godzinę, czyli ze 100 $ na 95 $, potem 90 $ i tak dalej. Spadek jest tym mocniejszy, im wyżej
-              cena stoi: na samej górze (150 $) schodzi około czterech razy szybciej, więc <b>powrót ze szczytu do zwykłej ceny zajmuje
-              jakieś trzy godziny</b> ciągłego sprzedawania. Na dole zatrzymuje się na 50 $ i niżej nie zejdzie.
-            </p>
-            <p className="small">
-              Ile spadnie, zależy od tego, jak bardzo sprzedaż przebiła normę - ale nie wprost. Dwa razy większa sprzedaż nie znaczy dwa
-              razy większego spadku, bo inaczej jeden gracz z wielkim zapasem ustalałby cenę dla całego serwera. Sama transakcja nie ma
-              żadnego limitu: nawet 3000 sztuk naraz idzie w całości po cenie z tej godziny.
-            </p>
-
-            <div className="ci-section-title">Nikt nie sprzedaje</div>
-            <p className="small">
-              „Cisza” to godzina, w której zeszło mniej niż 10% normy. Wtedy:
-            </p>
-            <ul className="small">
-              <li>
-                <b>Jeśli cena była zbita</b> (np. 60 $), w godzinę odrabia 80% drogi do zwykłej - czyli wraca do jakichś 92 $, a po
-                drugiej godzinie jest praktycznie równo. Powrót jest szybki celowo, bo w realnej grze zawsze ktoś coś sprzedaje i
-                inaczej cena nigdy by nie wstała.
-              </li>
-              <li>
-                <b>Jeśli cena stoi na zwykłej</b>, przez pierwsze dwie godziny ciszy nic się nie dzieje. Dopiero potem zaczyna rosnąć,
-                po 12,5% na godzinę: 112 $, 125 $, 137 $, 150 $ - czyli <b>cztery godziny od zwykłej ceny na szczyt</b>. To zachęta dla
-                graczy: nikt tego nie przynosi, więc opłaca się przynieść.
-              </li>
-              <li>
-                <b>Po zejściu ze szczytu</b> cena zatrzymuje się na zwykłej na dwie godziny, zanim zwykły ruch zepchnie ją niżej - żeby
-                nie skakała w górę i w dół co chwilę.
-              </li>
-            </ul>
-
-            <div className="ci-section-title">Zabezpieczenia - czego sklep nie przekroczy</div>
-            <p className="small">
-              Cena skupu nigdy nie ucieka w kosmos ani nie spada do zera. Pilnują tego trzy rzeczy:
-            </p>
-            <ul className="small">
-              <li>
-                <b>Widełki</b> - cena chodzi tylko między dolną a górną granicą z <b>Ustawień</b> (domyślnie od połowy do półtora raza
-                zwykłej ceny). Przy diamencie za 100 $ znaczy to, że skup nie zejdzie poniżej 50 $ i nie przebije 150 $, choćby gracze
-                sprzedawali go bez przerwy albo nie sprzedawali wcale. Obie granice ustawiasz sam.
-              </li>
-              <li>
-                <b>Sufit skupu</b> - skup nigdy nie da więcej niż ustalona część ceny kupna (domyślnie 90%). To blokada na „kup w sklepie
-                taniej, sprzedaj do sklepu drożej”: bez niej wystarczyłoby kupować i od razu sprzedawać, żeby robić pieniądze z niczego.
-                Ten sufit działa <b>nawet wtedy, gdy ceny dynamiczne albo event podbiją skup</b> - wtedy cena po prostu zatrzyma się na
-                90% kupna.
-              </li>
-              <li>
-                <b>Cena stała</b> - przełącznik przy przedmiocie, który całkiem wyłącza wahania. Dla rzeczy farmowalnych, które i tak
-                osiadłyby na dnie.
-              </li>
-            </ul>
-            <p className="small">
-              Do tego aplikacja i plugin pilnują Cię przy samym ustawianiu cen: gdy wpiszesz skup równy albo wyższy od kupna, aplikacja
-              zapali czerwone ostrzeżenie przy przedmiocie i wypisze problem na dole listy, a komenda <code>/@shop price</code> taką
-              zmianę wprost odrzuci.
-            </p>
-
-            <div className="ci-section-title">Drobiazgi, które pilnują uczciwości</div>
-            <p className="small">
-              Próg ciszy jest zapamiętywany w chwili, gdy cisza się zaczyna. Bez tego kurczyłby się razem z normą (a norma przy braku
-              sprzedaży maleje) i cisza nigdy by się nie kończyła. Jedna przypadkowa transakcja pod koniec ciszy tylko cofa licznik o
-              godzinę, zamiast kasować cały postęp. Nowy przedmiot przy pierwszej sprzedaży jeszcze nie rusza ceny - ta sprzedaż ustawia
-              mu normę, bo nie ma jeszcze z czym porównywać.
-            </p>
-
-            <div className="ci-section-title">Reset co 14 dni</div>
-            <p className="small">
-              Wszystkie ceny wracają do zwykłych naraz, z ogłoszeniem na czacie (do wyłączenia w <b>Ustawieniach</b>). Normy zostają - sklep nie
-              zapomina, ile czego zwykle schodzi. Przedmioty z trwającym eventem reset pomija.
-            </p>
-            <p className="small">
-              14 dni to tylko wartość domyślna - w <b>Ustawieniach</b>, przy „co ile dni wszystkie ceny wracają do normy”, wpisujesz co chcesz:
-              częściej, żeby rynek często startował od zera, albo rzadziej, żeby ceny dłużej pamiętały, co się działo. Możesz też całkiem
-              wyłączyć „Automatyczny reset cen” - wtedy ceny wracają tylko po komendzie <code>/@shop resetall</code>.
-            </p>
-
-            <div className="ci-section-title">Tempo da się zmienić</div>
-            <p className="small">
-              Te wszystkie liczby - godzinny cykl, 5% spadku, 12,5% wzrostu, dwie godziny ciszy - to gotowy zestaw ustawiony pod
-              <b> dość szybką grę</b>, gdzie ceny zauważalnie ruszają się w ciągu jednego wieczoru. Jeśli wolisz, żeby rynek zmieniał się
-              wolniej i spokojniej, zmienisz to sam w <b>Ustawieniach</b>: „co ile minut przeliczać” wydłuż np. do 180, a w sekcji
-              <b> Strojenie (zaawansowane)</b> zmniejsz spadek i wzrost na cykl. W drugą stronę też działa - da się ustawić rynek, który
-              szaleje z godziny na godzinę.
-            </p>
-
-            <div className="ci-section-title">Czego ten system nie zrobi</div>
-            <p className="small">
-              Rzeczy, które da się farmić bez końca (bruk, drewno, dropy ze spawnerów), i tak osiądą na dole - farma sprzedaje niezależnie
-              od ceny, bo nic jej nie kosztuje. Dla nich lepiej zaznaczyć przy przedmiocie „cena stała”. Da się też grać pod system:
-              wstrzymać sprzedaż, doczekać szczytu i wysypać zapas, albo poczekać na reset. To świadoma zgoda, nie błąd.
-            </p>
-          </Fold>
-          <p>
-            <b>Eventy.</b> Komendą <code>/@shop event</code> podbijasz skup wybranego przedmiotu na jakiś czas - przydaje się na akcje
-            typu „weekend z diamentami”.
-          </p>
-          <Fold title="Eventy - szczegóły">
-            <p className="small">
-              Event ustawia cenę skupu ręcznie i <b>blokuje ją</b> - dopóki trwa, ceny dynamiczne tego przedmiotu nie ruszają, choćby
-              gracze znieśli pół świata. Podajesz procent (np. +50) i opcjonalnie czas; bez czasu trwa, aż go wyłączysz.
-            </p>
-            <p className="small">
-              <code>/@shop event list</code> pokazuje trwające eventy, <code>/@shop reset</code> zdejmuje event z jednego przedmiotu, a
-              <code>/@shop resetall</code> przywraca wszystkie ceny do normy. Ogłoszenie na czacie przy starcie i końcu eventu włączasz w
-              <b>Ustawieniach</b>.
-            </p>
-            <p className="small">
-              Wyłączenie eventu przywraca zwykłą cenę <b>od razu</b>, a nie stopniowo - inaczej podbite ceny ciągnęłyby się jeszcze
-              godzinami po ogłoszeniu końca akcji. Globalny reset cen pomija przedmioty zablokowane eventem, więc trwająca akcja nie
-              zostanie skasowana w połowie.
-            </p>
-            <p className="small">
-              Resety (<code>/@shop reset</code>, <code>/@shop resetall</code>) proszą o potwierdzenie komendą <code>/@shop confirm</code>,
-              bo kasują historię rynkową przedmiotu.
-            </p>
-          </Fold>
-          <p>
-            <b>Rotacja.</b> Kategoria może mieć drugą listę - pulę. Sklep co kilka dni losuje z niej kilka przedmiotów, więc oferta się
-            zmienia i nie wszystko jest dostępne od ręki.
-          </p>
-          <Fold title="Rotacja - szczegóły">
-            <p className="small">
-              Ustawiasz dwie rzeczy: ile przedmiotów ma być w ofercie naraz i co ile dni losowanie. Przedmiot, który był w ofercie, przez
-              5 kolejnych losowań nie może wrócić - dzięki temu to samo nie kręci się w kółko. Gdy pula jest za mała, sklep dobiera te,
-              którym zostało najmniej przerwy, więc oferta nigdy nie będzie pusta.
-            </p>
-            <p className="small">
-              Czas liczy się kalendarzowo, nie od obecności graczy: data następnego losowania jest zapisana na serwerze i jest sprawdzana
-              co kilka minut oraz po restarcie. Zmiana puli z aplikacji powoduje losowanie od razu.
-            </p>
-          </Fold>
-          <p>
-            <b>Wygląd menu.</b> W osobnej zakładce ustawiasz rozmiar okien i to, co w którym kwadracie stoi: kategorie, przedmioty,
-            przyciski, tło. Widzisz dokładnie to, co zobaczy gracz.
-          </p>
-          <Fold title="Wygląd menu - szczegóły">
-            <p className="small">
-              Są cztery okna: menu główne (kategorie), strona kategorii (przedmioty), wybór ilości i wyniki szukania. W każdym ustawiasz
-              wielkość (od 1 do 6 rzędów) i rozkładasz pola.
-            </p>
-            <p className="small">
-              <b>Klik w pole</b> otwiera okienko, w którym wybierasz, co ma tam stać: kategorię (menu główne), przedmiot (strona kategorii),
-              przycisk albo tło. Rzeczy możesz też przeciągać myszką. Przedmioty stoją w kolejności z ustawienia „Kolejność przedmiotów”
-              (Twoja albo po cenie). Strzałki stron gracz widzi tylko wtedy, gdy jest dokąd iść.
-            </p>
-            <p className="small">
-              Ikonki przycisków (szukanie, zamknij, sortowanie) wybierasz w sekcji „Przyciski” pod siatką. Napisy na przyciskach są na razie
-              stałe - takie same w każdym sklepie.
-            </p>
-          </Fold>
-          <p>
-            <b>Statystyki.</b> Po włączeniu sklep zapisuje, co i za ile gracze sprzedają. Wszystko jest w zakładce Statystyki, razem z
-            raportem do pobrania.
-          </p>
-          <Fold title="Statystyki - szczegóły">
-            <p className="small">
-              Zbierane jest: ile sztuk łącznie i dzisiaj, ile pieniędzy wypłacono, ile było transakcji i jaki jest teraz mnożnik skupu.
-              Widać dzięki temu, co naprawdę napędza gospodarkę i które ceny są za wysokie.
-            </p>
-            <p className="small">
-              Sklep liczy też, ile cykli przedmiot przesiedział na dole, ile na górze, a ile pośrodku. To najprostsza podpowiedź, czy
-              cena bazowa w cenniku jest trafiona: coś, co stale leży na dnie, jest wycenione za wysoko, a coś, co ciągle stoi na
-              szczycie - za nisko.
-            </p>
-            <p className="small">
-              Przyciskiem „Pobierz raport do Excela” w zakładce Statystyki zapiszesz raport na swoim komputerze - z kolumną sugestii
-              („obniż cenę bazową”, „podnieś”, „ok”). Sklep liczy też wyniki dzień po dniu. Statystyki przeżywają globalny reset cen - to osobna, długa historia. Zbieranie
-              można wyłączyć: stare dane zostają, nowe nie dochodzą.
-            </p>
-          </Fold>
-          <p>
-            <b>Teksty ogłoszeń.</b> To, co sklep sam pisze na czacie (nowa oferta, reset cen, eventy), zmieniasz w Ustawieniach → Teksty
-            ogłoszeń.
-          </p>
-          <Fold title="Teksty ogłoszeń - szczegóły" open={shopHelpTexts}>
-            <div className="ci-section-title">Co jest prawdziwe, a co przykładem</div>
-            <p className="small">
-              Tekst w czarnym okienku jest prawdziwy - dokładnie tak, tymi kolorami, pojawi się na czacie. Przykładem są tylko rzeczy{" "}
-              <span className="ci-sample">podkreślone kropkami</span> (Kolekcja, Płyta: Cat, 20000, 14 dni, 50%, 2h). Najedź na nie myszką -
-              dymek powie, co wstawi się tam w grze.
-            </p>
-            <div className="ci-section-title">Edycja</div>
-            <p className="small">
-              Klik w linijkę otwiera pole pod okienkiem, zmiany widać od razu. Enter albo „Gotowe” zamyka pole, „Cofnij” i „Ponów” (też
-              Ctrl+Z / Ctrl+Y) cofają krok po kroku, „Przywróć domyślny” wraca do tekstu z pluginu - też da się to cofnąć. Kolor: zaznacz
-              kawałek tekstu i kliknij kolorowy kwadracik; bez zaznaczenia kolor działa na to, co zaraz napiszesz. Ctrl+B pogrubia.
-              Przycisk „&” z prawej pokazuje surowe kody kolorów - tylko dla zaawansowanych.
-            </p>
-            <div className="ci-section-title">Ramki „+ nazwa kategorii”, „+ cena” itd.</div>
-            <p className="small">
-              Ramka to miejsce, w które sklep w chwili ogłoszenia sam wpisze właściwą rzecz. Tekst jest jeden dla wszystkich kategorii,
-              więc nie wpisuj nazwy na sztywno - „NOWA OFERTA: Kolekcja” pokazałoby się też w Blokach. Ramka pojawia się tam, gdzie stoi
-              kursor; Backspace usuwa ją w całości. Przydaje się, gdy skasujesz ramkę przez przypadek, chcesz ją przestawić („Kolekcja ma
-              nową ofertę!”) albo dodać gdzie indziej, np. w stopce.
-            </p>
-            <ul className="small">
-              {Object.entries(PLACEHOLDER_LABELS).map(([k, v]) => (
-                <li key={k}>
-                  <b>{v}</b> - {PLACEHOLDER_HELP[k]}
-                </li>
-              ))}
-            </ul>
-            <div className="ci-section-title">Kolory nazw</div>
-            <p className="small">
-              Nazwa kategorii i przedmiotu wchodzi w swoim własnym kolorze - takim, jaki ma w sklepie. Kolekcja ma żółtą nazwę, więc w
-              ogłoszeniu też będzie żółta. Tekst za ramką aplikacja koloruje od nowa, więc kolor nazwy nie „rozlewa się” dalej.
-            </p>
-            <div className="ci-section-title">Włączanie i wyłączanie</div>
-            <p className="small">
-              Ogłoszenie nowej oferty włączasz przy rotacji w każdej kategorii osobno, a ogłoszenia eventów i resetu cen - w Ustawieniach →
-              Ceny dynamiczne. „Przywróć domyślne” obok „?” wraca do wszystkich tekstów z pluginu naraz (po drugim kliknięciu).
-            </p>
-          </Fold>
-          <p className="muted small">
-            Zmiany w aplikacji trafiają na serwer dopiero po „Zapisz” i „Wyślij na serwer”. Listę komend znajdziesz pod przyciskiem
-            „Komendy”.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  function fixedPriceHelpModal() {
-    return (
-      <div className="modal-overlay" onClick={() => setFixedHelp(false)}>
-        <div className="modal card" onClick={(e) => e.stopPropagation()}>
-          <div className="row">
-            <h2 style={{ margin: 0, flex: 1 }}>Cena stała</h2>
-            <button type="button" onClick={() => setFixedHelp(false)}>
-              Zamknij
-            </button>
-          </div>
-          <p>
-            Zwykle sklep sam rusza ceną skupu: spada, gdy gracze masowo coś sprzedają, i wraca, gdy przestaną. Ten przełącznik to
-            wyłącza - przedmiot zawsze skupuje się po cenie z cennika.
-          </p>
-          <p>
-            <b>Kiedy się przydaje:</b> rzeczy, które da się farmić bez końca (bruk, drewno, dropy ze spawnerów). Farma sprzedaje
-            niezależnie od ceny, bo nic nie kosztuje, więc ich skup i tak osiadłby na dnie i nigdy nie wrócił. Lepiej z góry ustawić im
-            cenę, na której Ci zależy.
-          </p>
-          <p className="muted small">
-            Cena kupna nie zmienia się nigdy, niezależnie od tego ustawienia - ceny dynamiczne dotyczą tylko skupu.
-          </p>
-          <div className="row">
-            <button
-              type="button"
-              onClick={() => {
-                setFixedHelp(false);
-                setShopHelpDynamic(true);
-                setShopHelp(true);
-              }}
-            >
-              Dowiedz się więcej
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function priceHelpModal() {
-    return (
-      <div className="modal-overlay" onClick={() => setPriceHelp(false)}>
-        <div className="modal card" onClick={(e) => e.stopPropagation()}>
-          <div className="row">
-            <h2 style={{ margin: 0, flex: 1 }}>Kupno i skup</h2>
-            <button type="button" onClick={() => setPriceHelp(false)}>
-              Zamknij
-            </button>
-          </div>
-          <p>
-            <b>Kupno zawsze idzie po sztuce.</b> Cenę podajesz za jedną sztukę, a sklep przelicza ją na tyle sztuk, ile gracz wybierze.
-          </p>
-          <p>
-            W grze gracz nie wpisuje liczby - klika jeden z gotowych przycisków, domyślnie <b>1, 8, 16, 32 i 64</b>. Te liczby możesz
-            zmienić na dowolne (np. 2, 10, 20), dodać kolejne albo usunąć: zakładka <b>Wygląd menu</b>, ekran <b>Wybór ilości</b>, ramka
-            <b>Przyciski ilości</b> po lewej. Najwyżej 64, bo tyle mieści się w jednym miejscu
-            w ekwipunku.
-          </p>
-          <p>
-            <b>Skup może iść hurtem.</b> Po włączeniu tej opcji sklep odkupuje od gracza tylko całe porcje - ustawiasz, ile sztuk to
-            jedna porcja i ile za nią płacisz. Reszta, która nie wypełni porcji, zostaje graczowi w ekwipunku.
-          </p>
-          <p>
-            <b>Po co?</b> Żeby nie skupować pojedynczych sztuk za grosze i żeby ceny skupu były okrągłe. Przykład: sklep płaci 50 $ za 64
-            sztuki bruku zamiast 0,78 $ za każdą.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  /** Jak ogłoszenie nowej oferty wygląda na czacie dla tej kategorii - jej nazwa i przedmioty z puli. */
   function rotationAnnouncePreview(c: CategoryDraft, r: NonNullable<CategoryDraft["rotation"]>) {
     const num = (n: number | null) => (n == null ? "0" : Number.isInteger(n) ? String(n) : n.toFixed(2));
     const shown = r.pool.slice(0, Math.min(r.show, 3));
@@ -1721,8 +1367,9 @@ export default function ShopEditorPage() {
           item: it.name.trim() ? it.name : refLabel(it.ref, customNames),
           price: num(it.buy ?? it.sell),
           amount: String(it.buy != null ? it.amount : it.sellAmount),
+          currency,
         }))
-      : [{ item: SAMPLE_VALUES.item, price: SAMPLE_VALUES.price, amount: SAMPLE_VALUES.amount }];
+      : [{ item: SAMPLE_VALUES.item, price: SAMPLE_VALUES.price, amount: SAMPLE_VALUES.amount, currency }];
     return (
       <div className="ci-announce-preview">
         <div className="row" style={{ alignItems: "center", margin: 0 }}>
@@ -1730,7 +1377,7 @@ export default function ShopEditorPage() {
             <span className="ci-field-title">Tak to wygląda na czacie</span>
             {!shown.length && <span className="muted small"> (przykładowy przedmiot - pula rotacyjna jest pusta)</span>}
           </span>
-          <button type="button" onClick={openTexts} title="Tekst jest wspólny dla wszystkich kategorii - zmieniasz go w Ustawieniach">
+          <button type="button" onClick={() => openTexts("rotation.broadcast-header")} title="Tekst jest wspólny dla wszystkich kategorii - zmieniasz go w Ustawieniach">
             Zmień tekst
           </button>
         </div>
@@ -1760,193 +1407,6 @@ export default function ShopEditorPage() {
         się opłacać, a za duży wzrost da graczom łatwy sposób na zarobek. Wartości domyślne są przemyślane i przetestowane, dlatego
         zalecamy ostrożność: zmieniaj po trochę i obserwuj, jak reaguje ekonomia serwera.
       </p>
-    );
-  }
-
-  function statsHelpModal() {
-    const close = () => setStatsHelp(false);
-    return (
-      <div className="modal-overlay" onClick={close}>
-        <div className="modal card" onClick={(e) => e.stopPropagation()}>
-          <div className="row">
-            <h2 style={{ margin: 0, flex: 1 }}>Statystyki sprzedaży</h2>
-            <button type="button" onClick={close}>
-              Zamknij
-            </button>
-          </div>
-          <p>
-            Sklep zapisuje, <b>co gracze sprzedają</b>: ile sztuk, ile pieniędzy wypłacił i jak zmieniały się ceny skupu. Wszystko widać w
-            tabeli poniżej.
-          </p>
-          <p>
-            <b>Raport do Excela</b> to ta sama wiedza w tabeli, którą możesz posortować. Ostatnia kolumna, „SUGESTIA”, podpowiada, którym
-            przedmiotom warto zmienić cenę - np. gdy skup czegoś prawie cały czas leży na dnie, bo gracze znoszą tego za dużo.
-          </p>
-          <p className="muted small">Przycisk „Pobierz raport do Excela” zapisuje go na Twoim komputerze - nie musisz niczego szukać na serwerze.</p>
-        </div>
-      </div>
-    );
-  }
-
-  function dynamicHelpModal() {
-    const close = () => setDynamicHelp(false);
-    return (
-      <div className="modal-overlay" onClick={close}>
-        <div className="modal card" onClick={(e) => e.stopPropagation()}>
-          <div className="row">
-            <h2 style={{ margin: 0, flex: 1 }}>Ceny dynamiczne skupu</h2>
-            <button type="button" onClick={close}>
-              Zamknij
-            </button>
-          </div>
-          <p>
-            Sklep sam zmienia, <b>ile płaci graczom</b> za sprzedawane przedmioty. Ceny kupna się nie zmieniają - tylko skup.
-          </p>
-          <p>
-            Gdy gracze sprzedają czegoś dużo, sklep płaci za to coraz mniej. Gdy nikt tego nie sprzedaje, cena powoli wraca w górę. Dzięki
-            temu nie da się zbić fortuny, farmiąc bez końca jedną rzecz.
-          </p>
-          <p>
-            <b>Przykład:</b> wszyscy sprzedają bruk po 50 $. Po kilku godzinach sklep płaci już 40 $, potem 30 $. Kiedy gracze przestaną,
-            cena wraca do 50 $.
-          </p>
-          <p className="muted small">
-            Poniżej ustawiasz, jak często ceny się przeliczają, o ile najwyżej mogą spaść i wzrosnąć i co ile dni wszystko wraca do normy.
-          </p>
-          <div className="row">
-            <button
-              type="button"
-              onClick={() => {
-                setDynamicHelp(false);
-                setShopHelpDynamic(true);
-                setShopHelp(true);
-              }}
-            >
-              Dowiedz się więcej
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function textsHelpModal() {
-    const close = () => setTextsHelp(false);
-    return (
-      <div className="modal-overlay" onClick={close}>
-        <div className="modal card" onClick={(e) => e.stopPropagation()}>
-          <div className="row">
-            <h2 style={{ margin: 0, flex: 1 }}>Teksty ogłoszeń na czacie</h2>
-            <button type="button" onClick={close}>
-              Zamknij
-            </button>
-          </div>
-          <p>Wiadomości, które sklep sam wysyła na czat: nowa oferta w rotacji, reset cen i eventy.</p>
-
-          <h3>Jak zmienić tekst</h3>
-          <p>
-            Kliknij linijkę w czarnym okienku i pisz w polu pod spodem. Kolor: zaznacz tekst myszką i kliknij kolorowy kwadracik przed
-            polem.
-          </p>
-
-          <h3>Przyciski „+ nazwa kategorii”, „+ cena” itd.</h3>
-          <p>
-            Wstawiają ramkę <span className="mc-chip">nazwa kategorii</span>. W jej miejsce sklep sam wpisze to, czego dotyczy ogłoszenie:
-          </p>
-          <ul>
-            <li>w Blokach: „NOWA OFERTA: Bloki”</li>
-            <li>w Spawnerach: „NOWA OFERTA: Spawnery”</li>
-          </ul>
-          <p>Nazwa wchodzi w swoim kolorze - tym, który ma w kategorii.</p>
-
-          <p className="muted small">
-            <span className="ci-sample">Podkreślone kropkami</span> w okienku to tylko przykład. Zmiany działają w grze po „Wyślij na
-            serwer”.
-          </p>
-          <div className="row">
-            <button
-              type="button"
-              onClick={() => {
-                setTextsHelp(false);
-                setShopHelpTexts(true);
-                setShopHelp(true);
-              }}
-            >
-              Dowiedz się więcej
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function collectionInfoModal() {
-    const r = file.cats.find((c) => c.id === "kolekcja")?.rotation;
-    const close = () => setCollectionInfo(false);
-    return (
-      <div className="modal-overlay" onClick={close}>
-        <div className="modal card" onClick={(e) => e.stopPropagation()}>
-          <div className="row">
-            <h2 style={{ margin: 0, flex: 1 }}>Kolekcja - przedmioty kolekcjonerskie</h2>
-            <button type="button" onClick={close}>
-              Zamknij
-            </button>
-          </div>
-          <p>
-            To specjalna kategoria na rzeczy, które gracze chcą <b>mieć i zbierać</b>, a nie tylko zużyć: płyty muzyczne, głowy, rzadkie
-            dekoracje. Normalnie trudno je zdobyć, a tutaj można je kupić - ale nie zawsze.
-          </p>
-          <p>
-            Kolekcja nie ma stałych przedmiotów - wszystko siedzi w <b>puli rotacji</b>.
-            {r
-              ? ` Sklep co ${r.everyDays} dni losuje z niej ${r.show} przedmiotów, a reszta czeka na swoją kolej.`
-              : " Sklep co kilka dni losuje z niej kilka przedmiotów, a reszta czeka na swoją kolej."}
-          </p>
-          <p>
-            Dzięki temu każdy przedmiot staje się <b>rzadki</b>. Kto przegapi swoją płytę, może czekać tygodnie, aż wróci. Gracze zaglądają
-            do sklepu, żeby sprawdzić nową ofertę, a rzeczy z Kolekcji nabierają wartości - można się nimi chwalić albo odsprzedać drożej
-            na Targu komuś, kto nie zdążył.
-          </p>
-          <p>
-            <b>Wysokie ceny są celowe.</b> To cel dla najbogatszych graczy i sposób na wyciąganie nadmiaru pieniędzy z serwera, żeby waluta
-            nie traciła wartości.
-          </p>
-          <p className="muted small">
-            Wskazówka: zostaw włączone „Ogłoś na czacie, gdy oferta się zmieni” - wtedy wszyscy wiedzą, że właśnie pojawiło się coś nowego.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  function rotationHelpModal() {
-    return (
-      <div className="modal-overlay" onClick={() => setRotationHelp(false)}>
-        <div className="modal card" onClick={(e) => e.stopPropagation()}>
-          <div className="row">
-            <h2 style={{ margin: 0, flex: 1 }}>Po co jest rotacja</h2>
-            <button type="button" onClick={() => setRotationHelp(false)}>
-              Zamknij
-            </button>
-          </div>
-          <p>
-            Rotacja wymienia przedmioty wewnątrz kategorii - co kilka dni jedne znikają, a na ich miejsce wchodzą inne. Dzięki temu nie
-            wszystko jest dostępne od ręki i gracze mają po co zaglądać do sklepu.
-          </p>
-          <p>
-            Przedmioty w kategorii dzielą się na dwie listy: <b>stałe</b> (zawsze w sklepie) i <b>pulę</b> (zapas, z którego sklep losuje te
-            zmieniające się). Stałe zostają na miejscu, rotują się tylko te z puli.
-          </p>
-          <p>
-            Wybrane przedmioty przenoszą się ze stałych do puli - przestają być dostępne zawsze. Przedmioty z puli zobaczysz i zmienisz po
-            kliknięciu „Pula rotacji” nad listą w środku. Cofniesz przeniesienie przyciskiem „Wróć do stałych” przy przedmiocie z puli.
-          </p>
-          <p>
-            <b>Przykład:</b> pula 30 rzeczy, 5 przedmiotów naraz, nowa oferta co 14 dni. Gracz wchodzi i widzi 5 przedmiotów, za dwa tygodnie 5
-            innych. To samo wraca najwcześniej po 5 losowaniach, żeby nie kręciło się w kółko.
-          </p>
-        </div>
-      </div>
     );
   }
 
@@ -2018,12 +1478,27 @@ export default function ShopEditorPage() {
   // ---- ustawienia ----
 
   function layoutEditor(sc: string) {
-    const m: MenuScreenDraft = file.settings.menus[sc];
-    const setMenu = (patch: Partial<MenuScreenDraft>) => setSettings({ menus: { ...file.settings.menus, [sc]: { ...m, ...patch } } });
+    const m: MenuScreenDraft = menuOf(sc);
+    const setMenu = (patch: Partial<MenuScreenDraft>) => setScreenLayout(sc, patch);
     const content: Record<number, SlotContent> = {};
     const catBySlot = categoryBySlot(m.layout, file.settings.categoryOrder);
     // Który przedmiot stoi w którym polu - liczone tak samo jak w pluginie (patrz previewSlotItems).
     const slotItem = previewSlotItems(sc);
+    const roleAt = (slot: number) => m.layout.find((e) => e.slot === slot)?.role;
+    /** Pole z przedmiotem z rotacji (k = który z wylosowanych). */
+    const rotatingContent = (pc: CategoryDraft, k: number, onClick: () => void): SlotContent => {
+      const rotIt = activeRotation(pc, rotationState[pc.id])[k];
+      return rotIt
+        ? {
+            label: `${rotIt.name.trim() ? plain(rotIt.name) : refLabel(rotIt.ref, customNames)} (z rotacji - zniknie przy następnym losowaniu)`,
+            kind: "item",
+            material: rotIt.ref.item ?? (rotIt.ref.custom != null ? customIcon(rotIt.ref.custom) : undefined),
+            sublabel: money(perPiece(rotIt.buy, rotIt.amount)),
+            rotating: true,
+            onClick,
+          }
+        : { label: "Z rotacji - przedmiot wylosuje się sam z puli", sublabel: "?", kind: "item", rotating: true, onClick };
+    };
     for (const e of m.layout) {
       if (e.role === "CATEGORY_SLOT") {
         const catId = catBySlot.get(e.slot);
@@ -2045,6 +1520,10 @@ export default function ShopEditorPage() {
         const idx = slotItem.get(e.slot);
         const it = pc && idx != null ? pc.items[idx] : undefined;
         const open = picked ? () => placePicked(sc, e.slot) : () => setSlotPick({ sc, slot: e.slot });
+        if (pc && idx != null && idx >= pc.items.length) {
+          content[e.slot] = rotatingContent(pc, idx - pc.items.length, open);
+          continue;
+        }
         content[e.slot] = it
           ? {
               label: it.name.trim() ? plain(it.name) : refLabel(it.ref, customNames),
@@ -2054,6 +1533,15 @@ export default function ShopEditorPage() {
               onClick: open,
             }
           : { label: pc ? "" : "Przedmiot", kind: "item", dim: true, blank: Boolean(pc), onClick: open };
+      } else if (e.role === "ROTATION_SLOT") {
+        // Własne miejsce na rotację: wylosowane przedmioty stoją tu po kolei, reszta pól zostaje pusta.
+        const pc = layoutCat(sc);
+        const idx = slotItem.get(e.slot);
+        const open = picked ? () => placePicked(sc, e.slot) : () => setSlotPick({ sc, slot: e.slot });
+        content[e.slot] =
+          pc && idx != null
+            ? rotatingContent(pc, idx - pc.items.length, open)
+            : { label: "Miejsce na przedmiot z rotacji (teraz puste)", kind: "item", rotating: true, dim: true, onClick: open };
       } else if (e.role === "AMOUNT_SLOT") {
         // Pole "ile sztuk kupic" - liczy sie sama liczba, a kamien i tak byl obrazkiem na niby.
         content[e.slot] = {
@@ -2122,8 +1610,21 @@ export default function ShopEditorPage() {
             // Podglad kategorii: przeciagniecie przedmiotu zmienia jego miejsce w kategorii
             // (czyli w oknie gry), a nie uklad samych pol.
             const pc = file.cats.find((c) => c.id === previewCat);
+            // Pola rotacji przesuwa się jak przyciski - przedmioty z rotacji wypełniają je same po kolei.
+            if (roleAt(from) === "ROTATION_SLOT" || roleAt(to) === "ROTATION_SLOT") {
+              setMenu({ layout: m.layout.map((e) => (e.slot === from ? { ...e, slot: to } : e.slot === to ? { ...e, slot: from } : e)) });
+              return;
+            }
             const a = slotItem.get(from);
             const b = slotItem.get(to);
+            const swap = (l: typeof m.layout) => l.map((e) => (e.slot === from ? { ...e, slot: to } : e.slot === to ? { ...e, slot: from } : e));
+            if (pc && ((a ?? -1) >= pc.items.length || (b ?? -1) >= pc.items.length)) {
+              // Bez pól rotacji stoi ona za stałymi. Pierwsze przeciągnięcie przedmiotu z rotacji zamienia
+              // jego obecne miejsca w pola rotacji - od teraz da się je stawiać gdziekolwiek.
+              const rotAt = new Set([...slotItem].filter(([, i]) => i >= pc.items.length).map(([s]) => s));
+              setMenu({ layout: swap(m.layout.map((e) => (rotAt.has(e.slot) ? { ...e, role: "ROTATION_SLOT" } : e))) });
+              return;
+            }
             if (pc && a != null && b != null && file.settings.categorySort === "order") {
               updateCategory(pc.id, { items: swapItems(pc.items, a, b) });
               return;
@@ -2134,8 +1635,13 @@ export default function ShopEditorPage() {
             // Na polu z przedmiotem z podglądu × usuwa sam przedmiot ze sklepu (Cofnij/Ctrl+Z go przywraca).
             // Usuwanie pola przesuwało wszystkie przedmioty o jedno miejsce.
             const pc = file.cats.find((c) => c.id === previewCat);
+            if (roleAt(slot) === "ROTATION_SLOT") {
+              clearSlot(sc, slot);
+              return;
+            }
             const itemIndex = slotItem.get(slot);
             if (pc && itemIndex != null) {
+              if (itemIndex >= pc.items.length) return; // przedmiot z rotacji - usuwa się go z puli, nie z podglądu
               removeItem(pc, false, itemIndex);
               return;
             }
@@ -2185,7 +1691,9 @@ export default function ShopEditorPage() {
     const sections: Array<[SettingsSection, string, string]> = [
       ["prices", "Ceny", s.rounding === "whole" ? "pełne złotówki" : "z groszami"],
       ["dynamic", "Ceny dynamiczne", d.enabled ? "włączone" : "wyłączone"],
-      ["texts", "Teksty ogłoszeń", "co sklep pisze na czacie"],
+      ["sales", "Promocje", s.salesAnnounce ? "ogłaszane na czacie" : "bez ogłoszeń"],
+      ["ranks", "Bonusy dla rang", s.rankBonuses.length ? `rangi: ${s.rankBonuses.length}` : "brak"],
+      ["texts", "Teksty w grze", "wszystko, co sklep pisze graczom"],
     ];
     return (
       <div className="ci-settings-layout">
@@ -2244,7 +1752,7 @@ export default function ShopEditorPage() {
                     numberInput(pct(d.minMultiplier), (n) => setDyn({ minMultiplier: fromPct(-Math.abs(n)) }), "5", 0, "%"),
                     pct(d.minMultiplier) >= 100
                       ? "Skup może spaść do zera!"
-                      : `Przedmiot skupowany za 100 $ nie spadnie poniżej ${100 - pct(d.minMultiplier)} $`
+                      : `Przedmiot skupowany za ${money(100)} nie spadnie poniżej ${money(100 - pct(d.minMultiplier))}`
                   )}
                   <label className="checkbox ci-toggle-row">
                     <input
@@ -2259,7 +1767,7 @@ export default function ShopEditorPage() {
                     ? fieldRow(
                         "Skup może wzrosnąć najwyżej o",
                         numberInput(pct(d.maxMultiplier), (n) => setDyn({ maxMultiplier: fromPct(Math.max(1, Math.abs(n))) }), "5", 1, "%"),
-                        `Przedmiot skupowany za 100 $ nie urośnie powyżej ${100 + pct(d.maxMultiplier)} $`
+                        `Przedmiot skupowany za ${money(100)} nie urośnie powyżej ${money(100 + pct(d.maxMultiplier))}`
                       )
                     : <p className="muted small ci-toggle-off">Skup tylko spada - nigdy nie da więcej niż zwykła cena z cennika.</p>}
                   <label className="checkbox ci-toggle-row">
@@ -2286,7 +1794,7 @@ export default function ShopEditorPage() {
                   {fieldRow(
                     "Skup najwyżej taka część ceny kupna",
                     numberInput(Math.round(d.maxSellShare * 100), (n) => setDyn({ maxSellShare: Math.min(1, n / 100) }), "5", 0, "% ceny kupna"),
-                    `Przedmiot kupowany za 100 $ sklep odkupi najwyżej za ${Math.round(d.maxSellShare * 100)} $`
+                    `Przedmiot kupowany za ${money(100)} sklep odkupi najwyżej za ${money(Math.round(d.maxSellShare * 100))}`
                   )}
                   <div className="ci-field-title" style={{ marginTop: "0.6rem" }}>
                     Ogłoszenia na czacie
@@ -2303,9 +1811,12 @@ export default function ShopEditorPage() {
                   )}
                   <Fold title="Strojenie (zaawansowane)">
                     <div className="row" style={{ alignItems: "center", gap: "0.6rem" }}>
-                      <p className="ci-warning small" style={{ margin: 0, flex: 1 }}>
-                        <b>Uwaga:</b> domyślne wartości są przemyślane i przetestowane - zmieniaj tylko, gdy wiesz, co robisz. Jak coś
-                        pójdzie nie tak, wpisz wartości domyślne podane pod każdym polem albo kliknij „Przywróć domyślne”.
+                      <p className="ci-error small" style={{ margin: 0, flex: 1, display: "flex", gap: "0.5rem", alignItems: "flex-start" }}>
+                        <CircleAlert size={18} strokeWidth={2.25} style={{ color: "var(--danger)", flexShrink: 0 }} />
+                        <span>
+                          <b>Uwaga:</b> domyślne wartości są przemyślane i przetestowane - zmieniaj tylko, gdy wiesz, co robisz. Jak coś
+                          pójdzie nie tak, wpisz wartości domyślne podane pod każdym polem albo kliknij „Przywróć domyślne”.
+                        </span>
                       </p>
                       <ConfirmButton
                         title="Tylko te 8 liczb strojenia wraca do wartości domyślnych"
@@ -2336,78 +1847,18 @@ export default function ShopEditorPage() {
             </>
           )}
 
+          {settingsSection === "sales" && <ShopSalesSection settings={s} setSettings={setSettings} onHelp={() => setSalesHelp(true)} />}
+          {settingsSection === "ranks" && <ShopRanksSection settings={s} setSettings={setSettings} onHelp={() => setRanksHelp(true)} />}
+
           {settingsSection === "texts" && (
-            <>
-              <h2>Teksty ogłoszeń na czacie</h2>
-              <div className="row" style={{ alignItems: "center", gap: "0.5rem" }}>
-                <span className="muted small">Kliknij linijkę, żeby ją zmienić.</span>
-                <HelpButton id="shop-announce-texts-v4" title="Jak działają teksty ogłoszeń" onClick={() => setTextsHelp(true)} />
-                <ConfirmButton
-                  title="Wszystkie teksty ogłoszeń wracają do tych z pluginu"
-                  disabled={sameTexts(file.texts, defaultAnnounceTexts(language))}
-                  onConfirm={() => {
-                    setEditingText(null);
-                    setTexts(defaultAnnounceTexts(language));
-                  }}
-                >
-                  <Undo2 size={14} strokeWidth={1.75} /> Przywróć domyślne
-                </ConfirmButton>
-              </div>
-                {ANNOUNCE_GROUPS.map(([group, title]) => {
-                  const fields = ANNOUNCE_FIELDS.filter((f) => f.group === group);
-                  const editing = fields.find((f) => f.key === editingText);
-                  return (
-                    <div key={group}>
-                      <div className="ci-section-title">{title}</div>
-                      <div className="mc-preview ci-chat-lines">
-                        {fields.map((f) => (
-                          <button
-                            key={f.key}
-                            type="button"
-                            className={`ci-chat-line${editingText === f.key ? " active" : ""}`}
-                            title={`${f.label} - kliknij, żeby zmienić`}
-                            onClick={() => setEditingText(editingText === f.key ? null : f.key)}
-                          >
-                            <SamplePreview text={file.texts[f.key] ?? ""} values={SAMPLE_VALUES} labels={PLACEHOLDER_LABELS} emptyLabel="(pusta linijka - nic się nie wyświetli)" />
-                          </button>
-                        ))}
-                      </div>
-                      {editing && (
-                        <div className="ci-chat-edit">
-                          <div className="row" style={{ alignItems: "center", margin: 0, gap: "0.4rem" }}>
-                            <b style={{ marginRight: "0.4rem" }}>{editing.label}</b>
-                            <button type="button" title="Cofnij (Ctrl+Z)" disabled={!textHistory.canUndo} onClick={() => textInputRef.current?.undo()}>
-                              <Undo2 size={14} strokeWidth={1.75} /> Cofnij
-                            </button>
-                            <button type="button" title="Ponów (Ctrl+Y)" disabled={!textHistory.canRedo} onClick={() => textInputRef.current?.redo()}>
-                              <Redo2 size={14} strokeWidth={1.75} /> Ponów
-                            </button>
-                            <button
-                              type="button"
-                              disabled={file.texts[editing.key] === defaultAnnounceTexts(language)[editing.key]}
-                              onClick={() => textInputRef.current?.replaceAll(defaultAnnounceTexts(language)[editing.key])}
-                            >
-                              Przywróć domyślny
-                            </button>
-                            <button type="button" onClick={() => setEditingText(null)}>
-                              Gotowe
-                            </button>
-                          </div>
-                          <MinecraftTextInput
-                            ref={textInputRef}
-                            onHistoryChange={setTextHistory}
-                            value={file.texts[editing.key] ?? ""}
-                            onChange={(v) => setTexts({ [editing.key]: v })}
-                            onEnter={() => setEditingText(null)}
-                            hidePreview
-                            inserts={editing.placeholders.map((ph) => ({ code: `{${ph}}`, label: PLACEHOLDER_LABELS[ph] }))}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-            </>
+            <ShopTextsSection
+              texts={file.texts}
+              setTexts={setTexts}
+              language={language}
+              currency={currency}
+              focusKey={editingText}
+              onHelp={() => setTextsHelp(true)}
+            />
           )}
         </section>
         {settingsChangesPanel()}
@@ -2449,7 +1900,11 @@ export default function ShopEditorPage() {
         setD({ tuning: { ...db.tuning, [field]: da.tuning[field] } })
       );
     }
-    for (const f of ANNOUNCE_FIELDS) {
+    add("sales-announce", "sales", "Ogłaszanie promocji", yesNo(a.salesAnnounce), yesNo(b.salesAnnounce), () => setSettings({ salesAnnounce: a.salesAnnounce }));
+    const ranks = (x: typeof a) =>
+      x.rankBonuses.filter((r) => r.rank.trim()).map((r) => `${r.rank} -${r.buyDiscount}%/+${r.sellBonus}%`).join(", ") || "brak";
+    add("ranks", "ranks", "Premie rang", ranks(a), ranks(b), () => setSettings({ rankBonuses: a.rankBonuses }));
+    for (const f of TEXT_FIELDS) {
       add(`text-${f.key}`, "texts", `Tekst: ${f.label}`, serverFile.texts[f.key] ?? "", file.texts[f.key] ?? "", () =>
         setTexts({ [f.key]: serverFile.texts[f.key] ?? "" })
       );
@@ -2499,7 +1954,7 @@ export default function ShopEditorPage() {
   function placePicked(sc: string, slot: number, what: { cat?: string; role?: string } | null = picked) {
     if (!what) return;
     const picked = what;
-    const m = file.settings.menus[sc];
+    const m = menuOf(sc);
     if (picked.role) {
       const role = picked.role;
       const entry =
@@ -2510,10 +1965,7 @@ export default function ShopEditorPage() {
             : { slot, role };
       // Stara zawartość pola znika (kategoria z niego wypada z menu, inne zostają na swoich polach).
       const cleared = removeMenuSlot(m.layout, file.settings.categoryOrder, slot);
-      setSettings({
-        categoryOrder: cleared.order,
-        menus: { ...file.settings.menus, [sc]: { ...m, layout: [...cleared.layout, entry] } },
-      });
+      setScreenLayout(sc, { layout: [...cleared.layout, entry] }, cleared.order);
       setPicked(null);
       return;
     }
@@ -2528,7 +1980,7 @@ export default function ShopEditorPage() {
   function slotPickModal() {
     if (!slotPick) return null;
     const { sc, slot } = slotPick;
-    const m: MenuScreenDraft = file.settings.menus[sc];
+    const m: MenuScreenDraft = menuOf(sc);
     const close = () => setSlotPick(null);
     const entry = m.layout.find((e) => e.slot === slot);
     const catHere = entry?.role === "CATEGORY_SLOT" ? categoryBySlot(m.layout, file.settings.categoryOrder).get(slot) : undefined;
@@ -2574,11 +2026,15 @@ export default function ShopEditorPage() {
                           className={`ci-slot-pick${here === i ? " active" : ""}`}
                           onClick={() => {
                             const next = placeItemAt(m.layout, pc.items, i, slot, previewPage);
-                            setFile({
-                              ...file,
-                              cats: file.cats.map((c) => (c.id === pc.id ? { ...c, items: next.items } : c)),
-                              settings: { ...file.settings, menus: { ...file.settings.menus, [sc]: { ...m, layout: next.layout } } },
-                            });
+                            // Nowe pole na przedmiot zmienia układ - tylko tej kategorii albo wspólny (suwak).
+                            const layoutChanged = JSON.stringify(next.layout) !== JSON.stringify(m.layout);
+                            if (layoutChanged && file.settings.sharedCategoryLayout)
+                              setFile({
+                                ...file,
+                                cats: file.cats.map((c) => (c.id === pc.id ? { ...c, items: next.items } : c)),
+                                settings: { ...file.settings, menus: { ...file.settings.menus, [sc]: { ...m, layout: next.layout } } },
+                              });
+                            else updateCategory(pc.id, { items: next.items, ...(layoutChanged ? { layout: { ...m, layout: next.layout } } : {}) });
                             close();
                           }}
                         >
@@ -2618,10 +2074,16 @@ export default function ShopEditorPage() {
               <div className="ci-slot-pick-grid">
                 {roles.map((role) => (
                   <button key={role} type="button" className={`ci-slot-pick${entry?.role === role ? " active" : ""}`} onClick={() => place({ role })}>
-                    <MaterialIcon
-                      material={role === "FILLER" ? fillerMaterial || "BLACK_STAINED_GLASS_PANE" : (roleMaterial(role, sc, file.settings.buttons) ?? "STONE")}
-                      iconPackDir={iconPackDir}
-                    />
+                    {role === "ROTATION_SLOT" ? (
+                      <span className="slot-rotating-badge slot-rotating-badge-inline">
+                        <Shuffle size={10} strokeWidth={2.5} />
+                      </span>
+                    ) : (
+                      <MaterialIcon
+                        material={role === "FILLER" ? fillerMaterial || "BLACK_STAINED_GLASS_PANE" : (roleMaterial(role, sc, file.settings.buttons) ?? "STONE")}
+                        iconPackDir={iconPackDir}
+                      />
+                    )}
                     <span>
                       {ROLE_LABELS[role] ?? role}
                       {role === "AMOUNT_SLOT" && <span className="muted small"> ({Math.max(1, Math.floor(amountValue))} szt.)</span>}
@@ -2655,8 +2117,8 @@ export default function ShopEditorPage() {
 
   /** Ustawienia pól wybranego ekranu (ile sztuk, własne tło) - siedzą pod listą po lewej. */
   function layoutExtras(sc: string) {
-    const m: MenuScreenDraft = file.settings.menus[sc];
-    const setMenu = (patch: Partial<MenuScreenDraft>) => setSettings({ menus: { ...file.settings.menus, [sc]: { ...m, ...patch } } });
+    const m: MenuScreenDraft = menuOf(sc);
+    const setMenu = (patch: Partial<MenuScreenDraft>) => setScreenLayout(sc, patch);
     const fillers = m.layout.filter((e) => e.role === "FILLER");
     if (fillers.length === 0) return null;
     return (
@@ -2686,10 +2148,28 @@ export default function ShopEditorPage() {
     const out = new Map<number, number>();
     const pc = file.cats.find((c) => c.id === previewCat);
     if (!pc || sc !== "category-page") return out;
-    const itemSlots = file.settings.menus[sc].layout.filter((e) => e.role === "ITEM_SLOT").map((e) => e.slot);
+    const layout = menuOf(sc).layout;
+    const itemSlots = layout.filter((e) => e.role === "ITEM_SLOT").map((e) => e.slot);
+    const rot = activeRotation(pc, rotationState[pc.id]);
+    // Są pola rotacji: wylosowane stoją w nich po kolei (od lewej, od góry) na każdej stronie, stałe osobno.
+    const rotSlots = rotationSlotsOf(layout);
+    if (rotSlots.length) {
+      rot.forEach((_, k) => k < rotSlots.length && out.set(rotSlots[k], pc.items.length + k));
+      if (itemSlots.length === 0) return out;
+      const fixed = displayOrder(pc.items, file.settings.categorySort);
+      const pages = Math.max(1, Math.ceil(fixed.length / itemSlots.length));
+      const start = Math.min(previewPage, pages - 1) * itemSlots.length;
+      for (let i = start; i < Math.min(start + itemSlots.length, fixed.length); i++) out.set(itemSlots[i - start], fixed[i]);
+      return out;
+    }
     const per = itemSlots.length;
     if (per === 0) return out;
-    const order = sc === "category-page" ? displayOrder(pc.items, file.settings.categorySort) : pc.items.map((_, i) => i);
+    // Jak w grze: stałe przedmioty, a za nimi to, co akurat wylosowała rotacja (numery od pc.items.length).
+    const known = rot.every((x) => x != null) ? (rot as ShopItemDraft[]) : [];
+    const order = [
+      ...displayOrder([...pc.items, ...known], file.settings.categorySort),
+      ...(known.length ? [] : rot.map((_, k) => pc.items.length + k)),
+    ];
     const pages = Math.max(1, Math.ceil(order.length / per));
     const page = Math.min(previewPage, pages - 1);
     const slots = sc === "category-page" ? pageSlots(itemSlots, order.length, pages === 1 && file.settings.centerSmall) : itemSlots;
@@ -2718,18 +2198,79 @@ export default function ShopEditorPage() {
     );
   }
 
+  /**
+   * Suwak "Wspólny układ". Włączenie: wszystkie kategorie dostają jeden układ - ten z wybranej kategorii
+   * (jeśli ma własny), inaczej dotychczasowy startowy; własne układy znikają (Cofnij/Ctrl+Z je przywraca).
+   * Wyłączenie: każda kategoria zaczyna od tego wspólnego i dalej zmienia się osobno.
+   */
+  function setSharedLayout(on: boolean) {
+    if (!on) {
+      setSettings({ sharedCategoryLayout: false });
+      return;
+    }
+    const src = layoutCat("category-page")?.layout ?? null;
+    setFile({
+      ...file,
+      cats: file.cats.map((c) => ({ ...c, layout: null })),
+      settings: {
+        ...file.settings,
+        sharedCategoryLayout: true,
+        menus: src ? { ...file.settings.menus, "category-page": src } : file.settings.menus,
+      },
+    });
+  }
+
   /** Pasek nad siatką: co podglądamy, ile tego jest i przełączanie stron. */
   function previewBar(sc: string) {
-    const pc = file.cats.find((c) => c.id === previewCat);
-    if (!pc || sc !== "category-page") return null;
-    const perPage = file.settings.menus[sc].layout.filter((e) => e.role === "ITEM_SLOT").length;
-    const pages = perPage > 0 ? Math.max(1, Math.ceil(pc.items.length / perPage)) : 0;
+    if (sc !== "category-page") return null;
+    const pc = layoutCat(sc);
+    const shared = file.settings.sharedCategoryLayout;
+    const switchRow = (
+      <div className="row" style={{ alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem", flexWrap: "wrap" }}>
+        <label className="pm-switch" title="Włączone: jeden układ dla wszystkich kategorii. Wyłączone: każda kategoria ma swój.">
+          <input type="checkbox" checked={shared} onChange={(e) => setSharedLayout(e.target.checked)} />
+          <span className="pm-switch-track" />
+          <span className="small">Wspólny układ dla wszystkich kategorii</span>
+        </label>
+        <span className="muted small">
+          {shared
+            ? "(włączony - zmiana w siatce zmienia wszystkie kategorie)"
+            : pc
+              ? "(wyłączony - zmieniasz tylko tę kategorię)"
+              : "(wyłączony - kliknij kategorię po lewej, żeby ustawić jej układ)"}
+        </span>
+      </div>
+    );
+    if (!pc) return switchRow;
+    const m = menuOf(sc);
+    const perPage = m.layout.filter((e) => e.role === "ITEM_SLOT").length;
+    const rotCount = activeRotation(pc, rotationState[pc.id]).length;
+    const rotSlots = rotationSlotsOf(m.layout);
+    const total = pc.items.length + rotCount;
+    // Z polami rotacji strony liczy się tylko ze stałych - rotacja stoi na swoich polach na każdej stronie.
+    const paged = rotSlots.length ? pc.items.length : total;
+    const pages = perPage > 0 ? Math.max(1, Math.ceil(paged / perPage)) : 0;
     const page = Math.min(previewPage, Math.max(0, pages - 1));
+    const r = pc.rotation;
     return (
+      <>
+      {switchRow}
+      {r?.enabled && rotSlots.length > 0 && rotSlots.length < r.show && (
+        <p className="ci-warning small" style={{ marginTop: 0 }}>
+          Rotacja pokazuje {r.show} {plural(r.show, "przedmiot", "przedmioty", "przedmiotów")}, a pól rotacji jest {rotSlots.length}. Dodaj jeszcze{" "}
+          {r.show - rotSlots.length} {plural(r.show - rotSlots.length, "pole", "pola", "pól")} (klik w pole → „Przedmiot z rotacji”) albo zmniejsz liczbę w
+          zakładce Kategorie - inaczej część wylosowanych przedmiotów się nie pokaże.
+        </p>
+      )}
+      {!r?.enabled && rotSlots.length > 0 && (
+        <p className="ci-note small" style={{ marginTop: 0 }}>
+          Ta kategoria nie ma włączonej rotacji - pola rotacji zostaną w grze puste (tło).
+        </p>
+      )}
       <div className="row" style={{ alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}>
         <MinecraftTextPreview text={pc.name} emptyLabel={pc.id} />
         <span className="muted small">
-          {pc.items.length} przedmiotów{perPage > 0 ? `, po ${perPage} na stronie` : " - brak pól na przedmioty"}
+          {total} przedmiotów{perPage > 0 ? `, po ${perPage} na stronie` : " - brak pól na przedmioty"}
         </span>
         {pages > 1 && (
           <>
@@ -2746,13 +2287,31 @@ export default function ShopEditorPage() {
           </>
         )}
       </div>
+      {rotCount > 0 && (
+        <div className="row" style={{ alignItems: "center", gap: "0.4rem", marginBottom: "0.5rem" }}>
+          <span className="shop-rotation-legend">
+            <span className="slot-rotating-badge">
+              <Shuffle size={10} strokeWidth={2.5} />
+            </span>
+            <span>
+              <b>
+                {rotCount} {plural(rotCount, "przykładowy przedmiot", "przykładowe przedmioty", "przykładowych przedmiotów")} z puli rotacji.
+              </b>{" "}
+              W grze co jakiś czas losują się tu nowe.{" "}
+              {!rotSlots.length && "Teraz stoją za stałymi przedmiotami - przeciągnij któryś, żeby postawić je, gdzie chcesz."}
+            </span>
+          </span>
+          <HelpButton id="shop-rotation-preview" title="Po co jest rotacja" onClick={() => setRotationHelp(true)} />
+        </div>
+      )}
+      </>
     );
   }
 
   /** Rozmiar okna i tryb przesuwania pól - pod listą, żeby nie rozpychać góry siatki. */
   function screenToolbar(sc: string) {
-    const m: MenuScreenDraft = file.settings.menus[sc];
-    const setMenu = (patch: Partial<MenuScreenDraft>) => setSettings({ menus: { ...file.settings.menus, [sc]: { ...m, ...patch } } });
+    const m: MenuScreenDraft = menuOf(sc);
+    const setMenu = (patch: Partial<MenuScreenDraft>) => setScreenLayout(sc, patch);
     return (
       <div className="card" style={{ padding: "0.6rem", marginTop: "0.6rem" }}>
         <label style={{ margin: 0 }}>
@@ -2774,8 +2333,8 @@ export default function ShopEditorPage() {
 
   /** Wybór ilości: lista przycisków "ile sztuk" z liczbą do zmiany - po lewej od siatki. */
   function amountPanel(sc: string) {
-    const m: MenuScreenDraft = file.settings.menus[sc];
-    const setMenu = (patch: Partial<MenuScreenDraft>) => setSettings({ menus: { ...file.settings.menus, [sc]: { ...m, ...patch } } });
+    const m: MenuScreenDraft = menuOf(sc);
+    const setMenu = (patch: Partial<MenuScreenDraft>) => setScreenLayout(sc, patch);
     const amounts = m.layout.filter((e) => e.role === "AMOUNT_SLOT").sort((a, b) => a.slot - b.slot);
     const setAmount = (slot: number, n: number) => {
       // Więcej niż 64 się nie da (pełny stack) - ustawiamy 64 i mówimy o tym przy polu.
@@ -2846,7 +2405,7 @@ export default function ShopEditorPage() {
                 className={`ci-cat ci-cat-pick${(preview ? previewCat === c.id : picked?.cat === c.id) ? " active" : ""}`}
                 onClick={() =>
                   preview
-                    ? (setPreviewCat(previewCat === c.id ? null : c.id), setPreviewPage(0))
+                    ? previewCat !== c.id && (setPreviewCat(c.id), setPreviewPage(0))
                     : setPicked(picked?.cat === c.id ? null : { cat: c.id })
                 }
               >
@@ -2996,6 +2555,19 @@ export default function ShopEditorPage() {
           Dane prosto z serwera - tylko podgląd.{" "}
           {file.settings.statsEnabled ? "" : "Zbieranie jest wyłączone, więc nowe dane się nie pojawiają (zaznacz wyżej, zapisz i wyślij na serwer)."}
         </p>
+        {file.settings.statsEnabled && (
+          <>
+            <p className="ci-note small" style={{ margin: "0 0 0.5rem" }}>
+              Razem ze statystykami sklep zapisuje <b>historię sprzedaży</b>: ile sprzedano każdego przedmiotu i kto ile zarobił. W grze
+              widać to komendami <code>/@shop history &lt;przedmiot&gt;</code> i <code>/@shop top</code> (ranking graczy).
+            </p>
+            <label className="ci-field-row">
+              <span className="ci-field-title">Ile dni historii pamiętać</span>
+              {numberInput(file.settings.historyDays, (n) => setSettings({ historyDays: Math.min(365, Math.max(1, Math.round(n))) }), "1", 1, "dni")}
+              <span className="muted small ci-field-hint">Starsze dni same się usuwają (domyślnie 30).</span>
+            </label>
+          </>
+        )}
         <div className="row">
           <input placeholder="Szukaj po nazwie lub kluczu..." value={statsFilter} onChange={(e) => setStatsFilter(e.target.value)} />
           <button type="button" onClick={() => refreshStats()} disabled={!profileId}>
@@ -3045,6 +2617,19 @@ export default function ShopEditorPage() {
   }
 
   const problems = tab === "cats" && category ? shopProblems(file.settings, [category]) : [];
+  // Który szablon jest teraz w edytorze (sklep 1:1 jak szablon) - po pierwszej zmianie już żaden.
+  const currentTemplate = useMemo((): string | null => {
+    const mine = serializeAll(file);
+    const same = (t: ShopTemplate) => serializeAll(fromTemplate(t, file.texts)) === mine;
+    const choices = [
+      ...shopTemplateChoices(language).map((t) => ({ key: t.id as string, template: t.template })),
+      ...userTemplates.map((t) => ({ key: `user:${t.id}`, template: t.template })),
+    ];
+    // Najpierw ten, który wczytałeś/zapisałeś ostatnio - potem pierwszy pasujący.
+    const active = choices.find((c) => c.key === activeTemplate);
+    if (active && same(active.template)) return active.key;
+    return choices.find((c) => same(c.template))?.key ?? null;
+  }, [file, language, userTemplates, activeTemplate]);
 
   return (
     <div className="page">
@@ -3054,14 +2639,14 @@ export default function ShopEditorPage() {
       <h1>Sklep</h1>
       <div className="ci-page-intro">
         <p className="muted">Kategorie i przedmioty sklepu serwerowego: ceny kupna i skupu, rotacja, ceny dynamiczne i wygląd menu.</p>
-        <select value="" onChange={(e) => loadTemplate(e.target.value)} disabled={!profileId} title="Gotowe sklepy - podmieniają cały sklep w edytorze">
-          <option value="">Wczytaj szablon...</option>
-          {shopTemplateChoices(language).map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.label}
-            </option>
-          ))}
-        </select>
+        <ShopTemplateMenu
+          current={currentTemplate}
+          labels={Object.fromEntries(shopTemplateChoices(language).map((t) => [t.id, t.label])) as Record<ShopTemplateId, string>}
+          userTemplates={userTemplates.map((t) => ({ id: t.id, name: t.name, savedAt: t.savedAt, categories: Object.keys(t.template.categories).length }))}
+          disabled={!profileId}
+          onPick={(id) => void loadTemplate(id)}
+          onRemoveUser={(id) => void removeTemplate(id)}
+        />
       </div>
 
       <div className="row ci-toolbar">
@@ -3089,8 +2674,12 @@ export default function ShopEditorPage() {
         <button type="button" className={tab === "stats" ? "ci-publish" : undefined} onClick={() => setTab("stats")}>
           Statystyki
         </button>
+        <button type="button" className={tab === "events" ? "ci-publish" : undefined} onClick={() => setTab("events")} title="Eventy na skup i promocje na kupno - działają od razu na serwerze">
+          Eventy
+        </button>
         <HelpButton id="shop-how-it-works" title="Przewodnik: jak działa sklep, krok po kroku" label="Jak działa sklep" onClick={() => setShopHelp(true)} />
         <span style={{ flex: 1 }} />
+        {unsaved && <span className="muted small">masz niezapisane zmiany</span>}
         {notSent && !unsaved && <span className="muted small">zapisane, jeszcze niewysłane</span>}
         <button type="button" title="Cofnij ostatnią zmianę (Ctrl+Z)" onClick={undoFile} disabled={historyRef.current.past.length === 0}>
           <Undo2 size={14} strokeWidth={1.75} /> Cofnij
@@ -3101,16 +2690,16 @@ export default function ShopEditorPage() {
         <button
           type="button"
           title="Wczytuje sklep od nowa prosto z serwera - np. gdy ktoś zmienił coś w grze komendą"
-          onClick={() => {
-            if (unsaved || notSent) setReloadConfirm(true);
-            else load(profileId, pluginsPath);
-          }}
+          onClick={() => setReloadConfirm(true)}
           disabled={!profileId || busy}
         >
           ↶ Wczytaj z serwera
         </button>
+        <button type="button" title="Zapisuje wszystkie zmiany w aplikacji - na serwer trafią po „Wyślij na serwer” (Ctrl+S)" onClick={save} disabled={!unsaved}>
+          <Save size={14} strokeWidth={1.75} /> Zapisz
+        </button>
         <button className="ci-publish" onClick={publish} disabled={!profileId || (!unsaved && !notSent) || busy}>
-          <Save size={14} strokeWidth={1.75} /> Wyślij na serwer
+          <Upload size={14} strokeWidth={1.75} /> Wyślij na serwer
         </button>
       </div>
       {status && <StatusBar text={status} onClose={() => setStatus(null)} />}
@@ -3137,24 +2726,31 @@ export default function ShopEditorPage() {
         <div className="modal-overlay" onClick={() => setReloadConfirm(false)}>
           <div className="modal card" onClick={(e) => e.stopPropagation()}>
             <h2 style={{ marginTop: 0 }}>Wczytać sklep z serwera?</h2>
-            <p>
-              Masz zmiany, których <b>nie ma na serwerze</b>. Po wczytaniu aplikacja pokaże to, co jest teraz na serwerze - a Twoje zmiany
-              odłoży na bok. Do czasu następnego wczytania możesz je przywrócić jednym kliknięciem.
-            </p>
+            {unsaved || notSent ? (
+              <p>
+                Masz zmiany, których <b>nie ma na serwerze</b>. Po wczytaniu aplikacja pokaże to, co jest teraz na serwerze - a Twoje zmiany
+                odłoży na bok. Do czasu następnego wczytania możesz je przywrócić jednym kliknięciem.
+              </p>
+            ) : (
+              <p>
+                Aplikacja wczyta sklep od nowa prosto z serwera - np. gdy ktoś zmienił coś w grze komendą. Nic nie stracisz: wszystkie Twoje
+                zmiany są już na serwerze.
+              </p>
+            )}
             <div className="row">
               <button
                 type="button"
-                className="ci-danger"
+                className={unsaved || notSent ? "ci-danger" : "ci-publish"}
                 onClick={() => {
                   setReloadConfirm(false);
-                  setDiscarded({ file, saved });
+                  if (unsaved || notSent) setDiscarded({ file, saved });
                   load(profileId, pluginsPath);
                 }}
               >
                 Tak, wczytaj z serwera
               </button>
               <button type="button" onClick={() => setReloadConfirm(false)}>
-                Anuluj - zostaw moje zmiany
+                {unsaved || notSent ? "Anuluj - zostaw moje zmiany" : "Anuluj"}
               </button>
             </div>
           </div>
@@ -3162,11 +2758,53 @@ export default function ShopEditorPage() {
       )}
       {showCommands && <ShopCommandsModal file={file} onClose={() => setShowCommands(false)} />}
       <ItemDatalists materials={allMaterials} customIds={customIds} />
-      {rotationHelp && rotationHelpModal()}
-      {priceHelp && priceHelpModal()}
-      {shopHelp && shopHelpModal()}
-      {fixedHelp && fixedPriceHelpModal()}
-      {dynamicHelp && dynamicHelpModal()}
+      {rotationHelp && <RotationHelpModal onClose={() => setRotationHelp(false)} />}
+      {priceHelp && <PriceHelpModal onClose={() => setPriceHelp(false)} />}
+      {shopHelp && (
+        <ShopGuideModal
+          open={guidePart}
+          onClose={() => {
+            setShopHelp(false);
+            setGuidePart(null);
+          }}
+        />
+      )}
+      {salesHelp && (
+        <SalesHelpModal
+          onClose={() => setSalesHelp(false)}
+          onMore={() => {
+            setSalesHelp(false);
+            openGuide("sales");
+          }}
+        />
+      )}
+      {ranksHelp && (
+        <RanksHelpModal
+          onClose={() => setRanksHelp(false)}
+          onMore={() => {
+            setRanksHelp(false);
+            openGuide("ranks");
+          }}
+        />
+      )}
+      {fixedHelp && (
+        <FixedPriceHelpModal
+          onClose={() => setFixedHelp(false)}
+          onMore={() => {
+            setFixedHelp(false);
+            openGuide("dynamic");
+          }}
+        />
+      )}
+      {dynamicHelp && (
+        <DynamicHelpModal
+          onClose={() => setDynamicHelp(false)}
+          onMore={() => {
+            setDynamicHelp(false);
+            openGuide("dynamic");
+          }}
+        />
+      )}
       {slotPickModal()}
       {screenHelp && (
         <div className="modal-overlay" onClick={() => setScreenHelp(false)}>
@@ -3207,14 +2845,25 @@ export default function ShopEditorPage() {
           </div>
         </div>
       )}
-      {statsHelp && statsHelpModal()}
-      {collectionInfo && collectionInfoModal()}
-      {textsHelp && textsHelpModal()}
+      {statsHelp && <StatsHelpModal onClose={() => setStatsHelp(false)} />}
+      {collectionInfo && <CollectionInfoModal r={file.cats.find((c) => c.id === "kolekcja")?.rotation} onClose={() => setCollectionInfo(false)} />}
+      {textsHelp && (
+        <TextsHelpModal
+          onClose={() => setTextsHelp(false)}
+          onMore={() => {
+            setTextsHelp(false);
+            openGuide("texts");
+          }}
+        />
+      )}
       {poolPickCat && poolPickModal()}
 
       {tab === "settings" && renderSettings()}
       {tab === "menu" && renderMenu()}
       {tab === "stats" && renderStats()}
+      {tab === "events" && profileId && pluginsPath && (
+        <ShopEventsTab profileId={profileId} dir={shopDir(pluginsPath)} cats={file.cats} customNames={customNames} />
+      )}
 
       {tab === "cats" && (
         <div className="ci-layout ci-layout-crates ci-layout-quests ci-layout-shop">
@@ -3383,22 +3032,15 @@ export default function ShopEditorPage() {
               </div>
             )}
             <div className="ci-actions">
-              <button className="ci-publish" type="button" onClick={save} disabled={!unsaved}>
-                <Save size={16} strokeWidth={1.75} /> Zapisz
-              </button>
               <button type="button" onClick={() => setFile(saved)} disabled={!unsaved}>
                 Cofnij niezapisane
               </button>
             </div>
-            {unsaved && <p className="muted small">masz niezapisane zmiany</p>}
           </section>
         </div>
       )}
       {tab !== "cats" && (
         <div className="ci-actions">
-          <button className="ci-publish" type="button" onClick={save} disabled={!unsaved}>
-            <Save size={16} strokeWidth={1.75} /> Zapisz
-          </button>
           <button type="button" onClick={() => setFile(saved)} disabled={!unsaved}>
             Cofnij niezapisane
           </button>

@@ -36,6 +36,8 @@ export interface CategoryDraft {
   icon: ItemRef;
   items: ShopItemDraft[];
   rotation: RotationDraft | null;
+  /** Własny układ strony tej kategorii; null = wspólny (menus.category-page w ustawieniach). */
+  layout: MenuScreenDraft | null;
   raw: Obj;
 }
 
@@ -100,6 +102,12 @@ const TUNING_KEYS: Array<[keyof TuningDraft, string]> = [
   ["normLearnRate", "norm-learn-rate"],
 ];
 
+export interface RankBonusDraft {
+  rank: string;
+  buyDiscount: number;
+  sellBonus: number;
+}
+
 export interface ShopSettingsDraft {
   categoryOrder: string[];
   rounding: "whole" | "cents";
@@ -109,6 +117,18 @@ export interface ShopSettingsDraft {
   categorySort: "order" | "buy" | "sell";
   /** Wyśrodkowanie małych kategorii - wyłączone na stałe (przedmioty stoją tam, gdzie je ustawisz); pole zostaje dla starych plików. */
   centerSmall: boolean;
+  /**
+   * Strona kategorii: true = jeden układ dla wszystkich kategorii (menus.category-page), false = każda
+   * kategoria ma swój (kategoria bez własnego zaczyna od menus.category-page). Plugin tego nie czyta -
+   * to tylko tryb edycji w aplikacji; w pliku "category-page-shared".
+   */
+  sharedCategoryLayout: boolean;
+  /** Promocje na kupno (/@shop sale) - ogłaszać start i koniec na czacie (sales.announce). */
+  salesAnnounce: boolean;
+  /** Ile dni historii sprzedaży (/@shop history, /@shop top) - zbiera się razem ze statystykami (stats.history-days). */
+  historyDays: number;
+  /** Premie rang (rank-bonuses): uprawnienie mainplugins.shop.rank.<rank>, procenty. */
+  rankBonuses: RankBonusDraft[];
   menus: Record<string, MenuScreenDraft>;
   buttons: Record<string, string>;
   raw: Obj;
@@ -124,6 +144,7 @@ export const SCREEN_LABELS: Record<string, string> = {
 export const ROLE_LABELS: Record<string, string> = {
   CATEGORY_SLOT: "Kategoria",
   ITEM_SLOT: "Przedmiot",
+  ROTATION_SLOT: "Przedmiot z rotacji",
   AMOUNT_SLOT: "Ilość",
   NAV_BACK: "Wróć",
   NAV_PREV: "Poprzednia",
@@ -212,6 +233,10 @@ export function defaultSettings(): ShopSettingsDraft {
     statsEnabled: false,
     categorySort: "order",
     centerSmall: false,
+    sharedCategoryLayout: false,
+    salesAnnounce: true,
+    historyDays: 30,
+    rankBonuses: [],
     menus: defaultMenus(),
     buttons: { ...DEFAULT_BUTTONS },
     raw: {},
@@ -245,6 +270,35 @@ const HEADER_SHOP =
 const HEADER_CATEGORY =
   "# One shop category (edited in the PluginManager app). buy = price for 'amount' pieces, sell = price for 'sell-amount' pieces.\n";
 
+/** Jedno okno (size + layout) - to samo w shop.yml menus.<okno> i we własnym układzie kategorii. */
+function parseScreen(m: Obj, def: MenuScreenDraft): MenuScreenDraft {
+  const layout = Array.isArray(m.layout)
+    ? m.layout.map((e) => {
+        const o = obj(e);
+        const entry: SlotEntryDraft = { slot: num(o.slot, 0), role: String(o.role ?? "FILLER").toUpperCase() };
+        if (o.material != null) entry.material = String(o.material);
+        if (o.amount != null) entry.amount = num(o.amount, 1);
+        return entry;
+      })
+    : def.layout;
+  return { size: num(m.size, def.size), layout };
+}
+
+/** Pola na przedmioty z rotacji w kolejności wypełniania - od lewej, od góry (tak samo w pluginie). */
+export function rotationSlotsOf(layout: SlotEntryDraft[]): number[] {
+  return layout
+    .filter((e) => e.role === "ROTATION_SLOT")
+    .map((e) => e.slot)
+    .sort((a, b) => a - b);
+}
+
+function slotOut(e: SlotEntryDraft): Obj {
+  const o: Obj = { slot: e.slot, role: e.role };
+  if (e.material) o.material = e.material;
+  if (e.role === "AMOUNT_SLOT") o.amount = e.amount ?? 1;
+  return o;
+}
+
 // ---------- shop.yml ----------
 
 export function parseShopSettings(text: string): ShopSettingsDraft {
@@ -253,19 +307,7 @@ export function parseShopSettings(text: string): ShopSettingsDraft {
   const dyn = obj(raw["dynamic-prices"]);
   const menusRaw = obj(raw.menus);
   const menus: Record<string, MenuScreenDraft> = {};
-  for (const s of SCREENS) {
-    const m = obj(menusRaw[s]);
-    const layout = Array.isArray(m.layout)
-      ? m.layout.map((e) => {
-          const o = obj(e);
-          const entry: SlotEntryDraft = { slot: num(o.slot, 0), role: String(o.role ?? "FILLER").toUpperCase() };
-          if (o.material != null) entry.material = String(o.material);
-          if (o.amount != null) entry.amount = num(o.amount, 1);
-          return entry;
-        })
-      : d.menus[s].layout;
-    menus[s] = { size: num(m.size, d.menus[s].size), layout };
-  }
+  for (const s of SCREENS) menus[s] = parseScreen(obj(menusRaw[s]), d.menus[s]);
   const buttons = { ...DEFAULT_BUTTONS };
   for (const [k, v] of Object.entries(obj(menusRaw.buttons))) if (k in buttons) buttons[k] = String(v);
   const categoryOrder = Array.isArray(raw.categories) ? raw.categories.map(String) : [];
@@ -290,6 +332,14 @@ export function parseShopSettings(text: string): ShopSettingsDraft {
       ? (String(raw["category-page-sort"]).toLowerCase() as "order" | "buy" | "sell")
       : d.categorySort,
     centerSmall: false,
+    sharedCategoryLayout: raw["category-page-shared"] === true,
+    salesAnnounce: typeof obj(raw.sales).announce === "boolean" ? Boolean(obj(raw.sales).announce) : d.salesAnnounce,
+    historyDays: Math.min(365, Math.max(1, num(obj(raw.stats)["history-days"], d.historyDays))),
+    rankBonuses: Object.entries(obj(raw["rank-bonuses"])).map(([rank, v]) => ({
+      rank,
+      buyDiscount: num(obj(v)["buy-discount"], 0),
+      sellBonus: num(obj(v)["sell-bonus"], 0),
+    })),
     menus,
     buttons,
     raw,
@@ -304,17 +354,12 @@ export function serializeShopSettings(s: ShopSettingsDraft): string {
     menus[sc] = {
       ...without(obj(menusRaw[sc]), ["size", "layout"]),
       size: s.menus[sc].size,
-      layout: s.menus[sc].layout.map((e) => {
-        const o: Obj = { slot: e.slot, role: e.role };
-        if (e.material) o.material = e.material;
-        if (e.role === "AMOUNT_SLOT") o.amount = e.amount ?? 1;
-        return o;
-      }),
+      layout: s.menus[sc].layout.map(slotOut),
     };
   }
   menus.buttons = { ...obj(menusRaw.buttons), ...s.buttons };
   const out: Obj = {
-    ...without(s.raw, ["categories", "price-rounding", "dynamic-prices", "stats", "menus", "category-page-sort", "center-small-categories"]),
+    ...without(s.raw, ["categories", "price-rounding", "dynamic-prices", "stats", "menus", "category-page-sort", "center-small-categories", "category-page-shared", "sales", "rank-bonuses"]),
     categories: s.categoryOrder,
     "price-rounding": s.rounding,
     "dynamic-prices": {
@@ -329,9 +374,16 @@ export function serializeShopSettings(s: ShopSettingsDraft): string {
       "announce-reset": s.dynamic.announceReset,
       tuning: { ...obj(dynRaw.tuning), ...Object.fromEntries(TUNING_KEYS.map(([field, key]) => [key, s.dynamic.tuning[field]])) },
     },
-    stats: { ...obj(s.raw.stats), enabled: s.statsEnabled },
+    stats: { ...obj(s.raw.stats), enabled: s.statsEnabled, "history-days": s.historyDays },
     "category-page-sort": s.categorySort,
     "center-small-categories": false,
+    "category-page-shared": s.sharedCategoryLayout,
+    sales: { ...obj(s.raw.sales), announce: s.salesAnnounce },
+    "rank-bonuses": Object.fromEntries(
+      s.rankBonuses
+        .filter((r) => r.rank.trim())
+        .map((r) => [r.rank.trim().toLowerCase(), { "buy-discount": r.buyDiscount, "sell-bonus": r.sellBonus }]),
+    ),
     menus,
   };
   // Pola okien jako {slot: .., role: ..} w jednej linijce - czytelniej przy ręcznej edycji.
@@ -401,7 +453,8 @@ export function parseCategory(id: string, text: string): CategoryDraft {
           raw: without(rot, ["enabled", "show", "every-days", "announce", "pool"]),
         }
       : null,
-    raw: without(raw, ["name", "icon", "items", "rotation"]),
+    layout: raw.layout != null ? parseScreen(obj(raw.layout), defaultMenus()["category-page"]) : null,
+    raw: without(raw, ["name", "icon", "items", "rotation", "layout"]),
   };
 }
 
@@ -412,10 +465,14 @@ export function serializeCategory(c: CategoryDraft): string {
   if (c.rotation) {
     const r = c.rotation;
     text += "rotation:\n";
-    text += `  enabled: ${r.enabled}\n  show: ${r.show}\n  every-days: ${r.everyDays}\n`;
+    text += `  enabled: ${r.enabled}\n  show: ${r.show}\n  every-days: ${r.everyDays}\n  announce: ${r.announce}\n`;
     const extra = yaml.dump(r.raw, { lineWidth: -1, noRefs: true });
     if (Object.keys(r.raw).length) text += extra.split("\n").filter(Boolean).map((l) => `  ${l}`).join("\n") + "\n";
     text += r.pool.length ? "  pool:\n" + r.pool.map((i) => `    - ${flow(itemOut(i))}\n`).join("") : "  pool: []\n";
+  }
+  if (c.layout) {
+    text += `layout:\n  size: ${c.layout.size}\n  layout:\n`;
+    text += c.layout.layout.map((e) => `    - ${flow(slotOut(e))}\n`).join("");
   }
   return text;
 }
@@ -777,7 +834,7 @@ export function newItem(ref: ItemRef): ShopItemDraft {
 }
 
 export function newCategory(id: string, name: string): CategoryDraft {
-  return { id, name, icon: { item: "CHEST" }, items: [], rotation: null, raw: {} };
+  return { id, name, icon: { item: "CHEST" }, items: [], rotation: null, layout: null, raw: {} };
 }
 
 /** Problemy przed wysłaniem (po polsku): skup >= kupno, brak cen, puste kategorie. */
@@ -795,4 +852,34 @@ export function shopProblems(settings: ShopSettingsDraft, cats: CategoryDraft[])
   const slots = settings.menus["main-menu"].layout.filter((e) => e.role === "CATEGORY_SLOT").length;
   if (settings.categoryOrder.length > slots) out.push(`Menu główne ma ${slots} miejsc na kategorie, a kategorii jest ${settings.categoryOrder.length}.`);
   return out;
+}
+
+/** rotation.yml pluginu: które pozycje puli są teraz wylosowane (id kategorii -> numery w puli). */
+export function parseRotationState(text: string | null): Record<string, number[]> {
+  if (!text) return {};
+  let root: unknown;
+  try {
+    root = yaml.load(text);
+  } catch {
+    return {};
+  }
+  if (!root || typeof root !== "object") return {};
+  const out: Record<string, number[]> = {};
+  for (const [id, v] of Object.entries(root as Obj)) {
+    const picked = v && typeof v === "object" ? (v as Obj).picked : undefined;
+    if (Array.isArray(picked)) out[id] = picked.filter((n): n is number => Number.isInteger(n) && n >= 0);
+  }
+  return out;
+}
+
+/**
+ * Co z puli rotacji stoi teraz w sklepie (w grze za stałymi przedmiotami). Znane z rotation.yml -
+ * te przedmioty; gdy losowania jeszcze nie było albo pula się zmieniła (plugin wtedy losuje od nowa) -
+ * null w każdym miejscu, czyli "losowy z puli".
+ */
+export function activeRotation(c: CategoryDraft, picked: number[] | undefined): (ShopItemDraft | null)[] {
+  const r = c.rotation;
+  if (!r?.enabled || r.pool.length === 0) return [];
+  if (picked && picked.length > 0 && picked.every((i) => i < r.pool.length)) return picked.map((i) => r.pool[i]);
+  return Array.from({ length: Math.min(r.show, r.pool.length) }, () => null);
 }

@@ -1,4 +1,5 @@
-import { ask, open } from "@tauri-apps/plugin-dialog";
+import { open } from "@tauri-apps/plugin-dialog";
+import { ask } from "../components/AskModal";
 import { Cloud, HardDrive, Plus, Server } from "lucide-react";
 import { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
