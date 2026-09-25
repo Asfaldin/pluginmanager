@@ -6,14 +6,19 @@ import {
   DynamicHelpModal,
   FixedPriceHelpModal,
   PriceHelpModal,
+  RanksHelpModal,
   RotationHelpModal,
+  SalesHelpModal,
   ShopGuideModal,
   StatsHelpModal,
   TextsHelpModal,
   SCREEN_HELP,
+  type GuidePart,
 } from "./shop/ShopHelpModals";
 import ShopCommandsModal from "./shop/ShopCommandsModal";
 import ShopTextsSection from "./shop/ShopTextsSection";
+import ShopRanksSection, { ShopSalesSection } from "./shop/ShopDealsSection";
+import ShopEventsTab from "./shop/ShopEventsTab";
 import {
   BUTTON_ROLES,
   EMPTY,
@@ -178,10 +183,10 @@ export default function ShopEditorPage() {
       }
     >()
   );
-  // Duze okienko "Jak dziala sklep" otwarte od razu na rozwinietych cenach dynamicznych.
-  const [shopHelpDynamic, setShopHelpDynamic] = useState(false);
-  // To samo dla tekstów ogłoszeń ("Dowiedz się więcej" z małego "?").
-  const [shopHelpTexts, setShopHelpTexts] = useState(false);
+  // Która część przewodnika "Jak działa sklep" ma być od razu rozwinięta ("Dowiedz się więcej" z małego "?").
+  const [guidePart, setGuidePart] = useState<GuidePart>(null);
+  const [salesHelp, setSalesHelp] = useState(false);
+  const [ranksHelp, setRanksHelp] = useState(false);
   const [poolPickCat, setPoolPickCat] = useState<string | null>(null);
   const [poolPickBack, setPoolPickBack] = useState(false);
   // Ktora liste widac w srodkowej kolumnie: stale przedmioty czy pula rotacji.
@@ -559,9 +564,8 @@ export default function ShopEditorPage() {
   // ---- zmiany ----
 
   /** Otwiera przewodnik "Jak działa sklep", od razu z rozwiniętą wybraną częścią. */
-  function openGuide(part: "dynamic" | "texts") {
-    setShopHelpDynamic(part === "dynamic");
-    setShopHelpTexts(part === "texts");
+  function openGuide(part: GuidePart) {
+    setGuidePart(part);
     setShopHelp(true);
   }
 
@@ -1618,6 +1622,8 @@ export default function ShopEditorPage() {
     const sections: Array<[SettingsSection, string, string]> = [
       ["prices", "Ceny", s.rounding === "whole" ? "pełne złotówki" : "z groszami"],
       ["dynamic", "Ceny dynamiczne", d.enabled ? "włączone" : "wyłączone"],
+      ["sales", "Promocje", s.salesAnnounce ? "ogłaszane na czacie" : "bez ogłoszeń"],
+      ["ranks", "Bonusy dla rang", s.rankBonuses.length ? `rangi: ${s.rankBonuses.length}` : "brak"],
       ["texts", "Teksty w grze", "wszystko, co sklep pisze graczom"],
     ];
     return (
@@ -1772,6 +1778,9 @@ export default function ShopEditorPage() {
             </>
           )}
 
+          {settingsSection === "sales" && <ShopSalesSection settings={s} setSettings={setSettings} onHelp={() => setSalesHelp(true)} />}
+          {settingsSection === "ranks" && <ShopRanksSection settings={s} setSettings={setSettings} onHelp={() => setRanksHelp(true)} />}
+
           {settingsSection === "texts" && (
             <ShopTextsSection
               texts={file.texts}
@@ -1822,6 +1831,10 @@ export default function ShopEditorPage() {
         setD({ tuning: { ...db.tuning, [field]: da.tuning[field] } })
       );
     }
+    add("sales-announce", "sales", "Ogłaszanie promocji", yesNo(a.salesAnnounce), yesNo(b.salesAnnounce), () => setSettings({ salesAnnounce: a.salesAnnounce }));
+    const ranks = (x: typeof a) =>
+      x.rankBonuses.filter((r) => r.rank.trim()).map((r) => `${r.rank} -${r.buyDiscount}%/+${r.sellBonus}%`).join(", ") || "brak";
+    add("ranks", "ranks", "Premie rang", ranks(a), ranks(b), () => setSettings({ rankBonuses: a.rankBonuses }));
     for (const f of TEXT_FIELDS) {
       add(`text-${f.key}`, "texts", `Tekst: ${f.label}`, serverFile.texts[f.key] ?? "", file.texts[f.key] ?? "", () =>
         setTexts({ [f.key]: serverFile.texts[f.key] ?? "" })
@@ -2473,6 +2486,19 @@ export default function ShopEditorPage() {
           Dane prosto z serwera - tylko podgląd.{" "}
           {file.settings.statsEnabled ? "" : "Zbieranie jest wyłączone, więc nowe dane się nie pojawiają (zaznacz wyżej, zapisz i wyślij na serwer)."}
         </p>
+        {file.settings.statsEnabled && (
+          <>
+            <p className="ci-note small" style={{ margin: "0 0 0.5rem" }}>
+              Razem ze statystykami sklep zapisuje <b>historię sprzedaży</b>: ile sprzedano każdego przedmiotu i kto ile zarobił. W grze
+              widać to komendami <code>/@shop history &lt;przedmiot&gt;</code> i <code>/@shop top</code> (ranking graczy).
+            </p>
+            <label className="ci-field-row">
+              <span className="ci-field-title">Ile dni historii pamiętać</span>
+              {numberInput(file.settings.historyDays, (n) => setSettings({ historyDays: Math.min(365, Math.max(1, Math.round(n))) }), "1", 1, "dni")}
+              <span className="muted small ci-field-hint">Starsze dni same się usuwają (domyślnie 30).</span>
+            </label>
+          </>
+        )}
         <div className="row">
           <input placeholder="Szukaj po nazwie lub kluczu..." value={statsFilter} onChange={(e) => setStatsFilter(e.target.value)} />
           <button type="button" onClick={() => refreshStats()} disabled={!profileId}>
@@ -2566,6 +2592,9 @@ export default function ShopEditorPage() {
         <button type="button" className={tab === "stats" ? "ci-publish" : undefined} onClick={() => setTab("stats")}>
           Statystyki
         </button>
+        <button type="button" className={tab === "events" ? "ci-publish" : undefined} onClick={() => setTab("events")} title="Eventy na skup i promocje na kupno - działają od razu na serwerze">
+          Eventy
+        </button>
         <HelpButton id="shop-how-it-works" title="Przewodnik: jak działa sklep, krok po kroku" label="Jak działa sklep" onClick={() => setShopHelp(true)} />
         <span style={{ flex: 1 }} />
         {unsaved && <span className="muted small">masz niezapisane zmiany</span>}
@@ -2651,12 +2680,28 @@ export default function ShopEditorPage() {
       {priceHelp && <PriceHelpModal onClose={() => setPriceHelp(false)} />}
       {shopHelp && (
         <ShopGuideModal
-          openDynamic={shopHelpDynamic}
-          openTexts={shopHelpTexts}
+          open={guidePart}
           onClose={() => {
             setShopHelp(false);
-            setShopHelpDynamic(false);
-            setShopHelpTexts(false);
+            setGuidePart(null);
+          }}
+        />
+      )}
+      {salesHelp && (
+        <SalesHelpModal
+          onClose={() => setSalesHelp(false)}
+          onMore={() => {
+            setSalesHelp(false);
+            openGuide("sales");
+          }}
+        />
+      )}
+      {ranksHelp && (
+        <RanksHelpModal
+          onClose={() => setRanksHelp(false)}
+          onMore={() => {
+            setRanksHelp(false);
+            openGuide("ranks");
           }}
         />
       )}
@@ -2734,6 +2779,9 @@ export default function ShopEditorPage() {
       {tab === "settings" && renderSettings()}
       {tab === "menu" && renderMenu()}
       {tab === "stats" && renderStats()}
+      {tab === "events" && profileId && pluginsPath && (
+        <ShopEventsTab profileId={profileId} dir={shopDir(pluginsPath)} cats={file.cats} customNames={customNames} />
+      )}
 
       {tab === "cats" && (
         <div className="ci-layout ci-layout-crates ci-layout-quests ci-layout-shop">

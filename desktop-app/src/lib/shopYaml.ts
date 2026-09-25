@@ -102,6 +102,12 @@ const TUNING_KEYS: Array<[keyof TuningDraft, string]> = [
   ["normLearnRate", "norm-learn-rate"],
 ];
 
+export interface RankBonusDraft {
+  rank: string;
+  buyDiscount: number;
+  sellBonus: number;
+}
+
 export interface ShopSettingsDraft {
   categoryOrder: string[];
   rounding: "whole" | "cents";
@@ -117,6 +123,12 @@ export interface ShopSettingsDraft {
    * to tylko tryb edycji w aplikacji; w pliku "category-page-shared".
    */
   sharedCategoryLayout: boolean;
+  /** Promocje na kupno (/@shop sale) - ogłaszać start i koniec na czacie (sales.announce). */
+  salesAnnounce: boolean;
+  /** Ile dni historii sprzedaży (/@shop history, /@shop top) - zbiera się razem ze statystykami (stats.history-days). */
+  historyDays: number;
+  /** Premie rang (rank-bonuses): uprawnienie mainplugins.shop.rank.<rank>, procenty. */
+  rankBonuses: RankBonusDraft[];
   menus: Record<string, MenuScreenDraft>;
   buttons: Record<string, string>;
   raw: Obj;
@@ -222,6 +234,9 @@ export function defaultSettings(): ShopSettingsDraft {
     categorySort: "order",
     centerSmall: false,
     sharedCategoryLayout: false,
+    salesAnnounce: true,
+    historyDays: 30,
+    rankBonuses: [],
     menus: defaultMenus(),
     buttons: { ...DEFAULT_BUTTONS },
     raw: {},
@@ -318,6 +333,13 @@ export function parseShopSettings(text: string): ShopSettingsDraft {
       : d.categorySort,
     centerSmall: false,
     sharedCategoryLayout: raw["category-page-shared"] === true,
+    salesAnnounce: typeof obj(raw.sales).announce === "boolean" ? Boolean(obj(raw.sales).announce) : d.salesAnnounce,
+    historyDays: Math.min(365, Math.max(1, num(obj(raw.stats)["history-days"], d.historyDays))),
+    rankBonuses: Object.entries(obj(raw["rank-bonuses"])).map(([rank, v]) => ({
+      rank,
+      buyDiscount: num(obj(v)["buy-discount"], 0),
+      sellBonus: num(obj(v)["sell-bonus"], 0),
+    })),
     menus,
     buttons,
     raw,
@@ -337,7 +359,7 @@ export function serializeShopSettings(s: ShopSettingsDraft): string {
   }
   menus.buttons = { ...obj(menusRaw.buttons), ...s.buttons };
   const out: Obj = {
-    ...without(s.raw, ["categories", "price-rounding", "dynamic-prices", "stats", "menus", "category-page-sort", "center-small-categories", "category-page-shared"]),
+    ...without(s.raw, ["categories", "price-rounding", "dynamic-prices", "stats", "menus", "category-page-sort", "center-small-categories", "category-page-shared", "sales", "rank-bonuses"]),
     categories: s.categoryOrder,
     "price-rounding": s.rounding,
     "dynamic-prices": {
@@ -352,10 +374,16 @@ export function serializeShopSettings(s: ShopSettingsDraft): string {
       "announce-reset": s.dynamic.announceReset,
       tuning: { ...obj(dynRaw.tuning), ...Object.fromEntries(TUNING_KEYS.map(([field, key]) => [key, s.dynamic.tuning[field]])) },
     },
-    stats: { ...obj(s.raw.stats), enabled: s.statsEnabled },
+    stats: { ...obj(s.raw.stats), enabled: s.statsEnabled, "history-days": s.historyDays },
     "category-page-sort": s.categorySort,
     "center-small-categories": false,
     "category-page-shared": s.sharedCategoryLayout,
+    sales: { ...obj(s.raw.sales), announce: s.salesAnnounce },
+    "rank-bonuses": Object.fromEntries(
+      s.rankBonuses
+        .filter((r) => r.rank.trim())
+        .map((r) => [r.rank.trim().toLowerCase(), { "buy-discount": r.buyDiscount, "sell-bonus": r.sellBonus }]),
+    ),
     menus,
   };
   // Pola okien jako {slot: .., role: ..} w jednej linijce - czytelniej przy ręcznej edycji.

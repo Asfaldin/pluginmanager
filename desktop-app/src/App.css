@@ -3663,6 +3663,16 @@ button.ci-text-preview.active {
   color: #fff;
   pointer-events: none;
 }
+/* Sklep → Eventy: zmiana ceny w górę (zielona) / w dół (czerwona). */
+.ci-live-up {
+  color: #4ade80;
+  font-weight: 600;
+}
+.ci-live-down {
+  color: #f87171;
+  font-weight: 600;
+}
+
 /* Mały suwak włącz/wyłącz (checkbox w środku, żeby działał z klawiatury). */
 .pm-switch,
 .form label.pm-switch {

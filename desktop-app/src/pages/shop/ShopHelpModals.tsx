@@ -1,15 +1,26 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Fold } from "../../components/EditorBits";
 import { PLACEHOLDER_HELP, PLACEHOLDER_LABELS } from "../../lib/shopAnnounce";
 import type { CategoryDraft } from "../../lib/shopYaml";
 
 /** Okienka pomocy strony Sklepu ("?" i przewodnik "Jak działa sklep") - sama treść, bez stanu strony. */
 
-export function ShopGuideModal({ openDynamic, openTexts, onClose }: { openDynamic: boolean; openTexts: boolean; onClose: () => void }) {
+/** Która część przewodnika ma być od razu rozwinięta. */
+export type GuidePart = "dynamic" | "texts" | "sales" | "ranks" | null;
+
+export function ShopGuideModal({ open, onClose }: { open: GuidePart; onClose: () => void }) {
   const close = onClose;
+  const boxRef = useRef<HTMLDivElement>(null);
+  // Otwarte z "?" przy konkretnej rzeczy: przewijamy do niej (opis nad rozwiniętymi szczegółami), nie od góry.
+  useEffect(() => {
+    if (!open) return;
+    const details = boxRef.current?.querySelector("details[open]");
+    const target = details?.previousElementSibling ?? details;
+    target?.scrollIntoView({ block: "start" });
+  }, [open]);
   return (
     <div className="modal-overlay" onClick={close}>
-      <div className="modal modal-wide card" onClick={(e) => e.stopPropagation()}>
+      <div ref={boxRef} className="modal modal-wide card" onClick={(e) => e.stopPropagation()}>
         <div className="row">
           <h2 style={{ margin: 0, flex: 1 }}>Jak działa sklep</h2>
           <button type="button" onClick={close}>
@@ -18,7 +29,7 @@ export function ShopGuideModal({ openDynamic, openTexts, onClose }: { openDynami
         </div>
         <p className="muted small">
           Gracz wpisuje /shop i dostaje menu z kategoriami. Wchodzi w kategorię, klika przedmiot, wybiera ilość i kupuje. Sprzedaje
-          przedmiotem trzymanym w ręce.
+          przedmiotem trzymanym w ręce. Komendą /cena sprawdza, ile teraz kosztuje i ile sklep płaci za przedmiot w ręce.
         </p>
         <p>
           <b>Kategorie i przedmioty.</b> Każda kategoria ma własną listę przedmiotów. Gdzie stoi która kategoria i który przedmiot, ustawiasz w
@@ -47,7 +58,7 @@ export function ShopGuideModal({ openDynamic, openTexts, onClose }: { openDynami
           <b>Ceny dynamiczne.</b> Sklep sam obniża skup tego, co gracze masowo sprzedają, i podnosi go z powrotem, gdy przestaną.
           Granice (o ile może spaść i urosnąć) ustawiasz w <b>Ustawieniach</b>, tam też włączasz ogłoszenia na czacie.
         </p>
-        <Fold title="Ceny dynamiczne - szczegóły" open={openDynamic}>
+        <Fold title="Ceny dynamiczne - szczegóły" open={open === "dynamic"}>
           <p className="small">
             Każdy przedmiot ma własną cenę skupu i własną historię - to, co dzieje się z diamentem, nie rusza ceny bruku, nawet jeśli
             leżą w tej samej kategorii. Cena chodzi w widełkach z Ustawień, domyślnie od połowy do półtora raza zwykłej ceny.
@@ -156,8 +167,8 @@ export function ShopGuideModal({ openDynamic, openTexts, onClose }: { openDynami
           </p>
         </Fold>
         <p>
-          <b>Eventy.</b> Komendą <code>/@shop event</code> podbijasz skup wybranego przedmiotu na jakiś czas - przydaje się na akcje
-          typu „weekend z diamentami”.
+          <b>Eventy.</b> W zakładce <b>Eventy</b> (albo komendą <code>/@shop event</code>) podbijasz skup wybranego przedmiotu na jakiś
+          czas - przydaje się na akcje typu „weekend z diamentami”.
         </p>
         <Fold title="Eventy - szczegóły">
           <p className="small">
@@ -178,6 +189,41 @@ export function ShopGuideModal({ openDynamic, openTexts, onClose }: { openDynami
             Resety (<code>/@shop reset</code>, <code>/@shop resetall</code>) proszą o potwierdzenie komendą <code>/@shop confirm</code>,
             bo kasują historię rynkową przedmiotu.
           </p>
+        </Fold>
+        <p>
+          <b>Promocje.</b> Obniżają cenę <b>kupna</b> - jednego przedmiotu, całej kategorii albo całego sklepu, na czas albo bez końca.
+          Uruchamiasz je w zakładce <b>Eventy</b>.
+        </p>
+        <Fold title="Promocje - szczegóły" open={open === "sales"}>
+          <p className="small">
+            Gracz widzi w sklepie przekreśloną starą cenę, nową cenę i napis „PROMOCJA -20%”. Okno wyboru ilości i sam zakup liczą już
+            nową cenę. Gdy przedmiot obejmuje kilka promocji naraz, liczy się najwęższa: promocja na przedmiot wygrywa z promocją na
+            kategorię, a ta z promocją na cały sklep.
+          </p>
+          <p className="small">
+            Promocja na czas kończy się sama, a promocja bez końca - dopiero po „Zakończ”. Trwające promocje przeżywają restart serwera.
+            Ogłoszenie na czacie przy starcie i końcu włączasz w Ustawieniach → Promocje, a jego treść zmieniasz w Teksty w grze.
+          </p>
+          <p className="small">
+            Komendy: <code>/@shop sale &lt;przedmiot|kategoria|all&gt; -20 2h</code>, <code>/@shop sale &lt;cel&gt; off</code>,{" "}
+            <code>/@shop sale list</code>, <code>/@shop sale offall</code>.
+          </p>
+        </Fold>
+        <p>
+          <b>Bonusy dla rang.</b> Gracz z rangą może płacić mniej przy kupnie i dostawać więcej za sprzedaż. Ustawiasz to w Ustawieniach
+          → Bonusy dla rang.
+        </p>
+        <Fold title="Bonusy dla rang - szczegóły" open={open === "ranks"}>
+          <p className="small">
+            Każda ranga ma nazwę, rabat na kupno i premię do skupu w procentach. Rangę daje uprawnienie
+            <code> mainplugins.shop.rank.&lt;nazwa&gt;</code> - nadajesz je graczom z tą rangą. Sam status operatora (op) nie daje
+            bonusu, uprawnienie musi być nadane wprost.
+          </p>
+          <p className="small">
+            Gracz z kilkoma rangami dostaje największy bonus z nich. Rabat rangi dolicza się do promocji: -20% promocji i -10% rangi to
+            cena 72% zwykłej. Premia do skupu nie przebije limitu „Skup najwyżej” z cen dynamicznych.
+          </p>
+          <p className="small">Gracz widzi swój rabat pod ceną w sklepie i w komendzie /cena.</p>
         </Fold>
         <p>
           <b>Rotacja.</b> Kategoria może mieć drugą listę - pulę. Sklep co kilka dni losuje z niej kilka przedmiotów, więc oferta się
@@ -209,8 +255,12 @@ export function ShopGuideModal({ openDynamic, openTexts, onClose }: { openDynami
             (Twoja albo po cenie). Strzałki stron gracz widzi tylko wtedy, gdy jest dokąd iść.
           </p>
           <p className="small">
-            Ikonki przycisków (szukanie, zamknij, sortowanie) wybierasz w sekcji „Przyciski” pod siatką. Napisy na przyciskach są na razie
-            stałe - takie same w każdym sklepie.
+            Ikonki przycisków (szukanie, zamknij, sortowanie) wybierasz w sekcji „Przyciski” pod siatką, a napisy na nich - w Ustawieniach
+            → Teksty w grze.
+          </p>
+          <p className="small">
+            Każda kategoria może mieć własny układ strony (suwak „Wspólny układ dla wszystkich kategorii” nad siatką). Przedmioty z
+            rotacji mogą stać na swoich polach - klik w pole i „Przedmiot z rotacji”.
           </p>
         </Fold>
         <p>
@@ -232,36 +282,49 @@ export function ShopGuideModal({ openDynamic, openTexts, onClose }: { openDynami
             („obniż cenę bazową”, „podnieś”, „ok”). Sklep liczy też wyniki dzień po dniu. Statystyki przeżywają globalny reset cen - to osobna, długa historia. Zbieranie
             można wyłączyć: stare dane zostają, nowe nie dochodzą.
           </p>
+          <p className="small">
+            Razem ze statystykami sklep zapisuje historię: ile sprzedano każdego przedmiotu dzień po dniu i kto ile zarobił. W grze widać
+            to komendami <code>/@shop history &lt;przedmiot&gt;</code> i <code>/@shop top</code> (ranking graczy, też na 7 dni). Ile dni
+            pamiętać, ustawiasz w zakładce Statystyki.
+          </p>
         </Fold>
         <p>
-          <b>Teksty ogłoszeń.</b> To, co sklep sam pisze na czacie (nowa oferta, reset cen, eventy), zmieniasz w Ustawieniach → Teksty
-          ogłoszeń.
+          <b>Teksty w grze.</b> Wszystko, co sklep pisze graczom - tytuły okien, napisy na przyciskach, opisy przedmiotów, wiadomości
+          i ogłoszenia na czacie - zmieniasz w Ustawieniach → Teksty w grze.
         </p>
-        <Fold title="Teksty ogłoszeń - szczegóły" open={openTexts}>
+        <Fold title="Teksty w grze - szczegóły" open={open === "texts"}>
+          <div className="ci-section-title">Gdzie są teksty</div>
+          <p className="small">
+            W Ustawieniach → Teksty w grze, podzielone na grupy: okna i przyciski, opis przedmiotu i wybór ilości, wiadomości dla gracza,
+            ogłoszenia na czacie i HUD, NPC i tabliczki oraz - zwinięte na dole - odpowiedzi na komendy admina. Nie wiesz, w której grupie
+            jest tekst? Wpisz jego kawałek w wyszukiwarkę nad grupami, np. „nie stać”. Plakietka „zmieniony” oznacza tekst inny niż w
+            pluginie.
+          </p>
           <div className="ci-section-title">Co jest prawdziwe, a co przykładem</div>
           <p className="small">
-            Tekst w czarnym okienku jest prawdziwy - dokładnie tak, tymi kolorami, pojawi się na czacie. Przykładem są tylko rzeczy{" "}
-            <span className="ci-sample">podkreślone kropkami</span> (Kolekcja, Płyta: Cat, 20000, 14 dni, 50%, 2h). Najedź na nie myszką -
-            dymek powie, co wstawi się tam w grze.
+            Tekst w czarnym okienku jest prawdziwy - dokładnie tak, tymi kolorami, pojawi się w grze. Przykładem są tylko rzeczy{" "}
+            <span className="ci-sample">podkreślone przerywaną linią</span> (np. Płyta: Cat, 20000, 50%, 2h). Najedź na nie myszką - dymek
+            powie, co wstawi się tam w grze.
           </p>
           <div className="ci-section-title">Edycja</div>
           <p className="small">
-            Klik w linijkę otwiera pole pod okienkiem, zmiany widać od razu. Enter albo „Gotowe” zamyka pole, „Cofnij” i „Ponów” (też
+            Klik w tekst otwiera pole pod okienkiem, zmiany widać od razu. Enter albo „Gotowe” zamyka pole, „Cofnij” i „Ponów” (też
             Ctrl+Z / Ctrl+Y) cofają krok po kroku, „Przywróć domyślny” wraca do tekstu z pluginu - też da się to cofnąć. Kolor: zaznacz
             kawałek tekstu i kliknij kolorowy kwadracik; bez zaznaczenia kolor działa na to, co zaraz napiszesz. Ctrl+B pogrubia.
-            Przycisk „&” z prawej pokazuje surowe kody kolorów - tylko dla zaawansowanych.
+            Przycisk „&” z prawej pokazuje surowe kody kolorów - tylko dla zaawansowanych. Teksty z kilkoma linijkami (np. pomoc komend)
+            mają osobne pole na każdą linijkę, z „+ Linijka” i krzyżykiem do usuwania.
           </p>
-          <div className="ci-section-title">Ramki „+ nazwa kategorii”, „+ cena” itd.</div>
+          <div className="ci-section-title">Ramki „+ nazwa przedmiotu”, „+ cena” itd.</div>
           <p className="small">
-            Ramka to miejsce, w które sklep w chwili ogłoszenia sam wpisze właściwą rzecz. Tekst jest jeden dla wszystkich kategorii,
-            więc nie wpisuj nazwy na sztywno - „NOWA OFERTA: Kolekcja” pokazałoby się też w Blokach. Ramka pojawia się tam, gdzie stoi
-            kursor; Backspace usuwa ją w całości. Przydaje się, gdy skasujesz ramkę przez przypadek, chcesz ją przestawić („Kolekcja ma
-            nową ofertę!”) albo dodać gdzie indziej, np. w stopce.
+            Ramka to miejsce, w które sklep sam wpisze właściwą rzecz w chwili wysłania tekstu - np. w „Kupiono” nazwę tego, co gracz
+            właśnie kupił, i ile zapłacił. Nie wpisuj takich rzeczy na sztywno: jeden tekst jest dla wszystkich przedmiotów i kategorii.
+            Każdy tekst ma tylko te ramki, które do niego pasują. Ramka pojawia się tam, gdzie stoi kursor; Backspace usuwa ją w całości.
+            Najczęstsze:
           </p>
           <ul className="small">
-            {Object.entries(PLACEHOLDER_LABELS).map(([k, v]) => (
+            {Object.entries(PLACEHOLDER_HELP).map(([k, v]) => (
               <li key={k}>
-                <b>{v}</b> - {PLACEHOLDER_HELP[k]}
+                <b>{PLACEHOLDER_LABELS[k] ?? k}</b> - {v}
               </li>
             ))}
           </ul>
@@ -270,10 +333,16 @@ export function ShopGuideModal({ openDynamic, openTexts, onClose }: { openDynami
             Nazwa kategorii i przedmiotu wchodzi w swoim własnym kolorze - takim, jaki ma w sklepie. Kolekcja ma żółtą nazwę, więc w
             ogłoszeniu też będzie żółta. Tekst za ramką aplikacja koloruje od nowa, więc kolor nazwy nie „rozlewa się” dalej.
           </p>
-          <div className="ci-section-title">Włączanie i wyłączanie</div>
+          <div className="ci-section-title">Włączanie i wyłączanie ogłoszeń</div>
           <p className="small">
-            Ogłoszenie nowej oferty włączasz przy rotacji w każdej kategorii osobno, a ogłoszenia eventów i resetu cen - w Ustawieniach →
-            Ceny dynamiczne. „Przywróć domyślne” obok „?” wraca do wszystkich tekstów z pluginu naraz (po drugim kliknięciu).
+            Ogłoszenie nowej oferty włączasz przy rotacji w każdej kategorii osobno, ogłoszenia eventów i resetu cen - w Ustawieniach →
+            Ceny dynamiczne, a ogłoszenia promocji - w Ustawieniach → Promocje. „Przywróć wszystkie domyślne” nad grupami wraca do
+            wszystkich tekstów z pluginu naraz (po drugim kliknięciu).
+          </p>
+          <div className="ci-section-title">Wysyłanie</div>
+          <p className="small">
+            Po „Wyślij na serwer” aplikacja zmienia na serwerze tylko te teksty, które zmieniłeś - resztę zostawia w spokoju. Serwer
+            wczytuje je od nowa sam, bez restartu.
           </p>
         </Fold>
         <p className="muted small">
@@ -577,3 +646,54 @@ export const SCREEN_HELP: Record<string, ReactNode> = {
     </p>
   ),
 };
+
+function SmallHelp({ title, onClose, onMore, children }: { title: string; onClose: () => void; onMore: () => void; children: ReactNode }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal card" onClick={(e) => e.stopPropagation()}>
+        <div className="row">
+          <h2 style={{ margin: 0, flex: 1 }}>{title}</h2>
+          <button type="button" onClick={onClose}>
+            Zamknij
+          </button>
+        </div>
+        {children}
+        <div className="row">
+          <button type="button" onClick={onMore}>
+            Dowiedz się więcej
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function SalesHelpModal({ onClose, onMore }: { onClose: () => void; onMore: () => void }) {
+  return (
+    <SmallHelp title="Jak działają promocje" onClose={onClose} onMore={onMore}>
+      <p>
+        Promocja obniża cenę <b>kupna</b> na czas albo bez końca - jednego przedmiotu, całej kategorii albo całego sklepu. Uruchamiasz ją w
+        zakładce <b>Eventy</b>.
+      </p>
+      <p>
+        Gracz widzi w sklepie przekreśloną starą cenę i napis „PROMOCJA -20%”. Tutaj decydujesz tylko, czy sklep ogłasza na czacie początek
+        i koniec promocji.
+      </p>
+    </SmallHelp>
+  );
+}
+
+export function RanksHelpModal({ onClose, onMore }: { onClose: () => void; onMore: () => void }) {
+  return (
+    <SmallHelp title="Jak działają bonusy dla rang" onClose={onClose} onMore={onMore}>
+      <p>
+        Gracz z rangą płaci mniej przy kupnie i dostaje więcej za sprzedaż. Wpisujesz nazwę rangi i dwa procenty, a graczom z tą rangą
+        nadajesz uprawnienie podane pod nazwą.
+      </p>
+      <p>
+        <b>Przykład:</b> VIP z rabatem 2% kupi za 98 zł coś, co kosztuje 100 zł. Gdy trwa promocja -20%, VIP płaci jeszcze 2% mniej od
+        ceny promocyjnej.
+      </p>
+    </SmallHelp>
+  );
+}

@@ -24,8 +24,8 @@ export interface ShopFile {
 }
 
 export type Sel = { kind: "cat" } | { kind: "item"; pool: boolean; index: number };
-export type Tab = "cats" | "settings" | "stats" | "menu";
-export type SettingsSection = "prices" | "dynamic" | "texts";
+export type Tab = "cats" | "settings" | "stats" | "menu" | "events";
+export type SettingsSection = "prices" | "dynamic" | "sales" | "ranks" | "texts";
 
 export const EMPTY: ShopFile = { settings: defaultSettings(), cats: [], texts: defaultAnnounceTexts("en") };
 

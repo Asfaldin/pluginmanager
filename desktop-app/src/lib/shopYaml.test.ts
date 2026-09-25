@@ -111,6 +111,20 @@ describe("shopYaml categories", () => {
   });
 });
 
+describe("shopYaml promocje, historia i rangi", () => {
+  it("czyta i zapisuje premie rang, ogłaszanie promocji i historię", () => {
+    const s = parseShopSettings("sales:\n  announce: false\nstats:\n  history-days: 7\nrank-bonuses:\n  vip: {buy-discount: 2, sell-bonus: 1}\n");
+    expect(s.salesAnnounce).toBe(false);
+    expect(s.historyDays).toBe(7);
+    expect(s.rankBonuses).toEqual([{ rank: "vip", buyDiscount: 2, sellBonus: 1 }]);
+    const back = yaml.load(serializeShopSettings({ ...s, rankBonuses: [...s.rankBonuses, { rank: " SVIP ", buyDiscount: 5, sellBonus: 0 }, { rank: "", buyDiscount: 1, sellBonus: 1 }] })) as Record<string, any>;
+    expect(back.sales).toEqual({ announce: false });
+    expect(back.stats).toEqual({ enabled: false, "history-days": 7 });
+    expect(back["rank-bonuses"]).toEqual({ vip: { "buy-discount": 2, "sell-bonus": 1 }, svip: { "buy-discount": 5, "sell-bonus": 0 } });
+    expect(parseShopSettings("").rankBonuses).toEqual([]);
+  });
+});
+
 describe("shopYaml settings", () => {
   it("empty text gives defaults", () => {
     const s = parseShopSettings("");

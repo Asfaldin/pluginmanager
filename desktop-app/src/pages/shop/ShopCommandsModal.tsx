@@ -20,6 +20,7 @@ export default function ShopCommandsModal({ file, onClose }: { file: ShopFile; o
         <div className="ci-protip">
           <CopyRow cmd="/shop <kategoria>" what="otwiera od razu kategorię (id albo nazwa, np. /shop rudy i minerały)" />
           <CopyRow cmd="/shop szukaj <nazwa>" what="od razu wyniki wyszukiwania, bez klikania „Szukaj”" />
+          <CopyRow cmd="/cena" what="ceny przedmiotu w ręce: kupno, skup teraz, promocja i rabat rangi (też /price)" />
         </div>
         <div className="ci-section-title" style={{ marginTop: "1rem" }}>
           Zarządzanie
@@ -34,6 +35,12 @@ export default function ShopCommandsModal({ file, onClose }: { file: ShopFile; o
           <CopyRow cmd="/@shop event <przedmiot> off" what="kończy event na przedmiocie" />
           <CopyRow cmd="/@shop event list" what="lista trwających eventów" />
           <CopyRow cmd="/@shop event offall" what="kończy wszystkie eventy naraz" />
+          <CopyRow cmd="/@shop sale <przedmiot|kategoria|all> -20 2h" what="promocja na kupno: 20% taniej przez 2 godziny (bez czasu - aż do „off”)" />
+          <CopyRow cmd="/@shop sale <cel> off" what="kończy promocję" />
+          <CopyRow cmd="/@shop sale list" what="lista trwających promocji" />
+          <CopyRow cmd="/@shop sale offall" what="kończy wszystkie promocje naraz" />
+          <CopyRow cmd="/@shop history <przedmiot>" what="ile sprzedano w ostatnich dniach i po ile" />
+          <CopyRow cmd="/@shop top" what="kto dziś najwięcej zarobił na sprzedaży (/@shop top tydzien - 7 dni)" />
           <CopyRow cmd="/@shop reset <przedmiot>" what="skup przedmiotu wraca do normy" />
           <CopyRow cmd="/@shop resetall" what="wszystkie ceny skupu wracają do normy (potem /@shop confirm)" />
           <CopyRow cmd="/@shop rotation" what="co jest teraz w rotacji" />
@@ -65,7 +72,7 @@ export default function ShopCommandsModal({ file, onClose }: { file: ShopFile; o
           <CopyRow cmd="/@shop npc remove" what="patrząc na NPC: usuwa go" />
           <CopyRow cmd="/@shop sign <kategoria>" what="patrząc na tabliczkę: sama wpisuje napisy i otwiera sklep po kliknięciu; zniszczy ją tylko admin ze Shiftem" />
           <CopyRow cmd="/@shop sign remove" what="patrząc na tabliczkę: znowu zwykła tabliczka" />
-          <CopyRow cmd="/@shop open <gracz> <kategoria>" what="otwiera sklep graczowi - do NPC z innych pluginów (np. Citizens) i menu serwera; zamiast nicku wpisz tam znacznik gracza z tamtego pluginu (np. %player%)" />
+          <CopyRow cmd="/@shop open <gracz> <kategoria>" what="otwiera sklep graczowi - do menu serwera i NPC z innych pluginów; zamiast nicku wpisz tam znacznik gracza z tamtego pluginu (np. %player%)" />
         </div>
         <div className="ci-section-title" style={{ marginTop: "1rem" }}>
           Gotowe NPC dla Twoich kategorii

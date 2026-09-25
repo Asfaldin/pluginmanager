@@ -57,6 +57,10 @@ const LABELS: Record<string, string> = {
   "menu.sort-again": "Sortowanie - jak wrócić do Twojej kolejności",
   "item.buy": "Cena kupna",
   "item.sell": "Cena skupu",
+  "item.buy-discounted": "Cena kupna w promocji (stara przekreślona)",
+  "item.sale": "Znaczek: promocja",
+  "item.sale-timed": "Znaczek: promocja na czas",
+  "item.rank-discount": "Rabat rangi gracza",
   "item.trend-up": "Znaczek: skup rośnie",
   "item.trend-down": "Znaczek: skup spada",
   "item.event": "Znaczek: event",
@@ -97,6 +101,15 @@ const LABELS: Record<string, string> = {
   "search.none": "Nic nie znaleziono",
   "search.found": "Znaleziono",
   "search.found-cut": "Znaleziono (za dużo - pokazano część)",
+  "price-check.header": "/cena - nagłówek z nazwą przedmiotu",
+  "price-check.buy": "/cena - cena kupna",
+  "price-check.buy-discounted": "/cena - cena kupna w promocji",
+  "price-check.cannot-buy": "/cena - nie da się kupić",
+  "price-check.sell": "/cena - skup teraz",
+  "price-check.cannot-sell": "/cena - sklep tego nie skupuje",
+  "price-check.rank-sell-bonus": "/cena - premia rangi do skupu",
+  "price-check.empty-hand": "/cena - pusta ręka",
+  "price-check.not-in-shop": "/cena - przedmiotu nie ma w sklepie",
   "command.search-word": "Słowo w komendzie szukania (np. /sklep szukaj)",
   "command.search-usage": "Jak użyć komendy szukania",
   "command.unknown-category": "Nie ma takiej kategorii",
@@ -137,6 +150,11 @@ const LABELS: Record<string, string> = {
   "event.broadcast-down-timed": "Event: skup taniej (na czas)",
   "event.broadcast-off": "Koniec eventu na przedmiot",
   "event.broadcast-all-off": "Koniec wszystkich eventów",
+  "sale.target-all": "Promocja - nazwa „cały sklep”",
+  "sale.broadcast-start": "Promocja: start (bez końca)",
+  "sale.broadcast-start-timed": "Promocja: start (na czas)",
+  "sale.broadcast-end": "Koniec promocji",
+  "sale.broadcast-all-end": "Koniec wszystkich promocji",
   "rotation.broadcast-header": "Nowa oferta - nagłówek",
   "rotation.broadcast-item": "Nowa oferta - linijka z każdym przedmiotem",
   "rotation.broadcast-footer": "Nowa oferta - stopka",
@@ -192,6 +210,24 @@ const LABELS: Record<string, string> = {
   "admin.stats-line": "Statystyki - linijka z przedmiotem",
   "admin.stats-empty": "Statystyki - nic dziś nie sprzedano",
   "admin.stats-total": "Statystyki - suma dnia",
+  "admin.sale-set": "Promocja ustawiona (bez końca)",
+  "admin.sale-set-timed": "Promocja ustawiona (na czas)",
+  "admin.sale-off": "Promocja zakończona",
+  "admin.sale-not-active": "Nie ma takiej promocji",
+  "admin.sale-bad-percent": "Zła zniżka (musi być 1-90%)",
+  "admin.sale-unknown-target": "Nie ma takiego przedmiotu ani kategorii",
+  "admin.sale-list-header": "Lista promocji - nagłówek",
+  "admin.sale-list-line": "Lista promocji - linijka (bez końca)",
+  "admin.sale-list-line-timed": "Lista promocji - linijka (na czas)",
+  "admin.sale-list-empty": "Lista promocji - pusta",
+  "admin.sale-offall": "Zakończono wszystkie promocje",
+  "admin.history-header": "/@shop history - nagłówek",
+  "admin.history-line": "/@shop history - linijka z dniem",
+  "admin.history-empty": "/@shop history - brak sprzedaży",
+  "admin.top-header-today": "/@shop top - nagłówek (dziś)",
+  "admin.top-header-week": "/@shop top - nagłówek (7 dni)",
+  "admin.top-line": "/@shop top - linijka z graczem",
+  "admin.top-empty": "/@shop top - nikt nic nie sprzedał",
 };
 
 // NPC/tabliczki: gracz widzi tylko napisy i ochronę tabliczki, reszta to odpowiedzi na komendy admina.
@@ -201,8 +237,8 @@ function groupOf(key: string): TextGroup {
   const sec = key.split(".")[0];
   if (sec === "menu") return "windows";
   if (sec === "item" || sec === "picker") return "item";
-  if (sec === "buy" || sec === "sell" || sec === "search" || sec === "command") return "player";
-  if (sec === "rotation" || sec === "event" || sec === "dynamic" || sec === "hud") return "announce";
+  if (sec === "buy" || sec === "sell" || sec === "search" || sec === "command" || sec === "price-check") return "player";
+  if (sec === "rotation" || sec === "event" || sec === "dynamic" || sec === "hud" || sec === "sale") return "announce";
   if (sec === "places") return PLACES_FOR_PLAYERS.test(key) ? "places" : "admin";
   return "admin";
 }
@@ -288,6 +324,7 @@ export const PLACEHOLDER_LABELS: Record<string, string> = {
   pool: "wielkość puli",
   resting: "ile odpoczywa",
   nr: "miejsce na liście",
+  date: "dzień",
   error: "opis błędu",
 };
 
@@ -347,6 +384,7 @@ export const SAMPLE_VALUES: Record<string, string> = {
   pool: "30",
   resting: "5",
   nr: "1",
+  date: "25.09",
   error: "brak dostępu",
 };
 
