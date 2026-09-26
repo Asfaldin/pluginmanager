@@ -1,5 +1,5 @@
 import { desktopDir, join } from "@tauri-apps/api/path";
-import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { ask } from "../components/AskModal";
 import {
   CollectionInfoModal,
@@ -20,7 +20,7 @@ import ShopTextsSection from "./shop/ShopTextsSection";
 import ShopRanksSection, { ShopSalesSection } from "./shop/ShopDealsSection";
 import ShopEventsTab from "./shop/ShopEventsTab";
 import ShopTemplateMenu from "./shop/ShopTemplateMenu";
-import { addUserTemplate, loadUserTemplates, removeUserTemplate, type UserShopTemplate } from "../lib/shopUserTemplates";
+import { addUserTemplate, loadUserTemplates, removeUserTemplate, renameUserTemplate, type UserShopTemplate } from "../lib/shopUserTemplates";
 import {
   BUTTON_ROLES,
   EMPTY,
@@ -551,36 +551,62 @@ export default function ShopEditorPage() {
   }
 
   /**
-   * Zapisuje obecny sklep jako szablon: na listę „Twoje szablony” w menu i jako plik na Pulpicie
-   * (kopia zapasowa, przeniesienie na inny serwer, „Wgraj szablon z pliku”).
+   * Zapisuje obecny sklep jako szablon na listę „Twoje szablony” w menu (plik dopiero przez „Pobierz” przy szablonie).
+   * quick = mały przycisk obok menu: bez pytania o nazwę, nazwa z datą i godziną.
    */
-  async function saveAsTemplate() {
+  async function saveAsTemplate(quick = false) {
     const template: ShopTemplate = {
       "shop.yml": serializeShopSettings(file.settings),
       categories: Object.fromEntries(file.cats.map((c) => [c.id, serializeCategory(c)])),
     };
     const d = new Date();
     const today = `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const asked = (await showPrompt("Nazwa szablonu (np. „Sklep na event”):", `Mój sklep ${today}`))?.trim();
+    const now = `${today} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    const asked = quick ? `Mój sklep ${now}` : (await showPrompt("Nazwa szablonu (np. „Sklep na event”):", `Mój sklep ${today}`))?.trim();
     if (!asked) return;
     const list = addUserTemplate(asked, template);
     setUserTemplates(list);
     setActiveTemplate(`user:${list[0].id}`);
-    // Powtórzona nazwa dostała numer, np. „Mój sklep (2)” - plik na Pulpicie też, żeby nie nadpisał starego.
-    const name = list[0].name;
-    const fileName = `${name.replace(/[\\/:*?"<>|]+/g, "-")} - szablon sklepu.txt`;
+    setStatus(`Zapisano szablon „${list[0].name}” - jest w menu „Szablon” (Twoje szablony). Plik na komputer pobierzesz przyciskiem ze strzałką przy szablonie.`);
+  }
+
+  /** „Pobierz” przy szablonie z listy: okienko „Zapisz jako” i plik tekstowy (kopia, inny serwer, wysłanie komuś). */
+  async function exportTemplate(id: string) {
+    const t = userTemplates.find((x) => x.id === id);
+    if (!t) return;
+    let target: string | null = null;
     try {
-      await rpWriteTextFile(await desktopDir(), fileName, JSON.stringify(template, null, 2));
-      setStatus(`Zapisano szablon „${name}” - jest w menu „Szablon” (Twoje szablony) i na Pulpicie jako ${fileName}.`);
+      target = await saveDialog({
+        defaultPath: await join(await desktopDir(), `${t.name.replace(/[\\/:*?"<>|]+/g, "-")} - szablon sklepu.txt`),
+        filters: [{ name: "Szablon sklepu", extensions: ["txt"] }],
+        title: "Gdzie zapisać szablon?",
+      });
     } catch (e) {
-      setStatus(`Szablon „${name}” jest w menu, ale nie udało się zapisać pliku na Pulpicie: ${String(e)}`);
+      setStatus(String(e));
+      return;
     }
+    if (!target) return;
+    const cut = Math.max(target.lastIndexOf("\\"), target.lastIndexOf("/"));
+    try {
+      await rpWriteTextFile(target.slice(0, cut), target.slice(cut + 1), JSON.stringify(t.template, null, 2));
+      setStatus(`Pobrano szablon „${t.name}”: ${target}`);
+    } catch (e) {
+      setStatus(`Nie udało się zapisać pliku: ${String(e)}`);
+    }
+  }
+
+  async function renameTemplate(id: string) {
+    const t = userTemplates.find((x) => x.id === id);
+    if (!t) return;
+    const name = (await showPrompt("Nowa nazwa szablonu:", t.name))?.trim();
+    if (!name || name === t.name) return;
+    setUserTemplates(renameUserTemplate(id, name));
   }
 
   async function removeTemplate(id: string) {
     const t = userTemplates.find((x) => x.id === id);
     if (!t) return;
-    if (!(await ask(`Usunąć „${t.name}” z listy? Plik na Pulpicie zostaje - zawsze wgrasz go z powrotem.`, { title: "Usunąć szablon z listy?", okLabel: "Usuń" }))) return;
+    if (!(await ask(`Usunąć „${t.name}”? Jeśli nie masz go pobranego jako plik, zniknie na dobre.`, { title: "Usunąć szablon?", okLabel: "Usuń", danger: true }))) return;
     setUserTemplates(removeUserTemplate(id));
   }
 
@@ -602,7 +628,7 @@ export default function ShopEditorPage() {
       const text = await rpReadTextFile(picked.slice(0, cut), picked.slice(cut + 1)).catch(() => null);
       const parsed = text ? parseShopTemplateFile(text) : null;
       if (!parsed) {
-        setStatus("To nie jest plik szablonu sklepu - wybierz plik zapisany przez „Zapisz obecny sklep jako szablon”.");
+        setStatus("To nie jest plik szablonu sklepu - wybierz plik pobrany strzałką „Pobierz” przy szablonie.");
         return;
       }
       t = { label: picked.slice(cut + 1).replace(/( - szablon sklepu)?\.(txt|json)$/i, ""), template: parsed };
@@ -2664,6 +2690,10 @@ export default function ShopEditorPage() {
           disabled={!profileId}
           onPick={(id) => void loadTemplate(id)}
           onRemoveUser={(id) => void removeTemplate(id)}
+          onExportUser={(id) => void exportTemplate(id)}
+          onRenameUser={(id) => void renameTemplate(id)}
+          onQuickSave={() => void saveAsTemplate(true)}
+          unsent={unsaved || notSent}
         />
       </div>
 

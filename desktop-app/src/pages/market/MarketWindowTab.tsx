@@ -205,8 +205,9 @@ export default function MarketWindowTab({ config: c, setConfig, defaultTitle, cu
           </div>
         </div>
         <div style={{ flex: 1, minWidth: 0, marginTop: "0.2rem" }}>
-          <div className="ci-grid-wrap">
-            <div className="ci-grid-tools">
+          <div>
+            {/* Przełącznik tła, "?" i tytuł okna w jednej linii nad siatką - nic na nic nie nachodzi. */}
+            <div className="row" style={{ alignItems: "center", gap: "0.5rem", margin: "0 0 0.4rem" }}>
               <button
                 type="button"
                 className={`ci-view-toggle${showBackground ? " on" : ""}`}
@@ -224,9 +225,12 @@ export default function MarketWindowTab({ config: c, setConfig, defaultTitle, cu
                 {showBackground ? <Eye size={14} strokeWidth={1.75} /> : <EyeOff size={14} strokeWidth={1.75} />} Tło
               </button>
               <HelpButton id="market-window" title="Wygląd okna" onClick={onHelp} />
-            </div>
-            <div className="mc-preview" style={{ marginBottom: "0.4rem", display: "inline-block", minWidth: "12rem" }}>
-              <MinecraftTextPreview text={title} emptyLabel="(bez tytułu)" />
+              <span className="muted small" style={{ marginLeft: "0.5rem" }}>
+                Tytuł w grze:
+              </span>
+              <div className="mc-preview" style={{ display: "inline-block", minWidth: "12rem", margin: 0 }}>
+                <MinecraftTextPreview text={title} emptyLabel="(bez tytułu)" />
+              </div>
             </div>
             <SlotGrid
               content={content}

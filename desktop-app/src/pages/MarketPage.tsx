@@ -1,13 +1,19 @@
-import { Redo2, Save, Terminal, Trash2, Undo2, Upload } from "lucide-react";
+import { desktopDir, join } from "@tauri-apps/api/path";
+import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
+import { Redo2, Save, Sparkles, Square, Terminal, Trash2, Undo2, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ask } from "../components/AskModal";
 import { ConfirmButton, CopyRow, HelpButton, StatusBar } from "../components/EditorBits";
 import GameTextsSection from "../components/GameTextsSection";
 import { ItemDatalists } from "../components/ItemRefPicker";
-import { rconSendCommand, sftpReadFile, sftpWriteFile } from "../lib/api";
+import { showPrompt } from "../components/PromptModal";
+import TemplateMenu from "../components/TemplateMenu";
+import { rconSendCommand, rpReadTextFile, rpWriteTextFile, sftpReadFile, sftpWriteFile } from "../lib/api";
 import { readCurrency, readSetting } from "../lib/coreSettings";
 import type { GameTexts } from "../lib/langTexts";
+import { isMarketTemplate, marketTemplateChoices, parseMarketTemplateFile, type MarketTemplate } from "../lib/marketTemplates";
+import { userTemplateStore, type UserTemplate } from "../lib/userTemplates";
 import { MARKET_PLACEHOLDER_LABELS, MARKET_SAMPLE_VALUES, MARKET_TEXT_GROUPS, MARKET_TEXTS } from "../lib/marketTexts";
 import { defaultMarket, marketProblems, parseMarketYaml, serializeMarketYaml, type MarketConfig, type RankLimit } from "../lib/marketYaml";
 import { plural } from "../lib/plText";
@@ -34,6 +40,9 @@ function marketDir(pluginsPath: string): string {
   return `${pluginsPath.replace(/\/+$/, "")}/MainpluginsMarket`;
 }
 
+const TEMPLATE_ICONS = { ours: <Sparkles size={16} strokeWidth={1.75} />, empty: <Square size={16} strokeWidth={1.75} /> };
+const userTemplates$ = userTemplateStore<MarketTemplate>("pm-market-user-templates", isMarketTemplate);
+
 function serializeAll(f: MarketFile): string {
   return serializeMarketYaml(f.config) + JSON.stringify(f.texts);
 }
@@ -58,6 +67,9 @@ export default function MarketPage() {
   // Wyłączenie wygasania nie gubi liczby dni - po ponownym włączeniu wraca to, co było.
   const expireMemoryRef = useRef(7);
   const autoLoadedRef = useRef(false);
+  const [userTemplates, setUserTemplates] = useState<UserTemplate<MarketTemplate>[]>(() => userTemplates$.load());
+  // Ostatnio wczytany/zapisany szablon - wygrywa z innymi o tej samej treści.
+  const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
   const { iconPackDir, allMaterials } = useIconPack(setStatus);
 
   // Cofnij / Ponów dla całej strony; szybkie zmiany jedna po drugiej (pisanie liczby) łączą się w jeden krok.
@@ -268,6 +280,118 @@ export default function MarketPage() {
       setBusy(false);
     }
   }
+
+  /** Zapisuje obecne ustawienia Targu jako szablon: na listę „Twoje szablony” (plik - dopiero przez „Pobierz”). */
+  /** quick = mały przycisk obok menu: bez pytania o nazwę, nazwa z datą i godziną. */
+  async function saveAsTemplate(quick = false) {
+    const template: MarketTemplate = { "market.yml": serializeMarketYaml(c) };
+    const d = new Date();
+    const today = `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const now = `${today} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    const asked = quick ? `Mój targ ${now}` : (await showPrompt("Nazwa szablonu (np. „Targ na event”):", `Mój targ ${today}`))?.trim();
+    if (!asked) return;
+    const list = userTemplates$.add(asked, template);
+    setUserTemplates(list);
+    setActiveTemplate(`user:${list[0].id}`);
+    setStatus(`Zapisano szablon „${list[0].name}” - jest w menu „Szablon” (Twoje szablony). Plik na komputer pobierzesz przyciskiem ze strzałką przy szablonie.`);
+  }
+
+  /** „Pobierz” przy szablonie z listy: okienko „Zapisz jako” i plik tekstowy (kopia, inny serwer, wysłanie komuś). */
+  async function exportTemplate(id: string) {
+    const t = userTemplates.find((x) => x.id === id);
+    if (!t) return;
+    let target: string | null = null;
+    try {
+      target = await saveDialog({
+        defaultPath: await join(await desktopDir(), `${t.name.replace(/[\\/:*?"<>|]+/g, "-")} - szablon targu.txt`),
+        filters: [{ name: "Szablon targu", extensions: ["txt"] }],
+        title: "Gdzie zapisać szablon?",
+      });
+    } catch (e) {
+      setStatus(String(e));
+      return;
+    }
+    if (!target) return;
+    const cut = Math.max(target.lastIndexOf("\\"), target.lastIndexOf("/"));
+    try {
+      await rpWriteTextFile(target.slice(0, cut), target.slice(cut + 1), JSON.stringify(t.template, null, 2));
+      setStatus(`Pobrano szablon „${t.name}”: ${target}`);
+    } catch (e) {
+      setStatus(`Nie udało się zapisać pliku: ${String(e)}`);
+    }
+  }
+
+  async function renameTemplate(id: string) {
+    const t = userTemplates.find((x) => x.id === id);
+    if (!t) return;
+    const name = (await showPrompt("Nowa nazwa szablonu:", t.name))?.trim();
+    if (!name || name === t.name) return;
+    setUserTemplates(userTemplates$.rename(id, name));
+  }
+
+  async function removeTemplate(id: string) {
+    const t = userTemplates.find((x) => x.id === id);
+    if (!t) return;
+    if (!(await ask(`Usunąć „${t.name}”? Jeśli nie masz go pobranego jako plik, zniknie na dobre.`, { title: "Usunąć szablon?", okLabel: "Usuń", danger: true }))) return;
+    setUserTemplates(userTemplates$.remove(id));
+  }
+
+  async function loadTemplate(id: string) {
+    if (id === "save") {
+      await saveAsTemplate();
+      return;
+    }
+    let t: { label: string; template: MarketTemplate } | undefined = marketTemplateChoices().find((x) => x.id === id);
+    let fromFile = false;
+    if (id.startsWith("user:")) {
+      const u = userTemplates.find((x) => `user:${x.id}` === id);
+      if (u) t = { label: u.name, template: u.template };
+    }
+    if (id === "file") {
+      const picked = await openDialog({ multiple: false, filters: [{ name: "Szablon targu", extensions: ["txt", "json"] }] });
+      if (typeof picked !== "string") return;
+      const cut = Math.max(picked.lastIndexOf("\\"), picked.lastIndexOf("/"));
+      const text = await rpReadTextFile(picked.slice(0, cut), picked.slice(cut + 1)).catch(() => null);
+      const parsed = text ? parseMarketTemplateFile(text) : null;
+      if (!parsed) {
+        setStatus("To nie jest plik szablonu targu - wybierz plik pobrany strzałką „Pobierz” przy szablonie.");
+        return;
+      }
+      t = { label: picked.slice(cut + 1).replace(/( - szablon targu)?\.(txt|json)$/i, ""), template: parsed };
+      fromFile = true;
+    }
+    if (!t) return;
+    if (
+      !(await ask(`Wczytać szablon „${t.label}”? Ustawienia i wygląd okna zostaną zastąpione, teksty zostają. Na serwerze nic się nie zmieni, dopóki nie wyślesz.`, {
+        title: "Wczytać szablon?",
+        kind: "warning",
+      }))
+    )
+      return;
+    let active = id;
+    if (fromFile) {
+      const list = userTemplates$.add(t.label, t.template);
+      setUserTemplates(list);
+      active = `user:${list[0].id}`;
+    }
+    setActiveTemplate(active);
+    const config = parseMarketYaml(t.template["market.yml"]);
+    if (config.expireDays > 0) expireMemoryRef.current = config.expireDays;
+    setFile((f) => ({ ...f, config }));
+    setStatus(`Wczytano szablon „${t.label}”. Kliknij „Zapisz”, a potem „Wyślij na serwer”.`);
+  }
+
+  const currentTemplate = useMemo(() => {
+    const mine = serializeMarketYaml(c);
+    const same = (t: MarketTemplate) => serializeMarketYaml(parseMarketYaml(t["market.yml"])) === mine;
+    const choices = [
+      ...marketTemplateChoices().map((t) => ({ key: t.id as string, template: t.template })),
+      ...userTemplates.map((t) => ({ key: `user:${t.id}`, template: t.template })),
+    ];
+    const active = choices.find((x) => x.key === activeTemplate);
+    if (active && same(active.template)) return active.key;
+    return choices.find((x) => same(x.template))?.key ?? null;
+  }, [c, userTemplates, activeTemplate]);
 
   function setConfig(patch: Partial<MarketConfig>) {
     setFile((f) => ({ ...f, config: { ...f.config, ...patch } }));
@@ -609,6 +733,23 @@ export default function MarketPage() {
       <h1>Targ</h1>
       <div className="ci-page-intro">
         <p className="muted">Gracze wystawiają swoje przedmioty za wybraną cenę, a inni je kupują. Tu ustawiasz limity, podatek, wygląd okna i teksty.</p>
+        <TemplateMenu
+          current={currentTemplate}
+          choices={marketTemplateChoices().map((t) => ({ id: t.id, label: t.label, desc: t.desc, icon: TEMPLATE_ICONS[t.id] }))}
+          what="targ"
+          title="Szablony targu"
+          userTemplates={userTemplates.map((t) => {
+            const u = parseMarketYaml(t.template["market.yml"]);
+            return { id: t.id, name: t.name, savedAt: t.savedAt, detail: `${u.size / 9} ${plural(u.size / 9, "rząd", "rzędy", "rzędów")}, ${u.defaultLimit} ofert na gracza` };
+          })}
+          disabled={!profileId}
+          onPick={(id) => void loadTemplate(id)}
+          onRemoveUser={(id) => void removeTemplate(id)}
+          onExportUser={(id) => void exportTemplate(id)}
+          onRenameUser={(id) => void renameTemplate(id)}
+          onQuickSave={() => void saveAsTemplate(true)}
+          unsent={unsaved || notSent}
+        />
       </div>
 
       <div className="row ci-toolbar">

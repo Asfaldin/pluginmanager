@@ -4,7 +4,7 @@ import smallPlRaw from "./shopTemplates/small-pl.json?raw";
 import { defaultSettings, serializeShopSettings } from "./shopYaml";
 
 // Gotowe sklepy do wczytania w edytorze (scripts/make-big-template.ts i scripts/make-templates.ts).
-// Duży = nasz polecany sklep (to samo wgrywa plugin na nowym polskim serwerze). Mały = prosty na start.
+// Gotowy (big) = to samo, co plugin wgrywa na nowym polskim serwerze. Do edycji (small) = prosta baza do przerobienia.
 // Na razie wszystko po polsku - angielski Mały zostaje ze starej wersji, dopóki aplikacja nie dostanie tłumaczenia.
 
 export interface ShopTemplate {
@@ -31,8 +31,8 @@ export type ShopTemplateId = "big" | "small" | "empty";
 /** Wybór w aplikacji. */
 export function shopTemplateChoices(language: string): { id: ShopTemplateId; label: string; template: ShopTemplate }[] {
   return [
-    { id: "big", label: "Duży - nasz polecany", template: bigPl },
-    { id: "small", label: "Mały - prosty na start", template: language === "pl" ? smallPl : smallEn },
+    { id: "big", label: "Gotowy", template: bigPl },
+    { id: "small", label: "Do edycji", template: language === "pl" ? smallPl : smallEn },
     { id: "empty", label: "Pusty", template: emptyShopTemplate() },
   ];
 }

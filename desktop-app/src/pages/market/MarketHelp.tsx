@@ -31,6 +31,11 @@ export function MarketGuideModal({ open, onClose }: { open: MarketGuidePart; onC
         </p>
 
         <p>
+          <b>Szablony.</b> Menu „Szablon” obok opisu strony: Gotowy (ustawienia jak po instalacji), Pusty (okno bez pól ofert), Twoje zapisane
+          szablony i wgranie z pliku. Twój szablon pobierzesz jako plik strzałką przy nim. Szablon ustawia liczby i wygląd okna - teksty zostają. Tak wrócisz do początku albo przeniesiesz Targ na inny
+          serwer.
+        </p>
+        <p>
           <b>Oferty i limity.</b> Ustawiasz, ile ofert naraz może mieć gracz, najniższą i najwyższą cenę oraz po ilu dniach niesprzedana
           oferta znika z Targu. Rangi mogą mieć więcej ofert.
         </p>
