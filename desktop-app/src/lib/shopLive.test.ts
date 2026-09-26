@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { eventCommand, formatLeft, parseEvents, parseSales, saleArg, saleCommand } from "./shopLive";
+import { customDuration, durationText, eventCommand, formatLeft, parseEvents, parseSales, saleArg, saleCommand } from "./shopLive";
 
 describe("shopLive - trwające eventy i promocje", () => {
   const now = 1_000_000;
@@ -46,6 +46,18 @@ describe("shopLive - trwające eventy i promocje", () => {
     expect(saleArg("item:DIAMOND")).toBe("DIAMOND");
     expect(saleArg("category:bloki")).toBe("bloki");
     expect(saleArg("all")).toBe("all");
+  });
+
+  it("własny czas: zapis do komendy i po ludzku", () => {
+    expect(customDuration(45, "m")).toBe("45m");
+    expect(customDuration(5.7, "h")).toBe("5h");
+    expect(customDuration(0, "d")).toBe("");
+    expect(durationText("")).toBe("bez końca");
+    expect(durationText("45m")).toBe("45 minut");
+    expect(durationText("1h")).toBe("1 godzina");
+    expect(durationText("3h")).toBe("3 godziny");
+    expect(durationText("22d")).toBe("22 dni");
+    expect(durationText("12h")).toBe("12 godzin");
   });
 
   it("pisze, ile zostało", () => {

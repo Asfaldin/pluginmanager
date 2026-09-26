@@ -1963,8 +1963,16 @@ export default function ShopEditorPage() {
           : role === "FILLER"
             ? { slot, role, material: fillerMaterial || "BLACK_STAINED_GLASS_PANE" }
             : { slot, role };
+      // Pierwsze pole rotacji w kategorii: miejsca, w których rotacja stoi teraz (za stałymi), też stają się
+      // polami rotacji - inaczej jedno nowe pole zabrałoby wszystkie przedmioty z rotacji poza jednym.
+      let base = m.layout;
+      const pc = layoutCat(sc);
+      if (role === "ROTATION_SLOT" && pc && rotationSlotsOf(base).length === 0) {
+        const rotAt = new Set([...previewSlotItems(sc)].filter(([, i]) => i >= pc.items.length).map(([s]) => s));
+        base = base.map((e) => (rotAt.has(e.slot) ? { ...e, role: "ROTATION_SLOT" } : e));
+      }
       // Stara zawartość pola znika (kategoria z niego wypada z menu, inne zostają na swoich polach).
-      const cleared = removeMenuSlot(m.layout, file.settings.categoryOrder, slot);
+      const cleared = removeMenuSlot(base, file.settings.categoryOrder, slot);
       setScreenLayout(sc, { layout: [...cleared.layout, entry] }, cleared.order);
       setPicked(null);
       return;
@@ -2178,37 +2186,26 @@ export default function ShopEditorPage() {
     return out;
   }
 
-  /** Pod listą kategorii (strona kategorii): w jakiej kolejności stoją przedmioty. */
-  function categoryPageOptions() {
-    const s = file.settings;
-    return (
-      <div className="card" style={{ padding: "0.6rem", marginTop: "0.6rem" }}>
-        <label style={{ margin: 0 }}>
-          <span className="row" style={{ alignItems: "center", gap: "0.4rem", margin: 0 }}>
-            <span className="muted small">Kolejność przedmiotów</span>
-            <HelpButton id="shop-category-sort" title="Jak stoją przedmioty w oknie" onClick={() => setSortHelp(true)} />
-          </span>
-          <select value={s.categorySort} onChange={(e) => setSettings({ categorySort: e.target.value as "order" | "buy" | "sell" })}>
-            <option value="order">Twoja kolejność</option>
-            <option value="buy">Od najtańszego kupna</option>
-            <option value="sell">Od najwyższego skupu</option>
-          </select>
-        </label>
-      </div>
-    );
-  }
-
   /**
    * Suwak "Wspólny układ". Włączenie: wszystkie kategorie dostają jeden układ - ten z wybranej kategorii
    * (jeśli ma własny), inaczej dotychczasowy startowy; własne układy znikają (Cofnij/Ctrl+Z je przywraca).
    * Wyłączenie: każda kategoria zaczyna od tego wspólnego i dalej zmienia się osobno.
    */
-  function setSharedLayout(on: boolean) {
+  async function setSharedLayout(on: boolean) {
     if (!on) {
       setSettings({ sharedCategoryLayout: false });
       return;
     }
-    const src = layoutCat("category-page")?.layout ?? null;
+    const pc = layoutCat("category-page");
+    const src = pc?.layout ?? null;
+    // Włączenie zmienia wygląd WSZYSTKICH kategorii - łatwo kliknąć przez przypadek, więc pytamy.
+    if (
+      !(await ask(
+        `Wszystkie kategorie dostaną jeden wspólny układ${pc ? ` - taki jak „${plain(pc.name)}”` : ""}. Ich własne układy znikną (możesz to cofnąć przez Cofnij / Ctrl+Z).`,
+        { title: "Włączyć wspólny układ?", kind: "warning", okLabel: "Włącz" },
+      ))
+    )
+      return;
     setFile({
       ...file,
       cats: file.cats.map((c) => ({ ...c, layout: null })),
@@ -2220,28 +2217,50 @@ export default function ShopEditorPage() {
     });
   }
 
+  /** Strona kategorii: kolejność przedmiotów, rozmiar okna i wspólny układ - jedna zwarta karta pod listą. */
+  function categoryPageSettingsCard() {
+    const sc = "category-page";
+    const s = file.settings;
+    const m = menuOf(sc);
+    const shared = s.sharedCategoryLayout;
+    return (
+      <div className="card ci-side-settings">
+        <div className="ci-side-row">
+          <span className="muted small">Kolejność przedmiotów</span>
+          <HelpButton id="shop-category-sort" title="Jak stoją przedmioty w oknie" onClick={() => setSortHelp(true)} />
+        </div>
+        <select value={s.categorySort} onChange={(e) => setSettings({ categorySort: e.target.value as "order" | "buy" | "sell" })}>
+          <option value="order">Twoja kolejność</option>
+          <option value="buy">Od najtańszego kupna</option>
+          <option value="sell">Od najwyższego skupu</option>
+        </select>
+        <div className="ci-side-row">
+          <span className="muted small">Rozmiar okna</span>
+        </div>
+        <select
+          value={m.size}
+          onChange={(e) => setScreenLayout(sc, { size: Number(e.target.value), layout: m.layout.filter((x) => x.slot < Number(e.target.value)) })}
+        >
+          {[9, 18, 27, 36, 45, 54].map((sz) => (
+            <option key={sz} value={sz}>
+              {sz / 9} rzędy ({sz} pól)
+            </option>
+          ))}
+        </select>
+        <label className="pm-switch ci-side-switch" title={shared ? "Włączony - zmiana w siatce zmienia wszystkie kategorie" : "Wyłączony - każda kategoria ma swój układ, zmieniasz tylko wybraną"}>
+          <input type="checkbox" checked={shared} onChange={(e) => void setSharedLayout(e.target.checked)} />
+          <span className="pm-switch-track" />
+          <span className="small">Wspólny układ dla wszystkich</span>
+        </label>
+      </div>
+    );
+  }
+
   /** Pasek nad siatką: co podglądamy, ile tego jest i przełączanie stron. */
   function previewBar(sc: string) {
     if (sc !== "category-page") return null;
     const pc = layoutCat(sc);
-    const shared = file.settings.sharedCategoryLayout;
-    const switchRow = (
-      <div className="row" style={{ alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem", flexWrap: "wrap" }}>
-        <label className="pm-switch" title="Włączone: jeden układ dla wszystkich kategorii. Wyłączone: każda kategoria ma swój.">
-          <input type="checkbox" checked={shared} onChange={(e) => setSharedLayout(e.target.checked)} />
-          <span className="pm-switch-track" />
-          <span className="small">Wspólny układ dla wszystkich kategorii</span>
-        </label>
-        <span className="muted small">
-          {shared
-            ? "(włączony - zmiana w siatce zmienia wszystkie kategorie)"
-            : pc
-              ? "(wyłączony - zmieniasz tylko tę kategorię)"
-              : "(wyłączony - kliknij kategorię po lewej, żeby ustawić jej układ)"}
-        </span>
-      </div>
-    );
-    if (!pc) return switchRow;
+    if (!pc) return null;
     const m = menuOf(sc);
     const perPage = m.layout.filter((e) => e.role === "ITEM_SLOT").length;
     const rotCount = activeRotation(pc, rotationState[pc.id]).length;
@@ -2254,7 +2273,6 @@ export default function ShopEditorPage() {
     const r = pc.rotation;
     return (
       <>
-      {switchRow}
       {r?.enabled && rotSlots.length > 0 && rotSlots.length < r.show && (
         <p className="ci-warning small" style={{ marginTop: 0 }}>
           Rotacja pokazuje {r.show} {plural(r.show, "przedmiot", "przedmioty", "przedmiotów")}, a pól rotacji jest {rotSlots.length}. Dodaj jeszcze{" "}
@@ -2451,9 +2469,9 @@ export default function ShopEditorPage() {
           </div>
           <div className="row" style={{ alignItems: "flex-start", gap: "1rem" }}>
             {/* Stala, waska kolumna - inaczej dluzsze nazwy kategorii rozpychaja ja na pol ekranu. */}
-            <div style={{ flex: "0 0 18rem", maxWidth: "18rem" }}>
+            <div className="ci-side-compact" style={{ flex: "0 0 18rem", maxWidth: "18rem" }}>
               {pickerPanel(screen)}
-              {screen === "category-page" && categoryPageOptions()}
+              {screen === "category-page" && categoryPageSettingsCard()}
               {screen === "buy-picker" && amountPanel(screen)}
               {screen === "search-results" && (
                 <div className="card" style={{ padding: "0.6rem", marginTop: "0.6rem" }}>
@@ -2464,7 +2482,7 @@ export default function ShopEditorPage() {
                   </p>
                 </div>
               )}
-              {screenToolbar(screen)}
+              {screen !== "category-page" && screenToolbar(screen)}
               {layoutExtras(screen)}
             </div>
             {/* Siatka odrobine nizej niz lista obok - inaczej lepi sie do gornej krawedzi karty. */}

@@ -81,6 +81,31 @@ export const DURATIONS: Array<[string, string]> = [
   ["7d", "7 dni"],
 ];
 
+/** Własny czas: liczba + jednostka -> zapis do komendy ("45m", "5h", "10d"); zła liczba = "". */
+export function customDuration(n: number, unit: "m" | "h" | "d"): string {
+  const whole = Math.floor(n);
+  return whole >= 1 ? `${whole}${unit}` : "";
+}
+
+/** Czas po ludzku: "" = "bez końca", "45m" = "45 minut", "1h" = "1 godzina", "10d" = "10 dni". */
+export function durationText(t: string): string {
+  const preset = DURATIONS.find(([v]) => v === t);
+  if (preset) return preset[1];
+  const m = /^(\d+)([mhd])$/.exec(t);
+  if (!m) return t;
+  const n = Number(m[1]);
+  const forms: Record<string, [string, string, string]> = {
+    m: ["minuta", "minuty", "minut"],
+    h: ["godzina", "godziny", "godzin"],
+    d: ["dzień", "dni", "dni"],
+  };
+  const [one, few, many] = forms[m[2]];
+  const last = n % 10;
+  const lastTwo = n % 100;
+  const word = n === 1 ? one : last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14) ? few : many;
+  return `${n} ${word}`;
+}
+
 /** Komenda (bez "/") uruchamiająca event na skup: np. "@shop event DIAMOND +50 2h". */
 export function eventCommand(key: string, percent: number, time: string): string {
   const p = Math.round(percent);

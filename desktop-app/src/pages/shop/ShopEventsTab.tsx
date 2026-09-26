@@ -4,7 +4,7 @@ import { ask } from "../../components/AskModal";
 import { CopyRow } from "../../components/EditorBits";
 import MinecraftTextPreview from "../../components/MinecraftTextPreview";
 import { rconSendCommand, sftpReadFile } from "../../lib/api";
-import { DURATIONS, eventCommand, formatLeft, parseEvents, parseSales, saleArg, saleCommand, type LiveEvent, type LiveSale } from "../../lib/shopLive";
+import { customDuration, DURATIONS, durationText, eventCommand, formatLeft, parseEvents, parseSales, saleArg, saleCommand, type LiveEvent, type LiveSale } from "../../lib/shopLive";
 import type { CategoryDraft, ShopItemDraft } from "../../lib/shopYaml";
 import { plain, refLabel } from "./shopPageShared";
 
@@ -98,7 +98,7 @@ export default function ShopEventsTab({ profileId, dir, cats, customNames }: Pro
     }
   }
 
-  const timeText = (t: string) => DURATIONS.find(([v]) => v === t)?.[1] ?? t;
+  const timeText = durationText;
   const left = (until: number) => (until > 0 ? `zostało ${formatLeft(until - now)}` : "bez końca");
 
   async function startEvent() {
@@ -201,13 +201,7 @@ export default function ShopEventsTab({ profileId, dir, cats, customNames }: Pro
         </label>
         <label style={{ margin: 0 }}>
           <span className="muted small">Jak długo</span>
-          <select value={evTime} onChange={(e) => setEvTime(e.target.value)}>
-            {DURATIONS.map(([v, l]) => (
-              <option key={v} value={v}>
-                {l}
-              </option>
-            ))}
-          </select>
+          <DurationPicker value={evTime} onChange={setEvTime} />
         </label>
         <button type="button" className="ci-publish" disabled={!evItem || evPercent === 0} onClick={() => void startEvent()}>
           Uruchom event
@@ -259,13 +253,7 @@ export default function ShopEventsTab({ profileId, dir, cats, customNames }: Pro
         </label>
         <label style={{ margin: 0 }}>
           <span className="muted small">Jak długo</span>
-          <select value={saleTime} onChange={(e) => setSaleTime(e.target.value)}>
-            {DURATIONS.map(([v, l]) => (
-              <option key={v} value={v}>
-                {l}
-              </option>
-            ))}
-          </select>
+          <DurationPicker value={saleTime} onChange={setSaleTime} />
         </label>
         <button type="button" className="ci-publish" disabled={salePercent < 1 || salePercent > 90} onClick={() => void startSale()}>
           Uruchom promocję
@@ -275,6 +263,60 @@ export default function ShopEventsTab({ profileId, dir, cats, customNames }: Pro
         Promocja na przedmiot wygrywa z promocją na kategorię, a ta z promocją na cały sklep. Rabat rangi gracza dolicza się do promocji.
       </p>
     </section>
+  );
+}
+
+/** Jak długo: gotowe czasy albo „własny czas...” (liczba + minuty/godziny/dni). value = zapis do komendy ("45m"). */
+function DurationPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const isPreset = DURATIONS.some(([v]) => v === value);
+  const [custom, setCustom] = useState(!isPreset);
+  const m = /^(\d+)([mhd])$/.exec(value);
+  const [n, setN] = useState(m ? Number(m[1]) : 3);
+  const [unit, setUnit] = useState<"m" | "h" | "d">(m ? (m[2] as "m" | "h" | "d") : "h");
+  const setCustomValue = (nn: number, uu: "m" | "h" | "d") => {
+    setN(nn);
+    setUnit(uu);
+    onChange(customDuration(nn, uu) || "1h");
+  };
+  return (
+    <span className="row" style={{ gap: "0.4rem", margin: 0, alignItems: "center", flexWrap: "nowrap" }}>
+      <select
+        value={custom ? "custom" : value}
+        onChange={(e) => {
+          if (e.target.value === "custom") {
+            setCustom(true);
+            setCustomValue(n, unit);
+          } else {
+            setCustom(false);
+            onChange(e.target.value);
+          }
+        }}
+      >
+        {DURATIONS.map(([v, l]) => (
+          <option key={v} value={v}>
+            {l}
+          </option>
+        ))}
+        <option value="custom">własny czas...</option>
+      </select>
+      {custom && (
+        <>
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={n}
+            onChange={(e) => setCustomValue(Math.max(1, Math.floor(Number(e.target.value) || 1)), unit)}
+            style={{ width: "5rem" }}
+          />
+          <select value={unit} onChange={(e) => setCustomValue(n, e.target.value as "m" | "h" | "d")}>
+            <option value="m">minut</option>
+            <option value="h">godzin</option>
+            <option value="d">dni</option>
+          </select>
+        </>
+      )}
+    </span>
   );
 }
 

@@ -259,7 +259,7 @@ export function ShopGuideModal({ open, onClose }: { open: GuidePart; onClose: ()
             → Teksty w grze.
           </p>
           <p className="small">
-            Każda kategoria może mieć własny układ strony (suwak „Wspólny układ dla wszystkich kategorii” nad siatką). Przedmioty z
+            Każda kategoria może mieć własny układ strony (suwak „Wspólny układ dla wszystkich kategorii” z lewej, pod „Rozmiar okna”). Przedmioty z
             rotacji mogą stać na swoich polach - klik w pole i „Przedmiot z rotacji”.
           </p>
         </Fold>
@@ -624,7 +624,7 @@ export const SCREEN_HELP: Record<string, ReactNode> = {
       <br />
       <br />
       <b>Każda kategoria ma swój układ.</b> Wybierz kategorię po lewej - zmiany w siatce dotyczą tylko jej. Nowa kategoria zaczyna od
-      zwykłego układu. Chcesz jeden układ dla wszystkich? Włącz suwak „Wspólny układ dla wszystkich kategorii” nad siatką - wtedy zmiana
+      zwykłego układu. Chcesz jeden układ dla wszystkich? Włącz suwak „Wspólny układ dla wszystkich kategorii” z lewej, pod „Rozmiar okna” - wtedy zmiana
       zmienia wszystkie kategorie naraz.
       <br />
       <br />
