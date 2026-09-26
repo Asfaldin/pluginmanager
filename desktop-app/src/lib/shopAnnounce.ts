@@ -1,4 +1,4 @@
-import * as yaml from "js-yaml";
+import { createTextSet, fillPlaceholders as fill, type GameTexts, type TextField as GenericTextField } from "./langTexts";
 import enLang from "./shopLang/en.yml?raw";
 import plLang from "./shopLang/pl.yml?raw";
 
@@ -19,15 +19,7 @@ export const TEXT_GROUPS: Array<[TextGroup, string, string]> = [
   ["admin", "Komunikaty dla admina", "odpowiedzi na komendy /@shop - widzi je tylko admin"],
 ];
 
-export interface TextField {
-  key: string;
-  group: TextGroup;
-  label: string;
-  /** Wstawki, które plugin podmienia w tym tekście - wzięte z domyślnego tekstu. */
-  placeholders: string[];
-  /** Kilka linijek (w pliku lista) - w aplikacji linijki rozdziela "\n". */
-  list: boolean;
-}
+export type TextField = GenericTextField<TextGroup>;
 
 // Ludzkie nazwy tekstów. Grupa z pierwszej części klucza (patrz groupOf); tekst spoza tej listy
 // (np. nowy w pluginie) i tak się pokaże - w grupie admina, z kluczem zamiast nazwy.
@@ -243,39 +235,10 @@ function groupOf(key: string): TextGroup {
   return "admin";
 }
 
-type RawLang = Record<string, string | string[]>;
-
-/** Plik lang spłaszczony do kluczy "sekcja.tekst"; listy zostają listami. Zły plik = pusty. */
-function flatten(text: string | null): RawLang {
-  const out: RawLang = {};
-  if (!text) return out;
-  let root: unknown;
-  try {
-    root = yaml.load(text);
-  } catch {
-    return out;
-  }
-  if (!root || typeof root !== "object") return out;
-  for (const [sec, section] of Object.entries(root as Record<string, unknown>)) {
-    if (!section || typeof section !== "object" || Array.isArray(section)) continue;
-    for (const [sub, v] of Object.entries(section as Record<string, unknown>)) {
-      if (typeof v === "string") out[`${sec}.${sub}`] = v;
-      else if (Array.isArray(v) && v.every((x) => typeof x === "string")) out[`${sec}.${sub}`] = v as string[];
-    }
-  }
-  return out;
-}
-
-const RAW_DEFAULTS: Record<string, RawLang> = { en: flatten(enLang), pl: flatten(plLang) };
+const SHOP_TEXTS = createTextSet<TextGroup>({ pl: plLang, en: enLang }, LABELS, groupOf);
 
 /** Wszystkie teksty w kolejności z pliku pluginu. */
-export const TEXT_FIELDS: TextField[] = Object.entries(RAW_DEFAULTS.pl).map(([key, v]) => {
-  const joined = Array.isArray(v) ? v.join("\n") : v;
-  const placeholders = [...new Set([...joined.matchAll(/\{([a-z-]+)\}/g)].map((m) => m[1]))];
-  return { key, group: groupOf(key), label: LABELS[key] ?? key, placeholders, list: Array.isArray(v) };
-});
-
-const LIST_KEYS = new Set(TEXT_FIELDS.filter((f) => f.list).map((f) => f.key));
+export const TEXT_FIELDS: TextField[] = SHOP_TEXTS.fields;
 
 /** Ogłoszenia na czacie (rotacja, reset, eventy) - też podgląd przy rotacji w kategorii. */
 export type AnnounceGroup = "rotation" | "reset" | "event";
@@ -388,75 +351,29 @@ export const SAMPLE_VALUES: Record<string, string> = {
   error: "brak dostępu",
 };
 
-export type AnnounceTexts = Record<string, string>;
-
-function toTexts(raw: RawLang): AnnounceTexts {
-  const out: AnnounceTexts = {};
-  for (const [k, v] of Object.entries(raw)) out[k] = Array.isArray(v) ? v.join("\n") : v;
-  return out;
-}
+export type AnnounceTexts = GameTexts;
 
 /** Domyślne teksty pluginu w danym języku (nieznany język = angielski). */
 export function defaultAnnounceTexts(language: string): AnnounceTexts {
-  return toTexts(RAW_DEFAULTS[language] ?? RAW_DEFAULTS.en);
+  return SHOP_TEXTS.defaults(language);
 }
 
 /** Teksty z pliku lang na serwerze; czego tam brakuje, bierze się z domyślnych (jak w pluginie). */
 export function parseAnnounceTexts(text: string | null, language: string): AnnounceTexts {
-  const out = defaultAnnounceTexts(language);
-  const fromFile = toTexts(flatten(text));
-  for (const f of TEXT_FIELDS) if (fromFile[f.key] != null) out[f.key] = fromFile[f.key];
-  return out;
+  return SHOP_TEXTS.parse(text, language);
 }
 
 /** Podmienia wstawki {nazwa} na wartości (do podglądu). */
-export function fillPlaceholders(text: string, values: Record<string, string>): string {
-  return text.replace(/\{([\w-]+)\}/g, (m, k: string) => values[k] ?? m);
-}
+export const fillPlaceholders = fill;
 
-/**
- * Wpisuje teksty do pliku lang, zmieniając TYLKO linijki podanych kluczy (lista = cały jej blok).
- * Komentarze, kolejność i wszystkie inne teksty zostają. Brakujący klucz dopisuje pod nagłówkiem
- * sekcji, brakującą sekcję - na końcu pliku.
- */
+/** Wpisuje teksty do pliku lang, zmieniając TYLKO linijki tych kluczy (patrz langTexts.patchLang). */
 export function patchLangFile(text: string, texts: AnnounceTexts): string {
-  const lines = text.replace(/\r\n/g, "\n").split("\n");
-  if (lines.length && lines[lines.length - 1] === "") lines.pop();
-  for (const [key, value] of Object.entries(texts)) {
-    if (value == null || !key.includes(".")) continue;
-    const dot = key.indexOf(".");
-    const sec = key.slice(0, dot);
-    const sub = key.slice(dot + 1);
-    const block = LIST_KEYS.has(key)
-      ? [`  ${sub}:`, ...value.split("\n").map((l) => `    - ${JSON.stringify(l)}`)]
-      : [`  ${sub}: ${JSON.stringify(value)}`];
-    const head = lines.findIndex((l) => l.replace(/\s+#.*$/, "").trimEnd() === `${sec}:`);
-    if (head < 0) {
-      lines.push(`${sec}:`, ...block);
-      continue;
-    }
-    let end = head + 1;
-    while (end < lines.length && (lines[end].trim() === "" || /^\s/.test(lines[end]))) end++;
-    const keyRe = new RegExp(`^  ${sub.replace(/[-]/g, "\\-")}\\s*:`);
-    const at = lines.slice(head + 1, end).findIndex((l) => keyRe.test(l));
-    if (at < 0) {
-      lines.splice(head + 1, 0, ...block);
-      continue;
-    }
-    // Stary wpis razem z jego linijkami listy (wcięte głębiej niż sam klucz).
-    const start = head + 1 + at;
-    let stop = start + 1;
-    while (stop < end && /^ {3,}\S/.test(lines[stop])) stop++;
-    lines.splice(start, stop - start, ...block);
-  }
-  return lines.join("\n") + "\n";
+  return SHOP_TEXTS.patch(text, texts);
 }
 
 /** Teksty, które różnią się od `base` - tylko one idą do pliku na serwerze. */
 export function changedTexts(texts: AnnounceTexts, base: AnnounceTexts): AnnounceTexts {
-  const out: AnnounceTexts = {};
-  for (const f of TEXT_FIELDS) if (texts[f.key] !== base[f.key] && texts[f.key] != null) out[f.key] = texts[f.key];
-  return out;
+  return SHOP_TEXTS.changed(texts, base);
 }
 
 export function sameTexts(a: AnnounceTexts, b: AnnounceTexts, fields: TextField[] = TEXT_FIELDS): boolean {
