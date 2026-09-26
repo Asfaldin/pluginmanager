@@ -1,6 +1,7 @@
 import { Blocks, Palette } from "lucide-react";
 import { HashRouter, Route, Routes } from "react-router-dom";
 import CloseGuard from "./components/CloseGuard";
+import NavGuard from "./components/NavGuard";
 import PromptHost from "./components/PromptModal";
 import AskHost from "./components/AskModal";
 import HomeRedirect from "./components/HomeRedirect";
@@ -67,6 +68,7 @@ function Gate() {
   return (
     <>
       <CloseGuard />
+      <NavGuard />
       <ProfilesProvider>
         <HashRouter>
           <Routes>
