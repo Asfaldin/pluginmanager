@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Pluginy repo: `D:\folder z mc`, branch `Karol`. App repo: `C:\Users\Zgredek\pluginmanager`, branch `Karol`. Backups already exist: `kopia-sklep-targ` (Pluginy), `kopia-kreator-sklepu` (app).
-- Commit after each task, short named Polish message (e.g. `Targ: parser market.yml`), ending with `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`. **Do not push** until the user agrees. Never commit `NOTATKI.md`, `docs/configi-zewnetrzne/*`, the screenshot.
+- Commit after each task, short named Polish message (e.g. `Targ: parser market.yml`), ending with the attribution lines given in the session's instructions. **Do not push** until the user agrees. Never commit `NOTATKI.md`, `docs/configi-zewnetrzne/*`, the screenshot.
 - Maven: `$mvn = "D:\intelia\IntelliJ IDEA 2026.2.0.1\plugins\maven-plugin\lib\maven3\bin\mvn.cmd"`, always `clean package`, PowerShell, module WITH core: `-pl mainplugins-core,<module>`.
 - App: `npx vitest run`, `npx tsc --noEmit` in `desktop-app`; Rust `cargo test --lib` in `desktop-app\src-tauri` (`~/.cargo/bin` on PATH).
 - Every plugin works with only core installed. Shop/Market never call Ranks, Spawners, Fishing, Quests.

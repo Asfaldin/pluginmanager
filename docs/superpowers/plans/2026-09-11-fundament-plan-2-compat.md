@@ -1,6 +1,6 @@
 # Foundation Plan 2 - Compatibility: PlaceholderAPI, Vault, commands
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** execute this plan inline with superpowers:executing-plans, task by task - no subagents (the user's decision: subagents cost 2-3x and burned the usage limit). Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Core gets three compatibility pieces:
 - it exposes `%mainplugins_...%` placeholders to PlaceholderAPI (other plugins add theirs through core), and our lang texts accept placeholders;

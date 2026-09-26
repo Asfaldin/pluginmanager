@@ -1,6 +1,6 @@
 # Crates Pilot Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** execute this plan inline with superpowers:executing-plans, task by task - no subagents (the user's decision: subagents cost 2-3x and burned the usage limit). Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Rebuild `mainplugins-crates` on the foundation, with any number of crates defined in `crates.yml`, keys that are either per-crate or shared, prizes made of shared `rewards:`, a left-click preview and lang files. In the app, replace the crate editor and add the shared `RewardEditor` and `ItemRefPicker` components.
 

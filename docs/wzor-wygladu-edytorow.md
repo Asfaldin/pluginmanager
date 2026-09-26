@@ -48,7 +48,7 @@ Nigdy żółty dla błędu, nigdy czerwony dla zwykłej informacji.
 ```
 ← Twoje pluginy
 SKLEP
-Jedno zdanie, co tu się ustawia.                 [📋 Szablon: Duży - nasz polecany ▾]
+Jedno zdanie, co tu się ustawia.                 [📋 Szablon: Gotowy ▾]
 [Serwer ▾] [Komendy] [Zakładka1] [Zakładka2] ... [📖 Jak działa sklep]   [Cofnij] [Ponów] [Wczytaj z serwera] [Zapisz] [Wyślij na serwer]
 ```
 
@@ -169,7 +169,7 @@ Cofnij/Ponów dla całej strony (`historyRef` w `ShopEditorPage`).
 
 ## 10. Lista kontrolna dla nowej strony pluginu
 
-- [ ] Nagłówek + menu szablonów (Duży polecany / Mały / Pusty / Twoje szablony / plik).
+- [ ] Nagłówek + menu szablonów (Gotowy / Do edycji / Pusty - proste nazwy, bez „polecany” / Twoje szablony / plik).
 - [ ] Pasek: serwer, Komendy, zakładki, przewodnik; z prawej Cofnij, Ponów, Wczytaj z serwera, Zapisz, Wyślij.
 - [ ] Wyślij i Wczytaj pytają (nasze okienko).
 - [ ] Każda opcja: nazwa, jednostka, podpowiedź na żywo albo „?”. Duży przewodnik z częściami i „Dowiedz się więcej”.

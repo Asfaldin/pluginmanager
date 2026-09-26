@@ -1,6 +1,6 @@
 # Foundation Plan 1 - Core: languages, item catalog, shared rewards
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** execute this plan inline with superpowers:executing-plans, task by task - no subagents (the user's decision: subagents cost 2-3x and burned the usage limit). Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Give `mainplugins-core` three shared services: `LangService` (en/pl message files), an upgraded item catalog (`items/` folder, enchants, unbreakable, `idOf`, providers, plugin defaults) and `RewardService` (one reward format for every plugin).
 
